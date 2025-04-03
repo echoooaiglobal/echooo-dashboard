@@ -13,7 +13,7 @@ export const getClientById = async (id: number): Promise<Client> => {
 };
 
 // Get all Clients
-export const getClients = async (page: number) => {
+export const getClients = async () => {
   const response = await api.get(API_ENDPOINTS.CLIENTS);
   return response.data;
 };

@@ -13,8 +13,9 @@ export const getInfluencerById = async (id: number): Promise<Influencer> => {
 };
 
 // Get all influencers
-export const getInfluencers = async (page: number) => {
-  const response = await api.get(API_ENDPOINTS.INFLUENCERS);
+export const getInfluencers = async (page: number = 1, limit: number = 10) => {
+  const response = await api.get(`${API_ENDPOINTS.INFLUENCERS}/?page=${page}&limit=${limit}`);
+  if (response.statusText !== 'OK') throw new Error('Failed to fetch influencers');
   return response.data;
 };
 
