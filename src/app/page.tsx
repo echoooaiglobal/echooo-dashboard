@@ -12,6 +12,9 @@ export default function Home() {
           Manage your influencers and clients with ease.
         </p>
         <div className="space-x-4">
+          <Link href="/discover">
+            <Button>Doscover</Button>
+          </Link>
           <Link href="/influencers">
             <Button>Influencers</Button>
           </Link>
