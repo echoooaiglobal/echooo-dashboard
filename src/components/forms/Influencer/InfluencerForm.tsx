@@ -1,18 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Button from '@/components/ui/Button';
 import { createInfluencer } from '@/services/influencerService';
+import { getClients } from '@/services/clientService';
 
 const schema = z.object({
+  name: z.string().min(1, 'Name is required'),
   username: z.string().min(1, 'Username is required'),
-  client_id: z
-    .string()
-    .regex(/^\d+$/, 'Client ID must be a number')
-    .transform((val) => Number(val)),
+  client_id: z.number().min(1, 'Client is required'),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -21,15 +20,38 @@ interface InfluencerFormProps {
   onSuccess: () => void;
 }
 
+interface Client {
+  id: number;
+  name: string;
+}
+
 export default function InfluencerForm({ onSuccess }: InfluencerFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [isLoadingClients, setIsLoadingClients] = useState(true);
   const {
     register,
     handleSubmit,
     formState: { errors },
+    setValue,
   } = useForm<FormData>({
     resolver: zodResolver(schema),
   });
+
+  // Fetch clients on mount
+  useEffect(() => {
+    const loadClients = async () => {
+      try {
+        const data = await getClients();
+        setClients(data);
+      } catch (error) {
+        console.error('Failed to load clients', error);
+      } finally {
+        setIsLoadingClients(false);
+      }
+    };
+    loadClients();
+  }, []);
 
   const onSubmit: SubmitHandler<FormData> = async (data) => {
     setIsSubmitting(true);
@@ -45,10 +67,27 @@ export default function InfluencerForm({ onSuccess }: InfluencerFormProps) {
   };
 
   return (
-    <div className="max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden p-6">
+    <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-md overflow-hidden p-6">
       <h2 className="text-2xl font-bold text-gray-800 mb-6">Add New Influencer</h2>
       
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <div className="space-y-2">
+          <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+            Name <span className="text-red-500">*</span>
+          </label>
+          <input
+            {...register('name')}
+            id="name"
+            className={`w-full px-4 py-2 rounded-lg border ${
+              errors.name ? 'border-red-500' : 'border-gray-300'
+            } focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition`}
+            placeholder="e.g., John Doe"
+          />
+          {errors.name && (
+            <p className="text-sm text-red-600 mt-1">{errors.name.message}</p>
+          )}
+        </div>
+
         <div className="space-y-2">
           <label htmlFor="username" className="block text-sm font-medium text-gray-700">
             Username <span className="text-red-500">*</span>
@@ -68,17 +107,24 @@ export default function InfluencerForm({ onSuccess }: InfluencerFormProps) {
 
         <div className="space-y-2">
           <label htmlFor="client_id" className="block text-sm font-medium text-gray-700">
-            Client ID <span className="text-red-500">*</span>
+            Client <span className="text-red-500">*</span>
           </label>
-          <input
-            {...register('client_id')}
+          <select
+            {...register('client_id', { valueAsNumber: true })}
             id="client_id"
-            type="number"
-            defaultValue={1}
+            disabled={isLoadingClients}
             className={`w-full px-4 py-2 rounded-lg border ${
               errors.client_id ? 'border-red-500' : 'border-gray-300'
             } focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition`}
-          />
+            onChange={(e) => setValue('client_id', Number(e.target.value))}
+          >
+            <option value="">Select a client</option>
+            {clients.map(client => (
+              <option key={client.id} value={client.id}>
+                {client.name}
+              </option>
+            ))}
+          </select>
           {errors.client_id && (
             <p className="text-sm text-red-600 mt-1">{errors.client_id.message}</p>
           )}
@@ -87,7 +133,7 @@ export default function InfluencerForm({ onSuccess }: InfluencerFormProps) {
         <div className="pt-2">
           <Button 
             type="submit" 
-            disabled={isSubmitting}
+            disabled={isSubmitting || isLoadingClients}
             className="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-lg shadow-md transition duration-150 ease-in-out"
           >
             {isSubmitting ? (

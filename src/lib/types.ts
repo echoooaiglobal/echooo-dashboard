@@ -111,6 +111,7 @@ export interface DiscoverApiResponse {
       skip: number;
       limit: number;
     };
+    n: number,
   }
 
 

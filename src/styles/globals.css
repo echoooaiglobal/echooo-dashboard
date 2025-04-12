@@ -1,12 +1,13 @@
-/* @tailwind base;
+/* /src/styles/globals.css */
+@tailwind base;
 @tailwind components;
-@tailwind utilities; */
+@tailwind utilities;
 
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --primary-color: #3b82f6; /* blue-500 */
+  --primary-hover: #2563eb; /* blue-600 */
 }
 
 @theme inline {
@@ -29,3 +30,22 @@ body {
   /* font-family: Arial, Helvetica, sans-serif; */
   font-family: 'Inter', sans-serif;
 }
+
+/* Custom navbar styles */
+.navbar {
+  background-color: #ffffff;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.nav-link {
+  color: #374151; /* gray-700 */
+  transition: color 0.2s ease;
+}
+
+.nav-link:hover {
+  color: var(--primary-hover);
+}
+
+
+
+

@@ -46,14 +46,16 @@ export default function DiscoverSearch() {
       account_type: []
     },
     paging: {
-      skip: 10,
-      limit: 20
-    }
+      skip: 0,
+      limit: 10
+    },
+    n: 0 // Adding the n parameter with initial value of 0
   });
 
   const [influencers, setInfluencers] = useState<DiscoverInfluencer[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [totalResults, setTotalResults] = useState(0);
+  const [loadCount, setLoadCount] = useState(1); // Track how many times "load more" has been clicked
   
   // Debounce only the filter changes, not paging/sort
   const debouncedFilters = useDebounce(searchParams.filter, 500);
@@ -81,7 +83,14 @@ export default function DiscoverSearch() {
         const data = await response.json();
         console.log('API response data:', data);
         
-        setInfluencers(data.influencers);
+        // Append new results instead of replacing them, but only if we're not on first page
+        if (searchParams.paging.skip > 0) {
+          setInfluencers(prevInfluencers => [...prevInfluencers, ...data.influencers]);
+        } else {
+          // If we're on the first page (after filter change, etc.), replace the results
+          setInfluencers(data.influencers);
+        }
+        
         setTotalResults(data.totalResults);
       } catch (error) {
         console.error('Error fetching influencers:', error);
@@ -91,7 +100,7 @@ export default function DiscoverSearch() {
     };
   
     fetchInfluencers();
-  }, [debouncedFilters, searchParams.sort, searchParams.paging]);
+  }, [debouncedFilters, searchParams.sort, searchParams.paging, searchParams.n]);
 
   const handleFilterChange = (filterUpdates: Partial<DiscoverSearchParams['filter']>) => {
     setSearchParams(prev => ({
@@ -103,25 +112,40 @@ export default function DiscoverSearch() {
       paging: {
         ...prev.paging,
         skip: 0 // Reset to first page when filters change
-      }
+      },
+      n: 0 // Reset n to 0 when filters change
     }));
+    setLoadCount(1); // Reset load count when filters change
   };
 
   const handleSortChange = (field: string, direction: 'asc' | 'desc') => {
     setSearchParams(prev => ({
       ...prev,
-      sort: { field, direction }
+      sort: { field, direction },
+      paging: {
+        ...prev.paging,
+        skip: 0 // Reset to first page when sort changes
+      },
+      n: 0 // Reset n to 0 when sort changes
     }));
+    setLoadCount(1); // Reset load count when sort changes
   };
 
   const loadMore = () => {
+    const nextSkip = searchParams.paging.skip + searchParams.paging.limit;
+    const nextN = searchParams.n + 2; // Increment n by 2 each time
+    const nextLimit = nextN * 10; // Increase the limit by 10 each time
+    
     setSearchParams(prev => ({
       ...prev,
       paging: {
-        ...prev.paging,
-        skip: prev.paging.skip + prev.paging.limit
-      }
+        skip: nextSkip,
+        limit: nextLimit
+      },
+      n: nextN
     }));
+    
+    setLoadCount(prev => prev + 1);
   };
 
   const clearAllFilters = () => {
@@ -133,8 +157,19 @@ export default function DiscoverSearch() {
         gender: { code: '', weight: 0 },
         geo: [],
         followers: { left_number: '', right_number: '' }
-      }
+      },
+      paging: {
+        ...prev.paging,
+        skip: 0
+      },
+      n: 0
     }));
+    setLoadCount(1); // Reset load count when filters are cleared
+  };
+
+  // Calculate the next batch size to unlock
+  const getNextBatchSize = () => {
+    return loadCount * 20;
   };
 
   return (
@@ -154,6 +189,7 @@ export default function DiscoverSearch() {
         onSortChange={handleSortChange}
         onLoadMore={loadMore}
         hasMore={influencers?.length < totalResults}
+        nextBatchSize={getNextBatchSize()} // Pass the dynamic batch size to the results component
       />
     </div>
   );

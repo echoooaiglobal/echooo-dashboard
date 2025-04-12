@@ -10,6 +10,7 @@ interface DiscoverResultsProps {
   onSortChange: (field: string, direction: 'asc' | 'desc') => void;
   onLoadMore: () => void;
   hasMore: boolean;
+  nextBatchSize: number; // Added the nextBatchSize prop
 }
 
 const DiscoverResults: React.FC<DiscoverResultsProps> = ({
@@ -21,6 +22,7 @@ const DiscoverResults: React.FC<DiscoverResultsProps> = ({
   onSortChange,
   onLoadMore,
   hasMore,
+  nextBatchSize,
 }) => {
   const handleSort = (field: string) => {
     const direction = sortField === field && sortDirection === 'desc' ? 'asc' : 'desc';
@@ -108,9 +110,9 @@ const DiscoverResults: React.FC<DiscoverResultsProps> = ({
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">country
-              {influencers?.map((influencer) => (
-                <tr key={influencer?.id}>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {influencers?.map((influencer, key) => (
+                <tr key={influencer.id || key}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="flex-shrink-0 h-10 w-10">
@@ -242,7 +244,7 @@ const DiscoverResults: React.FC<DiscoverResultsProps> = ({
                 Loading...
               </>
             ) : (
-              'UNLOCK NEXT 40 RESULTS'
+              `UNLOCK NEXT ${nextBatchSize} RESULTS`
             )}
           </button>
         </div>

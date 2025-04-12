@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { DiscoverSearchParams } from '@/lib/types';
-
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
@@ -42,18 +41,13 @@ export async function POST(request: Request) {
         })
       },
       paging: {
-        skip: body.paging?.skip || 10,
-        limit: body.paging?.limit || 20
+        skip: body.paging?.skip || 0,
+        limit: body.paging?.limit || 10
       }
     };
 
     // Construct the URL with query parameters
-    const apiUrl = new URL(`https://imai.co/api/search/newv1?platform=instagram&n=${apiPayload.paging.skip}`);
-    // apiUrl.searchParams.append('platform', 'instagram');
-    // apiUrl.searchParams.append('n', String(apiPayload.paging.skip));`
-
-    console.log('Making request to:', apiUrl.toString());
-    console.log('With payload:', JSON.stringify(apiPayload, null, 2));
+    const apiUrl = new URL(`${process.env.IMAI_BASE_API}/search/newv1?platform=instagram&n=${apiPayload.paging.skip}`);
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
