@@ -6,6 +6,8 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const userId = searchParams.get('userId');
   const proxyImage = searchParams.get('proxyImage');
+  const includePosts = searchParams.get('includePosts');
+  const postsChunkSize = searchParams.get('postsChunkSize') || '10'; // Default to 10 posts
 
   if (!userId) {
     return NextResponse.json(
@@ -16,46 +18,135 @@ export async function GET(request: NextRequest) {
 
   try {
     // Validate API configuration
-    if (!process.env.IMAI_BASE_API || !process.env.INFLUENCER_API_AUTH_KEY) {
+    if (!process.env.IMAI_BASE_API || !process.env.IMAI_API_AUTH_KEY || !process.env.ENSEMBLEDATA_AUTH_TOKEN) {
       return NextResponse.json(
-        { error: 'Instagram API configuration is missing' },
+        { error: 'API configuration is missing' },
         { status: 500 }
       );
     }
 
     // Fetch Instagram profile data
-    const response = await fetch(`${process.env.IMAI_BASE_API}/raw/ig/user/info/?url=${encodeURIComponent(userId)}`, {
-      headers: {
-        'authkey': process.env.INFLUENCER_API_AUTH_KEY
+    const profileResponse = await fetch(
+      `${process.env.IMAI_BASE_API}/raw/ig/user/info/?url=${encodeURIComponent(userId)}`,
+      {
+        headers: {
+          'authkey': process.env.IMAI_API_AUTH_KEY
+        },
+        next: { revalidate: 3600 }
       }
-    });
+    );
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => null);
+    if (!profileResponse.ok) {
+      const errorData = await profileResponse.json().catch(() => null);
       console.error('Instagram API error:', errorData);
-      throw new Error(`Instagram API responded with status: ${response.status}`);
+      throw new Error(`Instagram API responded with status: ${profileResponse.status}`);
     }
 
-    const data: InstagramProfileResponse = await response.json();
+    const profileData = await profileResponse.json();
 
-    // If proxyImage=true, modify the response to use a local proxy for the image
-    if (proxyImage === 'true' && data.user?.profile_pic_url_hd) {
-      const proxiedData = {
-        ...data,
-        user: {
-          ...data.user,
-          profile_pic_url_hd: `/api/instagram/image-proxy?url=${encodeURIComponent(data.user.profile_pic_url_hd)}`,
-          profile_pic_url: `/api/instagram/image-proxy?url=${encodeURIComponent(data.user.profile_pic_url)}`,
+    // Initialize posts data
+    let postsData = null;
+
+    // Fetch posts if includePosts=true
+    if (includePosts === 'true') {
+      try {
+        const postsParams = new URLSearchParams({
+          user_id: userId,
+          depth: '3',
+          chunk_size: postsChunkSize || '10',
+          start_cursor: '',
+          alternative_method: 'false',
+          token: process.env.ENSEMBLEDATA_AUTH_TOKEN || ''
+        });
+
+        // Check if ENSEMBLEDATA_BASE_API and ENSEMBLEDATA_POSTS_ENDPOINT are defined
+        if (!process.env.ENSEMBLEDATA_BASE_API || !process.env.ENSEMBLEDATA_POSTS_ENDPOINT) {
+          console.error('Missing ENSEMBLEDATA API configuration');
+          throw new Error('Posts API configuration is missing');
         }
-      };
-      return NextResponse.json(proxiedData);
+
+        const postsResponse = await fetch(
+          `${process.env.ENSEMBLEDATA_BASE_API}/${process.env.ENSEMBLEDATA_POSTS_ENDPOINT}?${postsParams.toString()}`,
+          {
+            next: { revalidate: 3600 } // Cache posts for 1 hour
+          }
+        );
+
+        if (postsResponse.ok) {
+          postsData = await postsResponse.json();
+          console.log('Posts API Response received successfully');
+        } else {
+          const errorData = await postsResponse.json().catch(() => null);
+          console.error('Posts API error:', errorData);
+        }
+      } catch (postsError) {
+        console.error('Error fetching posts:', postsError);
+      }
     }
 
-    return NextResponse.json(data);
+    // Extract profile data properly from the response
+    // This is the most likely source of the problem - ensuring we extract profile data correctly
+    // const profileInfo = profileData.user;
+    
+    // Prepare response data
+    const responseData: any = {
+      success: true,
+      profile: profileData?.user
+    };
+
+    if (postsData && postsData.data) {
+      responseData.posts = postsData.data;
+    }
+    
+    // If proxyImage=true, modify the response to use a local proxy for images
+    if (proxyImage === 'true') {
+      // Proxy profile images
+      if (responseData.profile?.profile_pic_url_hd) {
+        responseData.profile = {
+          ...responseData.profile,
+          profile_pic_url_hd: `/api/instagram/image-proxy?url=${encodeURIComponent(responseData.profile.profile_pic_url_hd)}`,
+          profile_pic_url: `/api/instagram/image-proxy?url=${encodeURIComponent(responseData.profile.profile_pic_url)}`
+        };
+      }
+
+      // Proxy post images if they exist
+      if (responseData.posts?.posts) {
+        responseData.posts.posts = responseData.posts.posts.map((post: any) => {
+          const proxiedPost = { ...post };
+          
+          if (post.node.display_url) {
+            proxiedPost.node.display_url = `/api/instagram/image-proxy?url=${encodeURIComponent(post.node.display_url)}`;
+          }
+          
+          if (post.node.thumbnail_src) {
+            proxiedPost.node.thumbnail_src = `/api/instagram/image-proxy?url=${encodeURIComponent(post.node.thumbnail_src)}`;
+          }
+          
+          if (post.node.thumbnail_resources) {
+            proxiedPost.node.thumbnail_resources = post.node.thumbnail_resources.map((resource: any) => ({
+              ...resource,
+              src: `/api/instagram/image-proxy?url=${encodeURIComponent(resource.src)}`
+            }));
+          }
+          
+          return proxiedPost;
+        });
+      }
+    }
+
+    // Log what we're returning to help debug
+    console.log('Response Data Keys:', Object.keys(responseData));
+    console.log('Profile Data Present:', !!responseData.profile);
+
+    return NextResponse.json(responseData);
   } catch (error) {
     console.error('Error fetching Instagram profile:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch Instagram profile details. Check server logs for details.' },
+      { 
+        success: false,
+        error: 'Failed to fetch Instagram data',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }

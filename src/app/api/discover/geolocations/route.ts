@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const query = searchParams.get('q') || '';
-  const authKey = process.env.INFLUENCER_API_AUTH_KEY;
+  const authKey = process.env.IMAI_API_AUTH_KEY;
 
   if (!authKey) {
     return NextResponse.json(

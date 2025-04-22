@@ -3,7 +3,7 @@ import { DiscoverSearchParams } from '@/lib/types';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
-  const authKey = process.env.INFLUENCER_API_AUTH_KEY;
+  const authKey = process.env.IMAI_API_AUTH_KEY;
   if (!authKey) {
     return NextResponse.json(
       { error: "API authentication key not configured" },
