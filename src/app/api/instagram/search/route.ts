@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
 
   try {
     // Validate API configuration
-    if (!process.env.IMAI_BASE_API || !process.env.INFLUENCER_API_AUTH_KEY) {
+    if (!process.env.IMAI_BASE_API || !process.env.IMAI_API_AUTH_KEY) {
       return NextResponse.json(
         { error: 'Instagram API configuration is missing' },
         { status: 500 }
@@ -28,8 +28,9 @@ export async function GET(request: NextRequest) {
       `${process.env.IMAI_BASE_API}/raw/ig/search/users/?keyword=${encodeURIComponent(keyword)}`,
       {
         headers: {
-          'authkey': process.env.INFLUENCER_API_AUTH_KEY
-        }
+          'authkey': process.env.IMAI_API_AUTH_KEY
+        },
+        next: { revalidate: 3600 }
       }
     );
 

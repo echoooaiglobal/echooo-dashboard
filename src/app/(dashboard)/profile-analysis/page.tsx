@@ -4,17 +4,18 @@
 import { useState, useCallback } from 'react';
 import ProfileSearch from '@/components/profile-analysis/ProfileSearch';
 import ProfileDetails from '@/components/profile-analysis/ProfileDetails';
-import { InstagramUser, InstagramUserDetails } from '@/types/instagram';
+import { InstagramUser, InstagramUserDetails, InstagramPostsResponse } from '@/types/instagram';
 import { searchProfiles, getProfileDetails } from '@/utils/instagram-api';
-import Image from 'next/image';
 
 export default function ProfileAnalysisPage() {
   const [searchResults, setSearchResults] = useState<InstagramUser[] | null>(null);
   const [selectedProfile, setSelectedProfile] = useState<InstagramUserDetails | null>(null);
+  const [selectedProfilePosts, setSelectedProfilePosts] = useState<InstagramPostsResponse | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [imgErrors, setImgErrors] = useState<Set<string>>(new Set());
-
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisResults, setAnalysisResults] = useState<any>(null);
   // Use useCallback to prevent unnecessary re-renders
   const handleSearch = useCallback(async (keyword: string) => {
     if (!keyword.trim() || keyword.length < 2) {
@@ -42,22 +43,43 @@ export default function ProfileAnalysisPage() {
   }, [isLoading]);
 
   const handleProfileSelect = async (username: string, userId: string) => {
-    if (isLoading) return; // Prevent actions while loading
+    if (isLoading) return;
     
     setIsLoading(true);
     setError(null);
     
     try {
-      const details = await getProfileDetails(userId);
-      setSelectedProfile(details.user);
+      console.log(`Fetching profile details for userId: ${userId}`);
+      
+      // Use getProfileDetails function with includePosts=true
+      const response = await getProfileDetails(userId);
+      console.log("API Response:", response);
+      
+      if (!response || !response.profile) {
+        throw new Error('Failed to retrieve profile information');
+      }
+      
+      // Set the profile data
+      setSelectedProfile(response.profile);
+      
+      // Check if posts data exists and set it
+      if (response.posts) {
+        console.log(`Retrieved ${response.posts.posts?.length || 0} posts`);
+        setSelectedProfilePosts(response.posts);
+      } else {
+        console.log('No posts data available');
+        setSelectedProfilePosts(null);
+      }
     } catch (err) {
       console.error("Profile fetch error:", err);
-      setError('Failed to fetch profile details. Please try again.');
+      setError(`Failed to fetch profile details: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      setSelectedProfile(null);
+      setSelectedProfilePosts(null);
     } finally {
       setIsLoading(false);
     }
   };
-
+  
   const handleImageError = (userId: string) => {
     setImgErrors(prev => {
       const newErrors = new Set(prev);
@@ -66,9 +88,44 @@ export default function ProfileAnalysisPage() {
     });
   };
 
-  const handleGenerateAnalysis = () => {
-    // This will be implemented later as mentioned in your requirements
-    console.log('Generate analysis for:', selectedProfile?.username);
+  const handleGenerateAnalysis = async () => {
+    console.log('generate analysis clicked')
+    // if (!selectedProfilePosts?.posts || !selectedProfile) return;
+
+    // setIsAnalyzing(true);
+    // try {
+    //   // Extract video URLs from posts
+    //   const videoPosts = selectedProfilePosts.posts.filter(post => post.node?.is_video);
+    //   const videoUrls = videoPosts.map(post => post.node?.video_url).filter(Boolean);
+
+    //   if (videoUrls.length === 0) {
+    //     throw new Error('No videos found to analyze');
+    //   }
+
+    //   const response = await fetch('/api/twelvelabs/analyze', {
+    //     method: 'POST',
+    //     headers: {
+    //       'Content-Type': 'application/json',
+    //     },
+    //     body: JSON.stringify({
+    //       videoUrls,
+    //       userId: selectedProfile.username
+    //     }),
+    //   });
+
+    //   if (!response.ok) {
+    //     throw new Error('Analysis failed');
+    //   }
+
+    //   const results = await response.json();
+    //   setAnalysisResults(results);
+    //   onGenerateAnalysis();
+    // } catch (error) {
+    //   console.error('Analysis error:', error);
+    //   // Handle error (show toast, etc.)
+    // } finally {
+    //   setIsAnalyzing(false);
+    // }
   };
 
   return (
@@ -108,12 +165,13 @@ export default function ProfileAnalysisPage() {
                     </span>
                   ) : (
                     <img
-                        className="h-10 w-10 rounded-full object-cover"
-                        src={user.profile_pic_url || '/user/profile-placeholder.png'}
-                        alt={user.username}
-                        onError={(e) => {
+                      className="h-10 w-10 rounded-full object-cover"
+                      src={user.profile_pic_url || '/user/profile-placeholder.png'}
+                      alt={user.username}
+                      onError={(e) => {
                         (e.target as HTMLImageElement).src = '/user/profile-placeholder.png';
-                        }}
+                        handleImageError(user.id);
+                      }}
                     />
                   )}
                 </div>
@@ -143,11 +201,24 @@ export default function ProfileAnalysisPage() {
         </div>
       )}
       
+      {isLoading && (
+        <div className="mt-6 p-4 bg-gray-50 border rounded text-center">
+          <div className="animate-pulse flex justify-center">
+            <div className="h-6 w-6 bg-blue-600 rounded-full"></div>
+            <div className="ml-4 text-gray-700">Loading...</div>
+          </div>
+        </div>  
+      )}
+      
       {selectedProfile && (
         <ProfileDetails 
-          profile={selectedProfile} 
+          profile={selectedProfile}
+          posts={selectedProfilePosts} 
           onGenerateAnalysis={handleGenerateAnalysis}
-          onBack={() => setSelectedProfile(null)}
+          onBack={() => {
+            setSelectedProfile(null);
+            setSelectedProfilePosts(null);
+          }}
         />
       )}
     </div>

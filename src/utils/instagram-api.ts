@@ -46,7 +46,7 @@ export async function getProfileDetails(userId: string): Promise<InstagramProfil
     }
 
     const encodedUserId = encodeURIComponent(userId.trim());
-    const response = await fetch(`/api/instagram/profile?userId=${encodedUserId}&proxyImage=true`, {
+    const response = await fetch(`/api/instagram/profile?userId=${encodedUserId}&includePosts=true&proxyImage=true`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
