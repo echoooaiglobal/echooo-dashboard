@@ -57,9 +57,14 @@ export default function ClientsPage() {
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-6">Manage Clients</h1>
-      <Button onClick={handleCreate} className="mb-6" variant="primary">
+      <Button onClick={handleCreate} className="mb-6 px-6 py-2 text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 transition duration-300 ease-in-out transform hover:-translate-y-1 hover:scale-105 shadow-lg rounded-md" variant="primary">
         Create Client
       </Button>
+
+
+      
+
+
       <div className="mt-6">
         <Table
           headers={['ID', 'Name', 'Company']} // Use the desired header names

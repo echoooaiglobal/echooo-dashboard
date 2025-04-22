@@ -174,7 +174,7 @@ export default function InfluencerBulkForm({ onSuccess }: BulkImportFormProps) {
             </div>
           </div>
           {errors?.file && (
-            <p className="text-sm text-red-600 mt-1">{errors?.file.message}</p>
+            <p className="text-sm text-red-600 mt-1">{errors?.file?.message}</p>
           )}
         </div>
 

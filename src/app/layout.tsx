@@ -3,7 +3,6 @@ import { Inter } from 'next/font/google';
 import '@/styles/globals.css';
 import { LocationCacheProvider } from '@/context/LocationCacheContext';
 import Navbar from '@/components/Navbar';
-import InfluencerDetails from '../components/InfluencerDetails/InfluencerDetails';
 import type { Metadata } from 'next';
 const inter = Inter({ subsets: ['latin'] });
 
@@ -60,9 +59,6 @@ export default function RootLayout({
           <main className="container mx-auto p-4">{children}</main>
         </LocationCacheProvider>
 
-        <div>
-      <InfluencerDetails stats={data.stats} engagementRate={data.engagementRate} />
-    </div>
 
       </body>
     </html>
