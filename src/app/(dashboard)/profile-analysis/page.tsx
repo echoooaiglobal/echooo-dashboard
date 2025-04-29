@@ -1,11 +1,27 @@
 // src/app/(dashboard)/profile-analysis/page.tsx
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import ProfileSearch from '@/components/profile-analysis/ProfileSearch';
 import ProfileDetails from '@/components/profile-analysis/ProfileDetails';
 import { InstagramUser, InstagramUserDetails, InstagramPostsResponse } from '@/types/instagram';
 import { searchProfiles, getProfileDetails } from '@/utils/instagram-api';
+import { processVideos, generateTLAnalysis } from '@/utils/twelvelabs';
+import { generateOpenAIAnalysis } from '@/utils/openai'; // Import our new utility function
+import { delay } from '@/utils/ratelimit'
+
+import { 
+  saveAnalysisToLocal, 
+  loadAnalysisFromLocal, 
+  clearAnalysisFromLocal,
+} from '@/utils/localStorageUtils';
+import { VIDEO_ANALYSIS_PROMPT_V4 } from '@/lib/prompts';
+
+interface VideoInfo {
+  url: string;
+  shortcode: string;
+}
+
 
 export default function ProfileAnalysisPage() {
   const [searchResults, setSearchResults] = useState<InstagramUser[] | null>(null);
@@ -16,6 +32,10 @@ export default function ProfileAnalysisPage() {
   const [imgErrors, setImgErrors] = useState<Set<string>>(new Set());
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResults, setAnalysisResults] = useState<any>(null);
+  const [openaiAnalysis, setOpenaiAnalysis] = useState<any>(null);
+  const [isProcessingOpenAI, setIsProcessingOpenAI] = useState<boolean>(false);
+  const [selectedUserId, setSelectedUserId] = useState<string>('');
+  
   // Use useCallback to prevent unnecessary re-renders
   const handleSearch = useCallback(async (keyword: string) => {
     if (!keyword.trim() || keyword.length < 2) {
@@ -42,15 +62,16 @@ export default function ProfileAnalysisPage() {
     }
   }, [isLoading]);
 
-  const handleProfileSelect = async (username: string, userId: string) => {
+  const handleProfileSelect = async (userId: string) => {
     if (isLoading) return;
     
     setIsLoading(true);
     setError(null);
     
+
     try {
       console.log(`Fetching profile details for userId: ${userId}`);
-      
+      setSelectedUserId(userId);
       // Use getProfileDetails function with includePosts=true
       const response = await getProfileDetails(userId);
       console.log("API Response:", response);
@@ -87,45 +108,175 @@ export default function ProfileAnalysisPage() {
       return newErrors;
     });
   };
+  useEffect(() => {
+    if(selectedUserId){
+      const savedAnalysis = loadAnalysisFromLocal(`${selectedUserId}-analysisResults`);
+      const savedOpenAI = loadAnalysisFromLocal(`${selectedUserId}-openaiAnalysis`);
+      
+      if (savedAnalysis) setAnalysisResults(savedAnalysis);
+      if (savedOpenAI) setOpenaiAnalysis(savedOpenAI);
+    }
+  }, [selectedUserId]);
+  
+  // New function to process the analysis through OpenAI
+  const processThroughOpenAI = async (results: any, userid: string) => {
+   
+    if (!results || results.length === 0 || !results[0]?.shortcode) return;
+      console.log('results: ', results.length, results[0]?.shortcode, results)
+    
+    console.log('openai processing started...')
+    setIsProcessingOpenAI(true);
+    
+    try {
+      
+      const openAIResponse = await generateOpenAIAnalysis(results);
+      
+      if (!openAIResponse.success) {
+        throw new Error(openAIResponse.error || 'Failed to generate OpenAI analysis');
+      }
+      
+      setOpenaiAnalysis(openAIResponse.data);
+      saveAnalysisToLocal(`${userid}-openaiAnalysis`, openAIResponse.data);
+      console.log('OpenAI analysis complete:', openAIResponse.data);
+      setIsAnalyzing(false);
+    } catch (error) {
+      console.error('OpenAI processing error:', error);
+      setError(error instanceof Error ? error.message : 'Unknown error during OpenAI analysis');
+    } finally {
+      setIsProcessingOpenAI(false);
+      setIsAnalyzing(false);
+    }
+  };
 
   const handleGenerateAnalysis = async () => {
     console.log('generate analysis clicked')
-    // if (!selectedProfilePosts?.posts || !selectedProfile) return;
+    if (!selectedProfilePosts?.posts || !selectedProfile) return;
+    
+    setIsAnalyzing(true);
+    setError(null);
+    
+    try {
+      // Create a Map for O(1) lookups by shortcode
+      const videoPostsMap = new Map<string, any>();
+      const videoPosts = selectedProfilePosts.posts.filter(post => post?.is_video);
+  
+      // Populate the Map
+      videoPosts.forEach(post => {
+        if (post.shortcode) {
+          videoPostsMap.set(post.shortcode, post);
+        }
+      });
+  
+      if (videoPosts.length === 0) {
+        throw new Error('No videos found to analyze');
+      }
+  
+      console.log('videoPostsMap: ', videoPostsMap)
+      
+      // Process videos with TwelveLabs
+      const processingResponse = await processVideos(
+        selectedProfile.pk, 
+        videoPosts.map(post => ({
+          url: post.video_url,
+          shortcode: post.shortcode
+        })).filter(v => v.url && v.shortcode) as VideoInfo[]
+      );
+      
+      if(!analysisResults){
+    
+        // Generate analysis for each processed video SEQUENTIALLY with rate limiting
+        const generateAnalysisResults = [];
+        
+        // Base delay between requests (start with 2 seconds)
+        const baseDelay = 2000; // 2 seconds
+        // Maximum retry attempts
+        const maxRetries = 3;
+      
+        for (const task of processingResponse.results) {
+          // Get the complete post data from our Map
+          const postData = videoPostsMap.get(task.shortcode);
+          
+          // Add rate limiting delay between API calls
+          if (generateAnalysisResults.length > 0) {
+            console.log(`Rate limiting: waiting ${baseDelay/1000} seconds before next API call...`);
+            await delay(baseDelay);
+          }
+          
+          // Implement retry logic with exponential backoff
+          let analysisResponse = null;
+          let retries = 0;
+          let currentDelay = baseDelay;
+          
+          while (retries <= maxRetries) {
+            try {
+              analysisResponse = await generateTLAnalysis(
+                task.videoId, 
+                VIDEO_ANALYSIS_PROMPT_V4
+              );
+              console.log('shortcode: ', task.shortcode, 'analysisResponse: ', analysisResponse);
+              // If successful, break out of retry loop
+              break;
+            } catch (error: any) {
+              // Check specifically for 429 status code
+              if (error?.status === 429 || error?.errordata?.status === 429 || 
+                  (error?.message && error.message.includes('429')) ||
+                  (error?.config?.status === 429)) {
+                
+                retries++;
+                if (retries > maxRetries) {
+                  throw new Error(`Rate limit exceeded after ${maxRetries} retries. Please try again later.`);
+                }
+                
+                // Exponential backoff: double the delay on each retry
+                currentDelay *= 2;
+                console.log(`Rate limit hit (429), retry ${retries}/${maxRetries}. Waiting ${currentDelay/1000} seconds...`);
+                await delay(currentDelay);
+              } else {
+                // If it's not a rate limit error, throw it immediately
+                throw error;
+              }
+            }
+          }
+    
+          generateAnalysisResults.push({
+            id: analysisResponse?.data?.id,
+            shortcode: task.shortcode,
+            videoId: task.videoId,
+            metrics: postData || null,
+            analysis: analysisResponse?.data,
+          });
+        }
+        
+        setAnalysisResults({
+          userId: selectedProfile.pk,
+          indexId: processingResponse.indexId,
+          videos: generateAnalysisResults
+        }); 
+    
+        // Save data in local storage
+        saveAnalysisToLocal(`${selectedProfile.pk}-analysisResults`, {
+          userId: selectedProfile.pk,
+          indexId: processingResponse.indexId,
+          videos: generateAnalysisResults
+        });
 
-    // setIsAnalyzing(true);
-    // try {
-    //   // Extract video URLs from posts
-    //   const videoPosts = selectedProfilePosts.posts.filter(post => post.node?.is_video);
-    //   const videoUrls = videoPosts.map(post => post.node?.video_url).filter(Boolean);
-
-    //   if (videoUrls.length === 0) {
-    //     throw new Error('No videos found to analyze');
-    //   }
-
-    //   const response = await fetch('/api/twelvelabs/analyze', {
-    //     method: 'POST',
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //     },
-    //     body: JSON.stringify({
-    //       videoUrls,
-    //       userId: selectedProfile.username
-    //     }),
-    //   });
-
-    //   if (!response.ok) {
-    //     throw new Error('Analysis failed');
-    //   }
-
-    //   const results = await response.json();
-    //   setAnalysisResults(results);
-    //   onGenerateAnalysis();
-    // } catch (error) {
-    //   console.error('Analysis error:', error);
-    //   // Handle error (show toast, etc.)
-    // } finally {
-    //   setIsAnalyzing(false);
-    // }
+        console.log('Open AI 001')
+        processThroughOpenAI(generateAnalysisResults, String(selectedProfile?.pk));
+      }
+      
+      if(!openaiAnalysis){
+        // Call OpenAI to analyze the results 
+        console.log('Open AI 002')
+        processThroughOpenAI(analysisResults?.videos, selectedUserId);
+      }
+      
+      console.log('Analysis completed successfully: ', analysisResults);
+    } catch (error) {
+      console.error('Analysis error:', error);
+      setError(error instanceof Error ? error.message : 'Unknown error during analysis');
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   return (
@@ -141,9 +292,9 @@ export default function ProfileAnalysisPage() {
         <div className="mt-4 p-4 bg-red-50 border border-red-400 text-red-700 rounded">
           <p className="font-semibold mb-1">Error</p>
           <p>{error}</p>
-          <p className="text-sm mt-2">
+          {/* <p className="text-sm mt-2">
             Make sure your API environment variables are set correctly in .env.local
-          </p>
+          </p> */}
         </div>
       )}
       
@@ -155,7 +306,7 @@ export default function ProfileAnalysisPage() {
               <div 
                 key={user.pk} 
                 className="p-4 border rounded-lg flex items-center cursor-pointer hover:bg-gray-50 transition"
-                onClick={() => handleProfileSelect(user.username, user.id)}
+                onClick={() => handleProfileSelect(user.id)}
               >
                 {/* Handle profile picture with fallback */}
                 <div className="w-12 h-12 rounded-full mr-4 bg-gray-200 flex items-center justify-center overflow-hidden">
@@ -215,10 +366,26 @@ export default function ProfileAnalysisPage() {
           profile={selectedProfile}
           posts={selectedProfilePosts} 
           onGenerateAnalysis={handleGenerateAnalysis}
+          isAnalyzing={isAnalyzing || isProcessingOpenAI}
+          analysisResults={analysisResults}
+          openaiAnalysis={openaiAnalysis}
           onBack={() => {
             setSelectedProfile(null);
             setSelectedProfilePosts(null);
+            setAnalysisResults(null);
+            setOpenaiAnalysis(null);
           }}
+          onClear={() => {
+            clearAnalysisFromLocal(`${selectedUserId}-analysisResults`);
+            clearAnalysisFromLocal(`${selectedUserId}-openaiAnalysis`);
+            setOpenaiAnalysis(null)
+          }}          
+          // onBack={() => {
+          //   setSelectedProfile(null);
+          //   setSelectedProfilePosts(null);
+          //   setAnalysisResults(null);
+          //   setOpenaiAnalysis(null);
+          // }}
         />
       )}
     </div>

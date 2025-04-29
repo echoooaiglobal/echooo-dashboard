@@ -24,7 +24,7 @@ export default function Navbar() {
           {/* Navigation Links */}
           <div className="hidden md:block">
             <div className="ml-10 flex items-center space-x-4">
-              <Link 
+              {/* <Link 
                 href="/discover" 
                 className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium"
               >
@@ -48,10 +48,13 @@ export default function Navbar() {
                 className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium"
               >
                 Influencers
+              </Link> */}
+              <Link 
+                href="/profile-analysis" 
+                className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium"
+              >
+                Profile Analysis
               </Link>
-
-  
-  
             </div>
           </div>
 

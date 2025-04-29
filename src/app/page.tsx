@@ -13,7 +13,7 @@ export default function Home() {
         text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-teal-400 hover:from-pink-600 hover:to-orange-500 transition-all duration-500">
           Manage your influencers and clients with ease.
         </p>
-        <div className="space-x-4">
+        {/* <div className="space-x-4">
           <Link href="/discover">
             <Button>Discover</Button>
           </Link>
@@ -26,7 +26,7 @@ export default function Home() {
           <Link href="/login">
             <Button variant="outline">Login</Button>
           </Link>
-        </div>
+        </div> */}
       </div>
     </div>
   );

@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
         headers: {
           'authkey': process.env.IMAI_API_AUTH_KEY
         },
-        next: { revalidate: 3600 }
+        next: { revalidate: 36000 }
       }
     );
 

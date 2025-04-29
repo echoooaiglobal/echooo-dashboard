@@ -67,3 +67,35 @@ export async function getProfileDetails(userId: string): Promise<InstagramProfil
     throw error;
   }
 }
+
+
+/**
+ * Get detailed information about an Instagram video
+ */
+export async function getPostDetails(shortcode: string): Promise<any> {
+  try {
+    if (!shortcode || shortcode.trim().length === 0) {
+      throw new Error("Invalid video shortcode");
+    }
+
+    const encodedShortcode = encodeURIComponent(shortcode.trim());
+    const response = await fetch(`/api/instagram/post?shortcode=${encodedShortcode}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Request-Time': Date.now().toString(),
+      },
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      const errorMessage = errorData?.error || `API request failed with status ${response.status}`;
+      throw new Error(errorMessage);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error("API Error in getVideoDetails:", error);
+    throw error;
+  }
+}

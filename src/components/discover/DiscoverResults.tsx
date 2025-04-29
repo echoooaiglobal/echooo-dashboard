@@ -1,5 +1,6 @@
 import React from 'react';
 import { DiscoverInfluencer } from '@/lib/types';
+import Image from 'next/image';
 
 interface DiscoverResultsProps {
   influencers: DiscoverInfluencer[];
@@ -115,11 +116,13 @@ const DiscoverResults: React.FC<DiscoverResultsProps> = ({
                 <tr key={influencer.id || key}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <div className="flex-shrink-0 h-10 w-10">
-                        <img
-                          className="h-10 w-10 rounded-full object-cover"
+                      <div className="flex-shrink-0 h-10 w-10 relative">
+                        <Image
+                          className="rounded-full object-cover"
                           src={influencer.profileImage || '/images/default-avatar.png'}
                           alt={influencer.username}
+                          width={40}
+                          height={40}
                           onError={(e) => {
                             (e.target as HTMLImageElement).src = '/images/default-avatar.png';
                           }}
