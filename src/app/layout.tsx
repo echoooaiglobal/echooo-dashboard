@@ -4,7 +4,6 @@ import '@/styles/globals.css';
 import { LocationCacheProvider } from '@/context/LocationCacheContext';
 import Navbar from '@/components/Navbar';
 import type { Metadata } from 'next';
-
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
@@ -22,6 +21,31 @@ export const metadata: Metadata = {
   },
 };
 
+
+const data = {
+  stats: [
+    {
+      title: 'Followers',
+      value: '688M',
+      change: '▲ 0.03% this month',
+      chartData: { labels: ['Dec', 'Jan', 'Feb', 'Mar', 'Apr'], data: [682, 684, 686, 688, 688] }
+    },
+    {
+      title: 'Following',
+      value: '150',
+      change: '▲ 2.63% this month',
+      chartData: { labels: ['Dec', 'Jan', 'Feb', 'Mar', 'Apr'], data: [120, 130, 140, 150, 150] }
+    },
+    {
+      title: 'Likes',
+      value: '250k',
+      change: '▼ 5.8% this month',
+      chartData: { labels: ['Dec', 'Jan', 'Feb', 'Mar', 'Apr'], data: [100, 150, 200, 250, 250] }
+    },
+  ],
+  engagementRate: 0.04,
+};
+
 export default function RootLayout({
   children,
 }: {
@@ -34,6 +58,8 @@ export default function RootLayout({
           <Navbar />
           <main className="container mx-auto p-4">{children}</main>
         </LocationCacheProvider>
+
+
       </body>
     </html>
   );

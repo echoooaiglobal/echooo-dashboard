@@ -32,10 +32,10 @@ export default function InfluencersPage() {
 
   // This must exactly match keys of TableInfluencer
   const headerMap: Record<string, keyof TableInfluencer> = {
-    'ID': 'id',
-    'Username': 'username',
+    ID: 'id',
+    Username: 'username',
     'Client Name': 'client_name',
-    'Status': 'status_display', // Must match the property name exactly
+    Status: 'status_display', // Must match the property name exactly
   };
 
   const fetchInfluencers = async (page: number) => {
@@ -56,21 +56,23 @@ export default function InfluencersPage() {
   }, [currentPage]);
 
   const prepareTableData = (data: Influencer[]): TableInfluencer[] => {
-    return data.map(influencer => ({
+    return data.map((influencer) => ({
       ...influencer,
       client_name: influencer.client_name || 'N/A',
       status_display: influencer.error_code ? (
-        <span className="text-red-600 font-medium">{influencer.error_reason}</span>
+        <span className="text-red-600 font-medium">
+          {influencer.error_reason}
+        </span>
       ) : influencer.message_status ? (
         <span className="text-green-600 font-medium">Sent</span>
       ) : (
         <span className="text-gray-500 font-medium">Pending</span>
       ),
-      message_status: influencer.error_code 
+      message_status: influencer.error_code
         ? `Error: ${influencer.error_reason}`
-        : influencer.message_status 
-          ? 'Sent' 
-          : 'Pending'
+        : influencer.message_status
+          ? 'Sent'
+          : 'Pending',
     }));
   };
 
@@ -100,7 +102,11 @@ export default function InfluencersPage() {
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-6">Manage Influencers</h1>
-      <Button onClick={handleCreate} className="mb-6" variant="primary">
+      <Button
+        onClick={handleCreate}
+        className="mb-6 px-6 py-2 text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 transition duration-300 ease-in-out transform hover:-translate-y-1 hover:scale-105 shadow-lg rounded-md"
+        variant="primary"
+      >
         Create Influencer
       </Button>
       {isLoading ? (
