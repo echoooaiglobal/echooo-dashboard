@@ -39,7 +39,7 @@ export interface InstagramUserDetails {
   has_guides: boolean;
   has_channel: boolean;
   total_igtv_videos: number;
-  bio_links: any[];
+  bio_links: [];
 }
 
 export interface InstagramPostMediaDimensions {
@@ -115,8 +115,10 @@ export interface InstagramPostNode {
   edge_media_to_caption: {
     edges: InstagramPostCaptionEdge[];
   };
+  caption: string;
   shortcode: string;
   edge_media_to_comment: InstagramPostCommentInfo;
+  comment_count: number;
   edge_media_to_sponsor_user: {
     edges: any[];
   };
@@ -125,6 +127,7 @@ export interface InstagramPostNode {
   comments_disabled: boolean;
   taken_at_timestamp: number;
   edge_media_preview_like: InstagramPostLikeInfo;
+  like_count: number;
   owner: InstagramPostOwner;
   location: {
     id: string;
@@ -140,8 +143,8 @@ export interface InstagramPostNode {
   viewer_can_reshare: boolean;
   thumbnail_src: string;
   thumbnail_resources: InstagramPostDisplayResource[];
-  coauthor_producers: any[];
-  pinned_for_users: any[];
+  coauthor_producers: [];
+  pinned_for_users: [];
   like_and_view_counts_disabled: boolean;
   product_type: string;
 }
@@ -152,7 +155,7 @@ export interface InstagramPost {
 
 export interface InstagramPostsResponse {
   count: number;
-  posts: InstagramPost[];
+  posts: InstagramPostNode[];
   last_cursor: string;
 }
 
@@ -161,4 +164,17 @@ export interface InstagramProfileResponse {
   profile: InstagramUserDetails;
   posts?: InstagramPostsResponse;
   success?: boolean;
+}
+
+
+
+export interface OpenAIAnalysis {
+  success: boolean;
+  analysis: string;
+  model: string;
+  usage: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
 }

@@ -11,7 +11,7 @@ export default function Home() {
         <p className="text-lg text-gray-600 mb-8">
           Manage your influencers and clients with ease.
         </p>
-        <div className="space-x-4">
+        {/* <div className="space-x-4">
           <Link href="/discover">
             <Button>Doscover</Button>
           </Link>
@@ -24,7 +24,7 @@ export default function Home() {
           <Link href="/login">
             <Button variant="outline">Login</Button>
           </Link>
-        </div>
+        </div> */}
       </div>
     </div>
   );

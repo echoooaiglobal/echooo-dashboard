@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
         headers: {
           'authkey': process.env.IMAI_API_AUTH_KEY
         },
-        next: { revalidate: 3600 }
+        next: { revalidate: 36000 }
       }
     );
 
@@ -79,8 +79,9 @@ export async function GET(request: NextRequest) {
           const errorData = await postsResponse.json().catch(() => null);
           console.error('Posts API error:', errorData);
         }
-      } catch (postsError) {
-        console.error('Error fetching posts:', postsError);
+      } catch (error) {
+        console.error('Error fetching posts:', error);
+        // throw new Error(error?.detail);
       }
     }
 
@@ -94,10 +95,40 @@ export async function GET(request: NextRequest) {
       profile: profileData?.user
     };
 
+    // if (postsData && postsData.data) {
+    //   responseData.posts = postsData.data;
+    // }
+    // console.log('postsData: ', postsData)
     if (postsData && postsData.data) {
-      responseData.posts = postsData.data;
+      // Extract specific fields from each post and add directly to array
+      responseData.posts = {
+        total_posts: postsData.data.count,
+        posts: postsData.data.posts.map((post: any) => ({
+          id: post.node?.id,
+          shortcode: post.node?.shortcode,
+          display_url: post.node?.display_url,
+          is_video: post.node?.is_video,
+          video_url: post.node?.video_url,
+          caption: post.node?.edge_media_to_caption?.edges[0]?.node?.text || '',
+          taken_at_timestamp: post.node?.taken_at_timestamp,
+          like_count: post.node?.edge_media_preview_like?.count || 0,
+          video_view_count: post.node?.video_view_count || 0,
+          comments_disabled: post.node?.comments_disabled,
+          comment_count: post.node?.edge_media_to_comment?.count || 0,
+          thumbnail_src: post.node?.thumbnail_src,
+          dimensions: post.node?.dimensions,
+          has_audio: post.node?.has_audio,
+          is_paid_partnership: post.node?.is_paid_partnership,
+          like_and_view_counts_disabled: post.node?.like_and_view_counts_disabled,
+          location: post.node?.location,
+          product_type: post.node?.product_type,
+          sensitivity_friction_info: post.node?.sensitivity_friction_info,
+          viewer_can_reshare: post.node?.viewer_can_reshare,
+        })),
+        has_more: postsData.has_more || false
+      };
     }
-    
+
     // If proxyImage=true, modify the response to use a local proxy for images
     if (proxyImage === 'true') {
       // Proxy profile images
@@ -114,16 +145,16 @@ export async function GET(request: NextRequest) {
         responseData.posts.posts = responseData.posts.posts.map((post: any) => {
           const proxiedPost = { ...post };
           
-          if (post.node.display_url) {
-            proxiedPost.node.display_url = `/api/instagram/image-proxy?url=${encodeURIComponent(post.node.display_url)}`;
+          if (post.display_url) {
+            proxiedPost.display_url = `/api/instagram/image-proxy?url=${encodeURIComponent(post.display_url)}`;
           }
           
-          if (post.node.thumbnail_src) {
-            proxiedPost.node.thumbnail_src = `/api/instagram/image-proxy?url=${encodeURIComponent(post.node.thumbnail_src)}`;
+          if (post.thumbnail_src) {
+            proxiedPost.thumbnail_src = `/api/instagram/image-proxy?url=${encodeURIComponent(post.thumbnail_src)}`;
           }
           
-          if (post.node.thumbnail_resources) {
-            proxiedPost.node.thumbnail_resources = post.node.thumbnail_resources.map((resource: any) => ({
+          if (post.thumbnail_resources) {
+            proxiedPost.thumbnail_resources = post.thumbnail_resources.map((resource: any) => ({
               ...resource,
               src: `/api/instagram/image-proxy?url=${encodeURIComponent(resource.src)}`
             }));
