@@ -13,8 +13,9 @@ export const getInfluencerById = async (id: number): Promise<Influencer> => {
 };
 
 // Get all influencers
-export const getInfluencers = async (page: number) => {
-  const response = await api.get(API_ENDPOINTS.INFLUENCERS);
+export const getInfluencers = async (page: number = 1, limit: number = 10) => {
+  const response = await api.get(`${API_ENDPOINTS.INFLUENCERS}/?page=${page}&limit=${limit}`);
+  if (response.statusText !== 'OK') throw new Error('Failed to fetch influencers');
   return response.data;
 };
 
@@ -34,3 +35,33 @@ export const updateInfluencer = async (id: number, data: Influencer): Promise<In
 export const deleteInfluencer = async (id: number): Promise<void> => {
   await api.delete(`${API_ENDPOINTS.INFLUENCERS}/${id}`);
 };
+
+
+export interface BulkImportResponse {
+  success: number;
+  failed: number;
+  errors?: Array<{
+    row: number;
+    error: string;
+  }>;
+}
+
+// Bulk import influencers
+export const bulkImportInfluencers = async (
+  clientId: number,
+  file: File
+): Promise<BulkImportResponse> => {
+  const formData = new FormData();
+  formData.append('client_id', clientId.toString());
+  formData.append('file', file);
+
+  const response = await api.post(`${API_ENDPOINTS.INFLUENCERS}/bulk-import`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+
+  return response.data;
+};
+
+// Get clients for dropdown

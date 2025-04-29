@@ -8,8 +8,8 @@ import Button from '@/components/ui/Button';
 import { getClientById, updateClient } from '@/services/clientService';
 
 const schema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  company_name: z.string().min(1, 'Company Name is required'),
+  name: z.string().min(2, 'Name is required'),
+  company_name: z.string().min(2, 'Company Name is required'),
 });
 
 type FormData = z.infer<typeof schema>;
