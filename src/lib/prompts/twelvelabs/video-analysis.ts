@@ -76,3 +76,123 @@ Analyze the provided video. Provide structured insights, clearly labeling qualit
 Respond in structured categories. Label quantitative (% or timestamps) and qualitative (descriptive) data clearly.
 Important: Return the result as JSON with lowercase_snake_case field names matching section titles. Example: "Scene & Narrative Breakdown" → "scene_narrative_breakdown".
 `;
+
+
+
+export const data = `
+
+Analyze the video and provide structured data for these aspects:
+
+1) scene_narrative
+- counts: 0
+- durations (timestamps in seconds)
+- transitions (description)
+- transition_types (cut/fade/dissolve percentages)
+- narrative_summary (text)
+- hook_effectiveness (1-5 rating) + hook timestamp
+
+2) character_analysis
+- character_count (number)
+- roles (protagonist/antagonist/supporting)
+- Character importance score (1-5)
+- Demographics (gender/age/ethnicity percentages)
+- Screen time (percentage per character)
+- Emotional states (description)
+- Facial expressions (description)
+- Body language (description)
+
+3) dialogue_audio
+- Main topics (percentage per topic)
+- Dialogue tone (description)
+- Background music mood (description)
+- Voiceover vs dialogue (percentage)
+- Audio clarity (1-5 rating)
+- Background music presence (yes/no)
+- Music genre/mood (description)
+- Voice-music balance (percentage)
+
+4) visual_techniques
+- Camera angles (percentage breakdown)
+- Camera movements (percentage breakdown)
+- Framing types (wide/close-up/medium percentages)
+- Shot types (static/dynamic/tracking percentages)
+- Lighting style (description)
+- Aspect ratio (e.g., 16:9)
+- Depth of field (shallow/deep description)
+
+5) wardrobe_art_direction
+- Wardrobe styles (modern/traditional percentages)
+- Color palette (description)
+- Prop usage (description)
+- Set design (description)
+
+6) branding_messaging
+- Product mentions (count + timestamps)
+- Brand visibility (percentage)
+- CTA presence (yes/no + timestamps)
+- Message clarity (1-5 rating)
+- Product placement (percentage)
+- Text readability (1-5 rating)
+
+7) technical_attributes
+- Total duration (seconds)
+- Resolution (e.g., 1080p)
+- Editing style (description)
+- Effects usage (percentage)
+- Color grading (description)
+- Frame rate (e.g., 24fps)
+
+8) environment
+- Indoor/outdoor (percentage)
+- Setting type (description)
+- Set relevance (1-5 rating)
+- Background details (description)
+
+9) emotional_impact
+- Overall mood (description)
+- Emotional triggers (list)
+- Engagement rating (1-5)
+- Psychological cues (description)
+
+10) compliance_ethics
+- Sensitive content (yes/no + description)
+- Age suitability (range)
+- Ethical violations (list or none)
+
+11) cultural_relevance
+- Cultural elements (description)
+- Thematic alignment (1-5 rating)
+- Regional symbols/language (description)
+
+Return data in JSON format with snake_case keys. Use percentages where applicable and maintain consistent rating scales.
+`;
+
+
+
+export const data1 = `
+
+Analyze the video and provide structured data for these aspects:
+
+1) scene_narrative: count (number), durations (seconds), transitions (text), transition_types (% cut/fade/dissolve), narrative (summary text), hook (1–5 rating + timestamp)
+
+2) character_analysis: count (number), roles (protagonist/antagonist/supporting), importance (1–5), demographics (% gender/age/ethnicity), screen_time (% per character), emotions (text), expressions (text), body_language (text)
+
+3) dialogue_audio: topics (% per topic), dialogue_tone (text), bg_music_mood (text), voiceover_vs_dialogue (%), audio_clarity (1–5), bg_music_presence (yes/no), music_genre_mood (text), voice_music_balance (%)
+
+4) visual_techniques: camera_angles (%), camera_movements (%), framing_types (% wide/close-up/medium), shot_types (% static/dynamic/tracking), lighting_style (text), aspect_ratio (e.g., 16:9), depth_of_field (shallow/deep).
+
+5) wardrobe_art_direction: wardrobe_styles (% modern/traditional), color_palette (text), prop_usage (text), set_design (text).
+
+6) branding_messaging: product_mentions (count + timestamps), brand_visibility (%), cta_presence (yes/no + timestamps), message_clarity (1–5), product_placement (%), text_readability (1–5).
+
+7) technical_attributes: total_duration (seconds), resolution (e.g., 1080p), editing_style (text), effects_usage (%), color_grading (text), frame_rate (e.g., 24fps).
+
+8) environment: indoor_outdoor (%), setting_type (text), set_relevance (1-5), bg_details (description).
+
+9) emotional_impact: overall_mood (text), emotional_triggers (list), engagement_rating (1-5), psychological_cues (text).
+
+10) compliance_ethics: sensitive_content (boolean + text), age_suitability (range), ethical_violations (list or none).
+
+11) cultural_relevance: cultural_elements (text), thematic_alignment (1-5 rating), regional_symbols_language (text).
+
+Return data in JSON format with snake_case keys.`;
