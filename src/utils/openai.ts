@@ -174,69 +174,140 @@ export async function generateOpenAIAnalysis(analysisResults: VideoAnalysis[]): 
     5. IMPORTANT JSON FORMATTING RULES:
         - For all percentage values, use strings with quotes (e.g., "100%", "80%", "33%") NOT raw numbers with % symbols
         - Make sure all numerical data is properly formatted as numbers without symbols unless specified otherwise
-        - All percentage distributions MUST be formatted as strings with quotes (e.g., "male": "100%", NOT "male": 100%)
     
     6. Final Output Format:
-    Return the result inside **this example JSON structure**:
+    Return the result inside **following example JSON structure**:
     
     \`\`\`json
     {
-        "top_performing_summary": {
-            "shortcodes": ["shortcode1", "shortcode2", "..."],
-            "quantitative": {
-                "scene_counts": {"min": 5, "max": 10, "average": 7},
-                "scene_durations": {"min": 2, "max": 5},
-                "character_gender_distribution": {"male": "90%", "female": "10%"},
-                "audio_clarity": 90,
-                "voiceover_percentage": 30
-            },
-            "qualitative": {
-                "themes": ["Humor", "Urgency"],
-                "emotional_tones": ["Excitement", "Nostalgia"]
-            }
+      "top_performing_summary": {
+        "shortcodes": ["shortcode1", "shortcode2", "..."],
+        "quantitative": {
+          "scene_counts": { "min": 5, "max": 12, "average": 7 },
+          "scene_durations": { "min": 2, "max": 61 },
+          "character_gender_distribution": { "male": 85, "female": 15 },
+          "character_age_distribution": { "adult": 100 },
+          "character_ethnicity_distribution": { "South Asian": 100 },
+          "screen_time_percentages": { "protagonist": 60, "supporting": 40 },
+          "audio_clarity": 95,
+          "voiceover_percentage": 10,
+          "lighting_quality": 9,
+          "color_palettes": { "warm": 60, "neutral": 40 },
+          "prop_usage_types": { "minimal": 70, "extensive": 30 },
+          "cta_frequency": { "average": 0.5, "timestamps": ["43s", "46s"] },
+          "editing_styles": { "fast_paced": 50, "smooth_transitions": 50 },
+          "special_effects_usage": 0,
+          "wardrobe_consistency": 9,
+          "audio_sync_with_visuals": 9,
+          "music_volume_balance": 8,
+          "emotional_triggers": { "humor": 20, "urgency": 10, "nostalgia": 20 }
+          "visual_styles": {
+            "camera_angles": {"close_ups": 40, "wide_shots": 40, "tracking_shots": 20 }
+            "camera_movement": { "handheld": 30, "zoom": 50, "static": 20 },
+            "wardrobe_styles": { "modern": 60, "traditional": 30, "uniform": 10 },
+            "lighting_styles": { "natural": 80, "artificial": 20 },
+          }
         },
-        "average_performing_summary": {
-            "shortcodes": ["shortcode3", "shortcode4", "..."],
-            "quantitative": {
-                "scene_counts": {"min": 4, "max": 8, "average": 6},
-                "scene_durations": {"min": 3, "max": 6},
-                "character_gender_distribution": {"male": "50%", "female": "50%"},
-                "audio_clarity": 80,
-                "voiceover_percentage": 20
-            },
-            "qualitative": {
-                "themes": ["Calm", "Relaxation"],
-                "emotional_tones": ["Calm", "Peaceful"]
-            }
-        },
-        "least_performing_summary": {
-            "shortcodes": ["shortcode5", "shortcode6", "..."],
-            "quantitative": {
-                "scene_counts": {"min": 3, "max": 7, "average": 5},
-                "scene_durations": {"min": 1, "max": 3},
-                "character_gender_distribution": {"male": "30%", "female": "70%"},
-                "audio_clarity": 70,
-                "voiceover_percentage": 40
-            },
-            "qualitative": {
-                "themes": ["Confusion", "Complexity"],
-                "emotional_tones": ["Tension", "Stress"]
-            }
-        },
-        "overall_recommendations": {
-            "strategy": "Increase audio clarity and improve lighting.",
-            "specific_suggestions": [
-                "Focus on clearer audio for better viewer engagement.",
-                "Use more vibrant lighting to improve viewer retention."
-            ]
+        "qualitative": {
+          "themes": ["Family", "Celebration", "Reunion"],
+          "storytelling_styles": ["Narrative", "Sequential"],
+          "emotional_tones": ["Joyful", "Heartwarming"],
+          "branding_techniques": ["Subtle", "Integrated"],
+          "audience_targeting_strategies": ["Broad", "Family-oriented"]
         }
+      },
+      "average_performing_summary": {
+        "shortcodes": ["shortcode3", "shortcode4", "..."],
+        "quantitative": {
+          "scene_counts": { "min": 4, "max": 10, "average": 6 },
+          "scene_durations": { "min": 3, "max": 57 },
+          "character_gender_distribution": { "male": 90, "female": 10 },
+          "character_age_distribution": { "adult": 100 },
+          "character_ethnicity_distribution": { "South Asian": 100 },
+          "screen_time_percentages": { "protagonist": 70, "supporting": 30 },
+          "audio_clarity": 85,
+          "voiceover_percentage": 20,
+          "lighting_quality": 7,
+          "color_palettes": { "warm": 50, "neutral": 50 },
+          "prop_usage_types": { "minimal": 60, "extensive": 40 },
+          "cta_frequency": { "average": 0.7, "timestamps": ["22s", "24s"] },
+          "editing_styles": { "fast_paced": 60, "smooth_transitions": 40 },
+          "special_effects_usage": 10,
+          "wardrobe_consistency": 7,
+          "audio_sync_with_visuals": 7,
+          "music_volume_balance": 7,
+          "emotional_triggers": { "humor": 10, "urgency": 20, "nostalgia": 10 }
+          "visual_styles": {
+            "camera_angles": { "close_ups": 40, "medium_shots": 40, "wide": 20 },
+            "camera_movement": { "handheld": 40, "zoom": 30, "static": 30 },
+            "wardrobe_styles": { "modern": 60, "traditional": 30, "uniform": 10 },
+            "lighting_styles": { "natural": 65, "artificial": 35 },
+          }
+        },
+        "qualitative": {
+          "themes": ["Adventure", "Exploration", "Journey"],
+          "storytelling_styles": ["Documentary", "Experiential"],
+          "emotional_tones": ["Inspiring", "Reflective"],
+          "branding_techniques": ["Overt", "Prominent"],
+          "audience_targeting_strategies": ["Niche", "Youth-oriented"]
+        }
+      },
+      "least_performing_summary": {
+        "shortcodes": ["shortcode5", "shortcode6", "..."],
+        "quantitative": {
+          "scene_counts": { "min": 3, "max": 7, "average": 5 },
+          "scene_durations": { "min": 1, "max": 76 },
+          "character_gender_distribution": { "male": 30, "female": 55, "other": 15 },
+          "character_age_distribution": { "adult": 65, "teen": 15, "child": 5, "senior": 5, "young adult": 10 },
+          "character_ethnicity_distribution": { "South Asian": 55, "East Asia": 35, "Central Asia": 10 },
+          "screen_time_percentages": { "protagonist": 60, "supporting": 40 },
+          "audio_clarity": 63,
+          "voiceover_percentage": 40,
+          "lighting_quality": 4,
+          "color_palettes": { "warm": 30, "neutral": 50, "cool": 20 },
+          "prop_usage_types": { "minimal": 30, "extensive": 70 },
+          "cta_frequency": { "average": 0.3, "timestamps": ["35s"] },
+          "editing_styles": { "fast_paced": 70, "smooth_transitions": 30 },
+          "special_effects_usage": 5,
+          "wardrobe_consistency": 5,
+          "audio_sync_with_visuals": 5,
+          "music_volume_balance": 4,
+          "emotional_triggers": { "humor": 5, "urgency": 30, "nostalgia": 5 }
+          "visual_styles": {
+            "camera_angles": { "dynamic_angles": 30, "close_ups": 25, "wide_shots": 20, "static_shots": 15, "tracking_shots": 10 },
+            "camera_movement": { "handheld": 60, "zoom": 20, "static": 20 },
+            "wardrobe_styles": { "modern": 60, "traditional": 30, "uniform": 10 },
+            "lighting_styles": { "natural": 50, "artificial": 50 },
+          }
+
+        },
+        "qualitative": {
+          "themes": ["Confusion", "Complexity"],
+          "storytelling_styles": ["Informative", "Direct"],
+          "emotional_tones": ["Tension", "Stress"],
+          "branding_techniques": ["Direct", "Explicit"],
+          "audience_targeting_strategies": ["Unclear", "Generic"]
+        }
+      },
+      "overall_recommendations": {
+        "strategy": "Improve clarity, reduce complexity, and ensure consistency across visual and narrative elements.",
+        "specific_suggestions": [
+          "Enhance audio clarity and synchronization in all videos to increase engagement.",
+          "Use more natural lighting and improve lighting quality scores.",
+          "Balance camera angles and motion to avoid static and unengaging shots.",
+          "Maintain consistent and thematic wardrobe styling throughout the videos.",
+          "Ensure background music is well-mixed and doesn't overpower dialogue or voiceovers.",
+          "Incorporate clear emotional triggers like humor, joy, or nostalgia to connect with viewers.",
+          "Avoid overwhelming viewers with excessive prop usage or effects.",
+          "Adopt narrative or experiential storytelling styles to improve viewer retention."
+        ]
+      }
     }
     \`\`\`
     
     Important:
     - Always refer to videos by their **Shortcodes**.
     - Ensure all numbers are properly formatted for **easy graph plotting**.
-    - ALL percentage values must be formatted as strings with quotes (e.g., "80%", "100%", "33%").
     - Prefer **concise but detailed descriptions** so both humans and machines can easily understand the results.
     - Make sure all required fields (like quantitative and qualitative) are present and not null.
     - Ensure the JSON is valid, with all objects and arrays properly closed and formatted.
