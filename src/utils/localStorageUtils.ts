@@ -1,5 +1,4 @@
 // src/utils/localStorageUtils.ts
-
 export const saveAnalysisToLocal = (key: string, data: any) => {
     if (typeof window !== 'undefined') {
       localStorage.setItem(key, JSON.stringify(data));
