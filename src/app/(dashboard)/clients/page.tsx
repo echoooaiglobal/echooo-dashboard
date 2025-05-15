@@ -1,3 +1,4 @@
+// src/app/(dashboard)/clients/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -6,8 +7,10 @@ import Table from '@/components/ui/Table';
 import Pagination from '@/components/ui/Pagination';
 import { useRouter } from 'next/navigation';
 import Button from '@/components/ui/Button';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 
-export default function ClientsPage() {
+// Create a separate component for the clients content
+function ClientsContent() {
   const [clients, setClients] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -18,7 +21,7 @@ export default function ClientsPage() {
   const headerMap = {
     'ID': 'id',
     'Name': 'name',
-    'Company': 'company_name', // Map "Client Id" to "client_Id"
+    'Company': 'company_name',
   };
 
   const fetchClients = async (page = 1) => {
@@ -57,21 +60,21 @@ export default function ClientsPage() {
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-6">Manage Clients</h1>
-      <Button onClick={handleCreate} className="mb-6 px-6 py-2 text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 transition duration-300 ease-in-out transform hover:-translate-y-1 hover:scale-105 shadow-lg rounded-md" variant="primary">
+      <Button 
+        onClick={handleCreate} 
+        className="mb-6 px-6 py-2 text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 transition duration-300 ease-in-out transform hover:-translate-y-1 hover:scale-105 shadow-lg rounded-md" 
+        variant="primary"
+      >
         Create Client
       </Button>
 
-
-      
-
-
       <div className="mt-6">
         <Table
-          headers={['ID', 'Name', 'Company']} // Use the desired header names
+          headers={['ID', 'Name', 'Company']}
           data={clients}
           onEdit={handleEdit}
           onDelete={handleDelete}
-          headerMap={headerMap} // Pass the header map
+          headerMap={headerMap}
         />
         <Pagination
           currentPage={currentPage}
@@ -80,5 +83,14 @@ export default function ClientsPage() {
         />
       </div>
     </div>
+  );
+}
+
+// Main component wrapped with ProtectedRoute
+export default function ClientsPage() {
+  return (
+    <ProtectedRoute>
+      <ClientsContent />
+    </ProtectedRoute>
   );
 }

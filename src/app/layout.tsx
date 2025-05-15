@@ -1,9 +1,11 @@
-// /src/app/layout.tsx
+// src/app/layout.tsx
 import { Inter } from 'next/font/google';
 import '@/styles/globals.css';
 import { LocationCacheProvider } from '@/context/LocationCacheContext';
+import { AuthProvider } from '@/context/AuthContext';
 import Navbar from '@/components/Navbar';
 import type { Metadata } from 'next';
+
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
@@ -21,45 +23,16 @@ export const metadata: Metadata = {
   },
 };
 
-
-const data = {
-  stats: [
-    {
-      title: 'Followers',
-      value: '688M',
-      change: '▲ 0.03% this month',
-      chartData: { labels: ['Dec', 'Jan', 'Feb', 'Mar', 'Apr'], data: [682, 684, 686, 688, 688] }
-    },
-    {
-      title: 'Following',
-      value: '150',
-      change: '▲ 2.63% this month',
-      chartData: { labels: ['Dec', 'Jan', 'Feb', 'Mar', 'Apr'], data: [120, 130, 140, 150, 150] }
-    },
-    {
-      title: 'Likes',
-      value: '250k',
-      change: '▼ 5.8% this month',
-      chartData: { labels: ['Dec', 'Jan', 'Feb', 'Mar', 'Apr'], data: [100, 150, 200, 250, 250] }
-    },
-  ],
-  engagementRate: 0.04,
-};
-
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body className={inter.className} key="layout-body">
-        <LocationCacheProvider>
-          <Navbar />
-          <main className="container mx-auto p-4">{children}</main>
-        </LocationCacheProvider>
-
-
+        <AuthProvider>
+          <LocationCacheProvider>
+            <Navbar />
+            <main className="w-full">{children}</main>
+          </LocationCacheProvider>
+        </AuthProvider>
       </body>
     </html>
   );
