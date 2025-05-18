@@ -1,4 +1,4 @@
-// src/components/dashboard/InfluencerDashboard.tsx
+// src/components/dashboard/influencer/InfluencerDashboard.tsx
 'use client';
 
 import { useEffect, useState } from 'react';

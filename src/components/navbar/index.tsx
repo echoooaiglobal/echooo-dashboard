@@ -1,4 +1,4 @@
-// src/components/Navbar.tsx
+// src/components/navbar/index.tsx
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -6,7 +6,8 @@ import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { ChevronDown, User, Settings, LogOut, Bell, Search, Menu, X } from 'react-feather';
+import { User, Settings, LogOut, Bell, Menu, X } from 'react-feather';
+import CampaignsDropdown from './CampaignsDropdown';
 
 export default function Navbar() {
   const { isAuthenticated, user, logout } = useAuth();
@@ -14,11 +15,13 @@ export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isCampaignsOpen, setIsCampaignsOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   
   const profileRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
+  const campaignsRef = useRef<HTMLDivElement>(null);
 
   // Check if it's an auth page to hide navbar
   const isAuthPage = pathname?.startsWith('/login') || 
@@ -45,11 +48,19 @@ export default function Navbar() {
   // Close dropdowns when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
+      // Handle profile dropdown
       if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
         setIsProfileMenuOpen(false);
       }
+      
+      // Handle notifications dropdown
       if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
         setIsNotificationsOpen(false);
+      }
+      
+      // Handle campaigns dropdown
+      if (campaignsRef.current && !campaignsRef.current.contains(event.target as Node)) {
+        setIsCampaignsOpen(false);
       }
     }
 
@@ -64,18 +75,33 @@ export default function Navbar() {
     setIsMenuOpen(!isMenuOpen);
   };
 
-  // Toggle profile dropdown with proper event stopping
-  const toggleProfileMenu = (e: React.MouseEvent<HTMLButtonElement>) => {
+  // Toggle profile dropdown
+  const toggleProfileMenu = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsProfileMenuOpen(!isProfileMenuOpen);
     if (isNotificationsOpen) setIsNotificationsOpen(false);
+    if (isCampaignsOpen) setIsCampaignsOpen(false);
   };
 
-  // Toggle notifications dropdown with proper event stopping
-  const toggleNotifications = (e: React.MouseEvent<HTMLButtonElement>) => {
+  // Toggle notifications dropdown
+  const toggleNotifications = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsNotificationsOpen(!isNotificationsOpen);
     if (isProfileMenuOpen) setIsProfileMenuOpen(false);
+    if (isCampaignsOpen) setIsCampaignsOpen(false);
+  };
+
+  // Toggle campaigns dropdown
+  const toggleCampaigns = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsCampaignsOpen(!isCampaignsOpen);
+    if (isProfileMenuOpen) setIsProfileMenuOpen(false);
+    if (isNotificationsOpen) setIsNotificationsOpen(false);
+  };
+
+  // Close campaigns dropdown
+  const closeCampaigns = () => {
+    setIsCampaignsOpen(false);
   };
 
   // Handle logout
@@ -155,20 +181,17 @@ export default function Navbar() {
             </div>
           </div>
 
-          {/* Right navigation: search, notifications, profile */}
+          {/* Right navigation: campaigns dropdown, notifications, profile */}
           <div className="flex items-center">
             {isAuthenticated ? (
               // Authenticated nav options
               <div className="hidden md:flex md:items-center md:space-x-4">
-                {/* Search */}
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Search className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="Search..."
-                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-gray-50 placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                {/* Campaigns Dropdown Component */}
+                <div ref={campaignsRef}>
+                  <CampaignsDropdown 
+                    isOpen={isCampaignsOpen}
+                    toggleDropdown={toggleCampaigns}
+                    closeDropdown={closeCampaigns}
                   />
                 </div>
 
@@ -237,7 +260,6 @@ export default function Navbar() {
                           {user?.full_name?.charAt(0) || 'U'}
                         </div>
                       )}
-                      <ChevronDown className="ml-1 h-4 w-4 text-gray-500" />
                     </button>
                   </div>
                   

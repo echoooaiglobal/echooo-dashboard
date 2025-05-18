@@ -60,8 +60,8 @@ export const login = async (credentials: LoginCredentials): Promise<AuthResponse
     }
     
     // Store auth data in localStorage
-    const { access_token, refresh_token, expires_in, user, roles } = data;
-    storeAuthData(access_token, refresh_token, expires_in, user, roles);
+    const { access_token, refresh_token, expires_in, user, roles, company } = data;
+    storeAuthData(access_token, refresh_token, expires_in, user, roles, company);
     
     return data;
   } catch (error) {
@@ -90,8 +90,8 @@ export const register = async (credentials: RegisterCredentials): Promise<AuthRe
   }
   
   // Store auth data in localStorage if registration auto-logs in
-  const { access_token, refresh_token, expires_in, user, roles } = response.data;
-  storeAuthData(access_token, refresh_token, expires_in, user, roles);
+  const { access_token, refresh_token, expires_in, user, roles, company } = response.data;
+  storeAuthData(access_token, refresh_token, expires_in, user, roles, company);
   
   return response.data;
 };

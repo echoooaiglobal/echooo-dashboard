@@ -3,7 +3,9 @@ import { Inter } from 'next/font/google';
 import '@/styles/globals.css';
 import { LocationCacheProvider } from '@/context/LocationCacheContext';
 import { AuthProvider } from '@/context/AuthContext';
-import Navbar from '@/components/Navbar';
+import { CampaignProvider } from '@/context/CampaignContext';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import Navbar from '@/components/navbar';
 import type { Metadata } from 'next';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -28,10 +30,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className={inter.className} key="layout-body">
         <AuthProvider>
-          <LocationCacheProvider>
-            <Navbar />
-            <main className="w-full">{children}</main>
-          </LocationCacheProvider>
+          <CampaignProvider>
+            <LocationCacheProvider>
+              <Navbar />
+              <main className="w-full">{children}</main>
+            </LocationCacheProvider>
+          </CampaignProvider>
         </AuthProvider>
       </body>
     </html>

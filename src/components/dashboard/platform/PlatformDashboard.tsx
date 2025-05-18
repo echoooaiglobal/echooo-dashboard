@@ -1,4 +1,4 @@
-// src/components/dashboard/PlatformDashboard.tsx
+// src/components/dashboard/platform/PlatformDashboard.tsx
 'use client';
 
 import { useEffect, useState } from 'react';

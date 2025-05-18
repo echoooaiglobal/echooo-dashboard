@@ -2,12 +2,11 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 import { LoginCredentials } from '@/types/auth';
 import { AtSign, Lock, AlertCircle, Eye, EyeOff } from 'react-feather';
-import { isAuthError, AccountInactiveError } from '@/services/auth/auth.errors';
+import { useLogin } from '@/hooks/useLogin';
+import { AccountInactiveError, isAuthError } from '@/services/auth/auth.errors';
 
 interface LoginFormProps {
   onSuccess?: (redirectPath?: string) => void;
@@ -19,10 +18,8 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
     password: '',
     remember: false,
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const { login, error: authError } = useAuth();
-  const router = useRouter();
+  const { loginWithRedirect, isLoading, error: hookError } = useLogin();
   const [error, setError] = useState<string | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -40,47 +37,40 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setIsSubmitting(true);
     
     try {
-      await login({
+      // The hook will handle login and appropriate routing
+      await loginWithRedirect({
         username: form.username,
         password: form.password,
         remember: form.remember,
       });
       
-      // Only redirect if login was successful
-      if (onSuccess) {
-        onSuccess('/dashboard');
-      } else {
-        router.push('/dashboard');
-      }
+      // If we reach here, login was successful
+      // onSuccess won't be called since routing is handled in the hook
     } catch (error) {
-      // Display appropriate error message based on error type
+      // Handle specific error types if needed
       if (isAuthError(error)) {
-        // For auth errors, just display the message
         setError(error.message);
         
-        // Special handling for inactive accounts if needed
         if (error instanceof AccountInactiveError) {
-          // You could show a special message or UI element for inactive accounts
+          // Special handling for inactive accounts if needed
+          setError(`${error.message} Please contact your administrator to activate your account.`);
         }
       } else if (error instanceof Error) {
         setError(error.message);
       } else {
         setError('An unknown error occurred. Please try again.');
       }
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
   return (
     <div>
-      {(error || authError) && (
+      {(error || hookError) && (
         <div className="bg-red-50 text-red-700 p-4 rounded-lg mb-6 flex items-start">
           <AlertCircle className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
-          <span className="text-sm">{error || authError}</span>
+          <span className="text-sm">{error || hookError}</span>
         </div>
       )}
 
@@ -99,7 +89,7 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
               value={form.username}
               onChange={handleChange}
               required
-              disabled={isSubmitting}
+              disabled={isLoading}
               className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition placeholder-gray-400"
             />
           </div>
@@ -119,7 +109,7 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
               value={form.password}
               onChange={handleChange}
               required
-              disabled={isSubmitting}
+              disabled={isLoading}
               className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition placeholder-gray-400"
             />
             <button
@@ -139,7 +129,7 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
               name="remember"
               checked={form.remember}
               onChange={handleChange}
-              disabled={isSubmitting}
+              disabled={isLoading}
               className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
             />
             <span className="text-sm text-gray-600">Remember me</span>
@@ -151,10 +141,10 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
 
         <button
           type="submit"
-          disabled={isSubmitting}
+          disabled={isLoading}
           className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white py-3 rounded-lg font-semibold hover:from-purple-700 hover:to-blue-700 transition duration-300 ease-in-out transform hover:-translate-y-1 hover:shadow-lg disabled:opacity-70 disabled:transform-none disabled:hover:shadow-none flex justify-center items-center"
         >
-          {isSubmitting ? (
+          {isLoading ? (
             <>
               <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
