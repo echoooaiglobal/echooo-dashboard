@@ -8,8 +8,7 @@ import { InstagramUser, InstagramUserDetails, InstagramPostsResponse } from '@/t
 import { searchProfiles, getProfileDetails } from '@/utils/instagram-api';
 import { processVideos, generateTLAnalysis } from '@/utils/twelvelabs';
 import { generateOpenAIAnalysis } from '@/utils/openai'; // Import our new utility function
-import { delay } from '@/utils/ratelimit'
-
+import { twelveLabsLimiter, callTwelveLabsApi } from '@/utils/apiThrottling';
 import { 
   saveAnalysisToLocal, 
   loadAnalysisFromLocal, 
@@ -148,136 +147,230 @@ export default function ProfileAnalysisPage() {
     }
   };
 
-  const handleGenerateAnalysis = async () => {
-    console.log('generate analysis clicked')
-    if (!selectedProfilePosts?.posts || !selectedProfile) return;
+  // const handleGenerateAnalysis = async () => {
+  //   console.log('generate analysis clicked')
+  //   if (!selectedProfilePosts?.posts || !selectedProfile) return;
     
-    setIsAnalyzing(true);
-    setError(null);
+  //   setIsAnalyzing(true);
+  //   setError(null);
     
-    try {
-      // Create a Map for O(1) lookups by shortcode
-      const videoPostsMap = new Map<string, any>();
-      const videoPosts = selectedProfilePosts.posts.filter(post => post?.is_video);
+  //   try {
+  //     // Create a Map for O(1) lookups by shortcode
+  //     const videoPostsMap = new Map<string, any>();
+  //     const videoPosts = selectedProfilePosts.posts.filter(post => post?.is_video);
   
-      // Populate the Map
-      videoPosts.forEach(post => {
-        if (post.shortcode) {
-          videoPostsMap.set(post.shortcode, post);
-        }
-      });
+  //     // Populate the Map
+  //     videoPosts.forEach(post => {
+  //       if (post.shortcode) {
+  //         videoPostsMap.set(post.shortcode, post);
+  //       }
+  //     });
   
-      if (videoPosts.length === 0) {
-        throw new Error('No videos found to analyze');
-      }
+  //     if (videoPosts.length === 0) {
+  //       throw new Error('No videos found to analyze');
+  //     }
   
-      console.log('videoPostsMap: ', videoPostsMap)
+  //     console.log('videoPostsMap: ', videoPostsMap)
       
-      // Process videos with TwelveLabs
-      const processingResponse = await processVideos(
-        selectedProfile.pk, 
-        videoPosts.map(post => ({
-          url: post.video_url,
-          shortcode: post.shortcode
-        })).filter(v => v.url && v.shortcode) as VideoInfo[]
-      );
+  //     // Process videos with TwelveLabs
+  //     const processingResponse = await processVideos(
+  //       selectedProfile.pk, 
+  //       videoPosts.map(post => ({
+  //         url: post.video_url,
+  //         shortcode: post.shortcode
+  //       })).filter(v => v.url && v.shortcode) as VideoInfo[]
+  //     );
       
-      if(!analysisResults){
+  //     if(!analysisResults){
     
-        // Generate analysis for each processed video SEQUENTIALLY with rate limiting
-        const generateAnalysisResults = [];
+  //       // Generate analysis for each processed video SEQUENTIALLY with rate limiting
+  //       const generateAnalysisResults = [];
         
-        // Base delay between requests (start with 2 seconds)
-        const baseDelay = 2000; // 2 seconds
-        // Maximum retry attempts
-        const maxRetries = 3;
+  //       // Base delay between requests (start with 2 seconds)
+  //       const baseDelay = 5000; // 2 seconds
+  //       // Maximum retry attempts
+  //       const maxRetries = 5;
       
-        for (const task of processingResponse.results) {
-          // Get the complete post data from our Map
-          const postData = videoPostsMap.get(task.shortcode);
+  //       for (const task of processingResponse.results) {
+  //         // Get the complete post data from our Map
+  //         const postData = videoPostsMap.get(task.shortcode);
           
-          // Add rate limiting delay between API calls
-          if (generateAnalysisResults.length > 0) {
-            console.log(`Rate limiting: waiting ${baseDelay/1000} seconds before next API call...`);
-            await delay(baseDelay);
-          }
+  //         // Add rate limiting delay between API calls
+  //         if (generateAnalysisResults.length > 0) {
+  //           console.log(`Rate limiting: waiting ${baseDelay/1000} seconds before next API call...`);
+  //           await delay(baseDelay);
+  //         }
           
-          // Implement retry logic with exponential backoff
-          let analysisResponse = null;
-          let retries = 0;
-          let currentDelay = baseDelay;
+  //         // Implement retry logic with exponential backoff
+  //         let analysisResponse = null;
+  //         let retries = 0;
+  //         let currentDelay = baseDelay;
           
-          while (retries <= maxRetries) {
-            try {
-              analysisResponse = await generateTLAnalysis(
-                task.videoId, 
-                VIDEO_ANALYSIS_PROMPT_V4
-              );
-              console.log('shortcode: ', task.shortcode, 'analysisResponse: ', analysisResponse);
-              // If successful, break out of retry loop
-              break;
-            } catch (error: any) {
-              // Check specifically for 429 status code
-              if (error?.status === 429 || error?.errordata?.status === 429 || 
-                  (error?.message && error.message.includes('429')) ||
-                  (error?.config?.status === 429)) {
+  //         while (retries <= maxRetries) {
+            
+  //           try {
+  //             analysisResponse = await generateTLAnalysis(
+  //               task.videoId, 
+  //               VIDEO_ANALYSIS_PROMPT_V4
+  //             );
+  //             console.log('shortcode: ', task.shortcode, 'analysisResponse: ', analysisResponse);
+  //             // If successful, break out of retry loop
+  //             break;
+  //           } catch (error: any) {
+  //             // Check specifically for 429 status code
+  //             if (error?.status === 429 || error?.errordata?.status === 429 || 
+  //                 (error?.message && error.message.includes('429')) ||
+  //                 (error?.config?.status === 429)) {
                 
-                retries++;
-                if (retries > maxRetries) {
-                  throw new Error(`Rate limit exceeded after ${maxRetries} retries. Please try again later.`);
-                }
+  //               retries++;
+  //               if (retries > maxRetries) {
+  //                 throw new Error(`Rate limit exceeded after ${maxRetries} retries. Please try again later.`);
+  //               }
                 
-                // Exponential backoff: double the delay on each retry
-                currentDelay *= 2;
-                console.log(`Rate limit hit (429), retry ${retries}/${maxRetries}. Waiting ${currentDelay/1000} seconds...`);
-                await delay(currentDelay);
-              } else {
-                // If it's not a rate limit error, throw it immediately
-                throw error;
-              }
-            }
-          }
+  //               // Exponential backoff: double the delay on each retry
+  //               currentDelay *= 2;
+  //               console.log(`Rate limit hit (429), retry ${retries}/${maxRetries}. Waiting ${currentDelay/1000} seconds...`);
+  //               await delay(currentDelay);
+  //             } else {
+  //               // If it's not a rate limit error, throw it immediately
+  //               throw error;
+  //             }
+  //           }
+  //         }
     
-          generateAnalysisResults.push({
-            id: analysisResponse?.data?.id,
-            shortcode: task.shortcode,
-            videoId: task.videoId,
-            metrics: postData || null,
-            analysis: analysisResponse?.data,
-          });
-        }
+  //         generateAnalysisResults.push({
+  //           id: analysisResponse?.data?.id,
+  //           shortcode: task.shortcode,
+  //           videoId: task.videoId,
+  //           metrics: postData || null,
+  //           analysis: analysisResponse?.data,
+  //         });
+  //       }
         
-        setAnalysisResults({
-          userId: selectedProfile.pk,
-          indexId: processingResponse.indexId,
-          videos: generateAnalysisResults
-        }); 
+  //       setAnalysisResults({
+  //         userId: selectedProfile.pk,
+  //         indexId: processingResponse.indexId,
+  //         videos: generateAnalysisResults
+  //       }); 
     
-        // Save data in local storage
-        saveAnalysisToLocal(`${selectedProfile.pk}-analysisResults`, {
-          userId: selectedProfile.pk,
-          indexId: processingResponse.indexId,
-          videos: generateAnalysisResults
-        });
+  //       // Save data in local storage
+  //       saveAnalysisToLocal(`${selectedProfile.pk}-analysisResults`, {
+  //         userId: selectedProfile.pk,
+  //         indexId: processingResponse.indexId,
+  //         videos: generateAnalysisResults
+  //       });
 
-        console.log('Open AI 001')
-        processThroughOpenAI(generateAnalysisResults, String(selectedProfile?.pk));
-      }
+  //       console.log('Open AI 001')
+  //       processThroughOpenAI(generateAnalysisResults, String(selectedProfile?.pk));
+  //     }
       
-      if(!openaiAnalysis){
-        // Call OpenAI to analyze the results 
-        console.log('Open AI 002')
-        processThroughOpenAI(analysisResults?.videos, selectedUserId);
-      }
+  //     if(!openaiAnalysis){
+  //       // Call OpenAI to analyze the results 
+  //       console.log('Open AI 002')
+  //       processThroughOpenAI(analysisResults?.videos, selectedUserId);
+  //     }
       
-      console.log('Analysis completed successfully: ', analysisResults);
-    } catch (error) {
-      console.error('Analysis error:', error);
-      setError(error instanceof Error ? error.message : 'Unknown error during analysis');
-    } finally {
-      setIsAnalyzing(false);
+  //     console.log('Analysis completed successfully: ', analysisResults);
+  //   } catch (error) {
+  //     console.error('Analysis error:', error);
+  //     setError(error instanceof Error ? error.message : 'Unknown error during analysis');
+  //   } finally {
+  //     setIsAnalyzing(false);
+  //   }
+  // };
+
+  // Updated handleGenerateAnalysis function with better rate limit handling
+
+  
+
+const handleGenerateAnalysis = async () => {
+  console.log('generate analysis clicked')
+  if (!selectedProfilePosts?.posts || !selectedProfile) return;
+  
+  setIsAnalyzing(true);
+  setError(null);
+  
+  try {
+    // Create a Map for O(1) lookups by shortcode
+    const videoPostsMap = new Map<string, any>();
+    const videoPosts = selectedProfilePosts.posts.filter(post => post?.is_video);
+
+    // Populate the Map
+    videoPosts.forEach(post => {
+      if (post.shortcode) {
+        videoPostsMap.set(post.shortcode, post);
+      }
+    });
+
+    if (videoPosts.length === 0) {
+      throw new Error('No videos found to analyze');
     }
-  };
+
+    console.log('videoPostsMap: ', videoPostsMap)
+    
+    // Process videos with TwelveLabs
+    const processingResponse = await processVideos(
+      selectedProfile.pk, 
+      videoPosts.map(post => ({
+        url: post.video_url,
+        shortcode: post.shortcode
+      })).filter(v => v.url && v.shortcode) as VideoInfo[]
+    );
+    
+    if(!analysisResults){
+      // Generate analysis for each processed video SEQUENTIALLY with API rate limiter
+      const generateAnalysisResults = [];
+      
+      // Process videos sequentially using our API rate limiter
+      for (const task of processingResponse.results) {
+        // Get the complete post data from our Map
+        const postData = videoPostsMap.get(task.shortcode);
+        
+        // Use the twelveLabsLimiter to handle API throttling
+        const analysisResponse = await generateTLAnalysis(task.videoId, VIDEO_ANALYSIS_PROMPT_V4);
+        
+        console.log('shortcode: ', task.shortcode, 'analysisResponse: ', analysisResponse);
+        
+        generateAnalysisResults.push({
+          id: analysisResponse?.data?.id,
+          shortcode: task.shortcode,
+          videoId: task.videoId,
+          metrics: postData || null,
+          analysis: analysisResponse?.data,
+        });
+      }
+      
+      setAnalysisResults({
+        userId: selectedProfile.pk,
+        indexId: processingResponse.indexId,
+        videos: generateAnalysisResults
+      }); 
+  
+      // Save data in local storage
+      saveAnalysisToLocal(`${selectedProfile.pk}-analysisResults`, {
+        userId: selectedProfile.pk,
+        indexId: processingResponse.indexId,
+        videos: generateAnalysisResults
+      });
+
+      console.log('Open AI 001')
+      processThroughOpenAI(generateAnalysisResults, String(selectedProfile?.pk));
+    }
+    
+    if(!openaiAnalysis){
+      // Call OpenAI to analyze the results 
+      console.log('Open AI 002')
+      processThroughOpenAI(analysisResults?.videos, selectedUserId);
+    }
+    
+    console.log('Analysis completed successfully: ', analysisResults);
+  } catch (error) {
+    console.error('Analysis error:', error);
+    setError(error instanceof Error ? error.message : 'Unknown error during analysis');
+  } finally {
+    setIsAnalyzing(false);
+  }
+};
 
   return (
     <div className="container mx-auto p-6">

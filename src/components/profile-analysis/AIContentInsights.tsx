@@ -124,19 +124,20 @@ export default function AIContentInsights({
         {/* Gender Distribution */}
         <div className="mb-8">
           <h4 className="text-md font-medium mb-4">Gender Distribution</h4>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 w-full">
+
             <DemographicDistribution
-              title="Top Performing"
+              title="Top"
               data={analysisData?.top_performing_summary?.quantitative?.character_gender_distribution}
               colors={['#3b82f6', '#ec4899']}
             />
             <DemographicDistribution
-              title="Average Performing"
+              title="Average"
               data={analysisData?.average_performing_summary?.quantitative?.character_gender_distribution}
               colors={['#3b82f6', '#ec4899']}
             />
             <DemographicDistribution
-              title="Least Performing"
+              title="Least"
               data={analysisData?.least_performing_summary?.quantitative?.character_gender_distribution}
               colors={['#3b82f6', '#ec4899']}
             />
@@ -164,17 +165,17 @@ export default function AIContentInsights({
           <h4 className="text-md font-medium mb-4">Screen Time Distribution</h4>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <DemographicDistribution
-              title="Top Performing"
+              title="Top"
               data={analysisData?.top_performing_summary?.quantitative?.screen_time_percentages}
               colors={['#0ea5e9', '#f97316']}
             />
             <DemographicDistribution
-              title="Average Performing"
+              title="Average"
               data={analysisData?.average_performing_summary?.quantitative?.screen_time_percentages}
               colors={['#0ea5e9', '#f97316']}
             />
             <DemographicDistribution
-              title="Least Performing"
+              title="Least"
               data={analysisData?.least_performing_summary?.quantitative?.screen_time_percentages}
               colors={['#0ea5e9', '#f97316']}
             />

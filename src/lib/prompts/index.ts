@@ -1,3 +1,3 @@
 // src/lib/prompts/index.ts
-export * from './video-analysis';
-export * from './testprompt';
+export * from './twelvelabs/video-analysis';
+export * from './openai/testprompt';

@@ -4,9 +4,21 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recha
 
 interface DemographicDistributionProps {
   title: string;
-  data: Record<string, number> | undefined;
+  data: Record<string, string | number> | undefined;
   colors: string[];
 }
+
+/**
+ * Converts a string percentage (e.g. "90%") to a number (e.g. 90)
+ */
+const parsePercentageValue = (value: string | number): number => {
+  if (typeof value === 'number') {
+    return value;
+  }
+  
+  // Remove the percentage sign and convert to number
+  return parseFloat(value.replace('%', ''));
+};
 
 export default function DemographicDistribution({
   title,
@@ -22,7 +34,13 @@ export default function DemographicDistribution({
     );
   }
   
-  const chartData = Object.entries(data).map(([name, value], index) => ({
+  // Process the data to ensure all values are numbers
+  const processedData = Object.entries(data).reduce((acc, [key, value]) => {
+    acc[key] = parsePercentageValue(value);
+    return acc;
+  }, {} as Record<string, number>);
+  
+  const chartData = Object.entries(processedData).map(([name, value], index) => ({
     name,
     value,
     color: colors[index % colors.length]
