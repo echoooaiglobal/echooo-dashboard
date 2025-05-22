@@ -235,7 +235,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       return true;
     } catch (error) {
-      console.error('Token refresh failed:', error);
+      // console.error('Token refresh failed:', error);
       // Clear auth data on failure
       clearAuthData();
       

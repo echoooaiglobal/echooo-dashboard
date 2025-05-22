@@ -7,12 +7,24 @@ export interface DiscoverInfluencer {
   followers: string;
   engagements: string;
   engagementRate: string;
+  avgLikes: number;
+  avg_comments: number;
+  platform: string
+  status: string;
+  engagement_rate: number;
   isVerified: boolean;
   isOnPlatform: boolean;
   match: {
     gender: string;
     country: string;
   };
+  contact_attempts: number;
+  next_contact_at?: string | null;
+  collaboration_price?: number | null;
+  last_contacted_at?: string | null;
+  onboarded_at?: string | null;
+  responded_at?: string | null;
+  updated_at: string;
 }
 
 export interface DiscoverApiResponse {
@@ -37,18 +49,24 @@ export interface DiscoverApiResponse {
       direction: 'asc' | 'desc';
     };
     filter: {
+      audience_source: string; // 👈 Move it inside here
       ads_brands: string[];
       age: {
         left_number: string;
         right_number: string;
       };
+      niches?: string[];
+      account_type?: string[];
+      with_contact?: string[];
       audience_age: string[];
       audience_brand: string[];
       audience_brand_category: string[];
-      audience_gender: {
-        code: string;
-        weight: number;
-      };
+      // audience_gender: {
+      //   code: string;
+      //   weight: number;
+      // };
+      hashtags?: string[];
+      languages?: string[];
       audience_geo: Array<{
         id: number;
         weight: number;
@@ -71,6 +89,8 @@ export interface DiscoverApiResponse {
       followers: {
         left_number: string;
         right_number: string;
+        growth_period?: string; // e.g. "3 months"
+        growth_rate?: string;   // e.g. ">10%"
       };
       reels_plays: {
         left_number: string;
@@ -96,7 +116,6 @@ export interface DiscoverApiResponse {
         left_number: string;
         right_number: string;
       };
-      with_contact: string[];
       saves: {
         left_number: string;
         right_number: string;
@@ -105,7 +124,6 @@ export interface DiscoverApiResponse {
         left_number: string;
         right_number: string;
       };
-      account_type: string[];
     };
     paging: {
       skip: number;

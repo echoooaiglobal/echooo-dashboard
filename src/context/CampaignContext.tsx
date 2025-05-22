@@ -12,7 +12,7 @@ interface CampaignContextType {
   isLoading: boolean;
   error: string | null;
   refreshCampaigns: (force?: boolean) => Promise<void>;
-  setCurrentCampaign: (campaign: Campaign) => void;
+  setCurrentCampaign: (campaign: Campaign | null) => void; // Allow null
   getCampaign: (id: string) => Promise<Campaign | null>;
 }
 
@@ -41,10 +41,9 @@ export function CampaignProvider({ children }: { children: React.ReactNode }) {
       if (campaign) {
         setCurrentCampaign(campaign);
       }
+      // console.log('Fetched campaign:', campaign);
       return campaign;
     } catch (error) {
-      console.error(`Error fetching campaign ${id}:`, error);
-      setError('Failed to load campaign details');
       return null;
     }
   }, [campaigns]);

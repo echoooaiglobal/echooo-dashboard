@@ -1,3 +1,4 @@
+// src/services/api/endpoints.ts
 export const ENDPOINTS = {
   AUTH: {
     LOGIN: '/auth/login',
@@ -9,10 +10,16 @@ export const ENDPOINTS = {
   },
   CAMPAIGNS: {
     LIST: '/campaigns',
-    CREATE: '/campaigns',  // Assuming this is your create endpoint
+    CREATE: '/campaigns',
     DETAIL: (id: string) => `/campaigns/${id}`,
     METRICS: (id: string) => `/campaigns/${id}/metrics`,
-    COMPANY: (companyId: string) => `/campaigns/company/${companyId}`  // Add this new endpoint
+    COMPANY: (companyId: string) => `/campaigns/company/${companyId}`,
+  },
+  CAMPAIGN_LISTS: {
+    LIST_MEMBERS: (id: string) => `/campaign-list-members`,
+    LIST_MEMBER_DETAIL: (id: string) => `/campaign-list-members/${id}`,
+    LIST_MEMBER_DELETE: (id: string) => `/campaign-list-members/${id}`,
+    LIST_MEMBER_CREATE: '/campaign-list-members',
   },
   CATEGORIES: {
     LIST: '/categories',
@@ -34,5 +41,4 @@ export const ENDPOINTS = {
     REPORTS: '/analytics/reports',
     EXPORT: '/analytics/export',
   },
-  
 };

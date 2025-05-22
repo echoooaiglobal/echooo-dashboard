@@ -78,7 +78,7 @@ export default function CampaignsDropdown({
   const handleDropdownClick = (e: React.MouseEvent) => {
     e.stopPropagation();
   };
-console.log('Campaigns:', campaigns);
+
   // Determine campaign status display
   const getCampaignStatusDisplay = (status: string) => {
     let bgColor = 'bg-gray-100';

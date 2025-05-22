@@ -70,7 +70,7 @@ const CampaignFunnelSection: React.FC<CampaignFunnelSectionProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-md mb-8 overflow-hidden">
+    <div className="w-full overflow-hidden bg-white rounded-xl shadow-md mb-4">
       {/* Tab Navigation */}
       <div className="flex items-center justify-between overflow-x-auto px-1 py-1 border-b border-gray-100 bg-gray-50">
         <button

@@ -187,42 +187,24 @@ const BrandInfoForm: React.FC<BrandInfoFormProps> = ({ onComplete }) => {
     };
     
     try {
-      // Call the campaign creation service
-      await campaignApi.execute(createCampaign(campaignData));
+      // Call the campaign creation service and store the response
+      const createdCampaign = await campaignApi.execute(createCampaign(campaignData));
       
       // Check for errors after API call
       if (campaignApi.error) {
         setError('Failed to create the campaign. Please try again.');
         console.error('API error:', campaignApi.error);
-        
-        // For development, still call onComplete even if the API fails
-        // Remove this in production
-        console.log('Form submitted with data:', campaignData);
-        onComplete({
-          ...formData,
-          currencyCode: formData.campaignCurrency,
-          company_id: companyId
-        });
+      } else if (createdCampaign) {
+        // Important: Pass the actual API response which contains the campaign ID
+        // This allows for proper redirection after campaign creation
+        console.log('Campaign created successfully:', createdCampaign);
+        onComplete(createdCampaign);
       } else {
-        // Success case
-        onComplete({
-          ...formData,
-          currencyCode: formData.campaignCurrency,
-          company_id: companyId
-        });
+        setError('Unexpected error: No campaign data returned');
       }
     } catch (error) {
       console.error('Error submitting form:', error);
       setError('An unexpected error occurred. Please try again.');
-      
-      // For development, still call onComplete even if the API fails
-      // Remove this in production
-      console.log('Form submitted with data:', campaignData);
-      onComplete({
-        ...formData,
-        currencyCode: formData.campaignCurrency,
-        company_id: companyId
-      });
     }
   };
 
