@@ -1,0 +1,118 @@
+// src/app/(dashboard)/campaigns/[id]/page.tsx
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { ArrowLeft, Share2 } from 'react-feather';
+import Link from 'next/link';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import CampaignFunnelSection from '@/components/dashboard/campaign-funnel/CampaignFunnelSection';
+import DashboardMetricsSection from '@/components/dashboard/metrics/DashboardMetricsSection';
+import { useCampaigns } from '@/context/CampaignContext';
+import CampaignNotFound from '@/components/dashboard/campaigns/CampaignNotFound';
+
+export default function CampaignDetailPage() {
+  const params = useParams();
+  const router = useRouter();
+  const campaignId = params?.id as string;
+  const { getCampaign, currentCampaign, setCurrentCampaign } = useCampaigns();
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadCampaign() {
+      if (!campaignId) {
+        setError('Invalid campaign ID');
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        const campaign = await getCampaign(campaignId);
+        
+        if (!campaign) {
+          if (!/^[0-9a-f-]{32,36}$/i.test(campaignId)) {
+            setError('invalid_format');
+          } else {
+            setError('not_found');
+          }
+        }
+      } catch (error) {
+        console.error('Error loading campaign:', error);
+        setError('error_loading');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    
+    loadCampaign();
+    
+    return () => {
+      setCurrentCampaign(null);
+    };
+  }, [campaignId, getCampaign, setCurrentCampaign]);
+
+  if (isLoading) {
+    return <LoadingSpinner />;
+  }
+
+  if (error || !currentCampaign) {
+    let errorMessage;
+    
+    switch (error) {
+      case 'not_found':
+        errorMessage = "We couldn't find this campaign. It may have been deleted or you might not have access.";
+        break;
+      case 'invalid_format':
+        errorMessage = "The campaign ID format is invalid. Please check the URL and try again.";
+        break;
+      case 'error_loading':
+        errorMessage = "We encountered a problem while loading this campaign. Please try again later.";
+        break;
+      default:
+        errorMessage = error;
+    }
+    
+    return <CampaignNotFound error={errorMessage} />;
+  }
+
+  return (
+    <div className="w-full overflow-hidden px-2">
+      {/* Header with back button and actions */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+        <div className="w-full overflow-hidden text-ellipsis">
+          <Link 
+            href="/campaigns" 
+            className="inline-flex items-center text-gray-600 hover:text-purple-600 transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2 flex-shrink-0" />
+            <span className="truncate">Back to Campaigns</span>
+          </Link>
+          <h1 className="text-2xl font-bold text-gray-800 mt-2 truncate">{currentCampaign.name}</h1>
+        </div>
+        
+        <div className="flex-shrink-0">
+          <button className="flex items-center bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors">
+            <Share2 className="h-4 w-4 mr-2" />
+            Share
+          </button>
+        </div>
+      </div>
+
+      {/* Metrics Section */}
+      <div className="w-full overflow-hidden mb-4">
+        <DashboardMetricsSection userType="company"/>
+      </div>
+
+      {/* Main content - Campaign Funnel */}
+      <div className="w-full overflow-hidden">
+        <CampaignFunnelSection 
+          userType="company" 
+          campaignData={currentCampaign} 
+          isNewCampaign={false}
+        />
+      </div>
+    </div>
+  );
+}

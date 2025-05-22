@@ -29,6 +29,14 @@ export interface Role {
   description: string;
 }
 
+export interface Company {
+  id: string;
+  name: string;
+  domain: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface AuthResponse {
   access_token: string;
   token_type: string;
@@ -36,6 +44,7 @@ export interface AuthResponse {
   user: User;
   roles: Role[];
   refresh_token: string;
+  company: Company[];
 }
 
 export interface RegisterCredentials {

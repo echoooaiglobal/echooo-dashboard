@@ -3,6 +3,8 @@ import { DiscoverSearchParams } from '@/lib/types';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
+  console.log('✅ API Route Hit: /api/discover/influencers');
+
   const authKey = process.env.IMAI_API_AUTH_KEY;
   if (!authKey) {
     return NextResponse.json(
@@ -13,8 +15,8 @@ export async function POST(request: Request) {
 
   try {
     const body: DiscoverSearchParams = await request.json();
-    
-    // Construct the EXACT payload structure that works in Postman
+
+    // Construct the payload from the request body
     const apiPayload = {
       audience_source: body.audience_source || "any",
       sort: {
@@ -23,31 +25,25 @@ export async function POST(request: Request) {
       },
       filter: {
         ...body.filter,
-        // Only provide defaults if the field is completely missing
-        ...(!('followers' in body.filter) && {
+        ...(body.filter?.followers == null && {
           followers: {
             left_number: "5000",
             right_number: "1000000"
           }
         }),
-        ...(!('gender' in body.filter) && {
-          gender: {
-            code: "",
-            weight: 0.3
-          }
-        }),
-        ...(!('geo' in body.filter) && {
+        ...(body.filter?.geo == null && {
           geo: []
         })
       },
       paging: {
-        skip: body.paging?.skip || 0,
-        limit: body.paging?.limit || 10
+        skip: body.paging?.skip ?? 0,
+        limit: body.paging?.limit ?? 10
       }
     };
 
-    // Construct the URL with query parameters
-    const apiUrl = new URL(`${process.env.IMAI_BASE_API}/search/newv1?platform=instagram&n=${apiPayload.paging.skip}`);
+    console.log('API Payload:', apiPayload);
+
+    const apiUrl = new URL(`${process.env.IMAI_BASE_API}/search/newv1?platform=instagram&n=0`);
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
@@ -58,13 +54,16 @@ export async function POST(request: Request) {
         'Content-Type': 'application/json',
         'authkey': authKey
       },
+      next: { revalidate: 36000 },
       body: JSON.stringify(apiPayload),
+      signal: controller.signal
     });
 
     clearTimeout(timeout);
 
     if (!response.ok) {
       const errorText = await response.text();
+      console.error('API Error:', errorText);
       return NextResponse.json(
         { 
           error: "external_api_error",
@@ -76,8 +75,9 @@ export async function POST(request: Request) {
     }
 
     const data = await response.json();
-    
-    // Transform response to match your frontend needs
+    console.log('API Response:', data);
+
+    // Transform response
     const influencers = data.accounts?.map((item: any) => ({
       id: item.account?.user_profile?.user_id,
       username: item.account?.user_profile?.username,
@@ -85,7 +85,9 @@ export async function POST(request: Request) {
       profileImage: item.account?.user_profile?.picture,
       followers: formatNumber(item.account?.user_profile?.followers),
       engagements: formatNumber(item.account?.user_profile?.engagements),
-      engagementRate: `${(item.account?.user_profile?.engagement_rate * 100).toFixed(2)}%`,
+      engagementRate: item.account?.user_profile?.engagement_rate
+        ? `${(item.account?.user_profile?.engagement_rate * 100).toFixed(2)}%`
+        : '0%',
       isVerified: item.account?.user_profile?.is_verified || false,
       match: {
         gender: item.match?.user_profile?.gender,
@@ -111,8 +113,8 @@ export async function POST(request: Request) {
   }
 }
 
-// Helper function to format numbers
 function formatNumber(num: number): string {
+  if (!num) return "0";
   if (num >= 1000000) return `${(num/1000000).toFixed(1)}M`;
   if (num >= 1000) return `${(num/1000).toFixed(1)}K`;
   return num.toString();

@@ -1,6 +1,6 @@
 // src/services/auth/auth.utils.ts - full updated file
 
-import { User, Role } from '@/types/auth';
+import { User, Role, Company } from '@/types/auth';
 
 /**
  * Safely access localStorage (handles SSR and browser cases)
@@ -48,7 +48,8 @@ export const storeAuthData = (
   refreshToken: string,
   expiresIn: number,
   user: User,
-  roles: Role[]
+  roles: Role[],
+  company?: Company[]  
 ): void => {
   const expiryTime = Date.now() + expiresIn * 1000;
   
@@ -57,6 +58,7 @@ export const storeAuthData = (
   safeLocalStorage.setItem('tokenExpiry', expiryTime.toString());
   safeLocalStorage.setItem('user', JSON.stringify(user));
   safeLocalStorage.setItem('roles', JSON.stringify(roles));
+  safeLocalStorage.setItem('company', JSON.stringify(company));
 };
 
 /**
@@ -70,6 +72,7 @@ export const clearAuthData = () => {
   localStorage.removeItem('accessToken');
   localStorage.removeItem('refreshToken');
   localStorage.removeItem('tokenExpiry');
+  localStorage.removeItem('company');
 };
 
 /**
@@ -122,6 +125,22 @@ export const getStoredUser = (): User | null => {
 };
 
 /**
+ * Get the stored company data
+ */
+export const getStoredCompany = (): User | null => {
+  const companyData = safeLocalStorage.getItem('company');
+  if (!companyData) return null;
+  if(companyData === 'undefined') return null; // Handle case where companyData is 'undefined' string
+  
+  try {
+    return JSON.parse(companyData);
+  } catch (error) {
+    console.error('Error parsing stored company data:', error);
+    return null;
+  }
+};
+
+/**
  * Gets the stored roles from local storage
  */
 export const getStoredRoles = (): Role[] => {
@@ -129,6 +148,7 @@ export const getStoredRoles = (): Role[] => {
   
   const rolesString = localStorage.getItem('roles');
   if (!rolesString) return [];
+  if (rolesString === 'undefined') return []; // Added this line to fix the issue
   
   try {
     const roles = JSON.parse(rolesString) as Role[];

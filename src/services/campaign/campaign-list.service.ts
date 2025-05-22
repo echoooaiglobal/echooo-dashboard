@@ -1,0 +1,283 @@
+// src/services/campaign/campaign-list.service.ts
+
+import { apiClient } from '@/lib/api'; // Import the unified API client
+import { ENDPOINTS } from '@/services/api/endpoints';
+import { DiscoverInfluencer } from '@/lib/types';
+
+// Define the campaign list ID type
+export type CampaignListId = string;
+
+// Define the request body for adding an influencer to a list
+export interface AddToListRequest {
+  list_id: CampaignListId;
+  platform_id: string;
+  social_data: {
+    id: string;
+    username: string;
+    name: string;
+    profileImage?: string;
+    followers: string;
+    isVerified?: boolean;
+  };
+}
+
+// Define the response from the add to list API
+export interface CampaignListMember {
+  success: boolean;
+  message?: string;
+  id?: string;
+  list_id?: string;
+  social_account_id?: string;
+  platform_id?: string;
+  status_id?: string;
+  contact_attempts?: number;
+  next_contact_at?: string | null;
+  collaboration_price?: number | null;
+  last_contacted_at?: string | null;
+  responded_at?: string | null;
+  onboarded_at?: string | null;
+  created_at?: string;
+  updated_at?: string;
+  status?: {
+    id: string;
+    name: string;
+  };
+  platform?: {
+    id: string;
+    name: string;
+  };
+  username?: string;
+  name?: string;
+  profileImage?: string;
+  followers?: string;
+  isVerified?: boolean;
+  engagement_rate?: number;
+  avg_likes?: number;
+  avg_comments?: number;
+  social_account?: {
+    id: string;
+    account_handle: string;
+    full_name: string;
+    profile_pic_url: string;
+    platform_id: string;
+    is_verified: boolean;
+    
+    followers_count: number;
+    platform_account_id: string;
+  };
+}
+
+
+export interface PaginationInfo {
+  page: number;
+  page_size: number;
+  total_items: number;
+  total_pages: number;
+  has_next: boolean;
+  has_previous: boolean;
+}
+
+export interface CampaignListMembersResponse {
+  success: boolean;
+  members: CampaignListMember[];
+  pagination: PaginationInfo;
+  message?: string;
+}
+
+
+/**
+ * Add an influencer to a campaign list
+ * @param listId The campaign list ID
+ * @param influencer The influencer to add
+ * @returns Response indicating success/failure
+ */
+export async function addInfluencerToList(
+  listId: CampaignListId,
+  influencer: DiscoverInfluencer,
+  platformId: string = '5d13c7b1-7e75-4fa2-86e3-2e37c2c8e84c' // Default platform ID
+): Promise<CampaignListMember> {
+  try {
+    // Transform the influencer data to match the expected API format
+    const requestData: AddToListRequest = {
+      list_id: listId,
+      platform_id: platformId,
+      social_data: {
+        id: influencer.id || '',
+        username: influencer.username || '',
+        name: influencer.name || influencer.username || '',
+        profileImage: influencer.profileImage || '',
+        followers: influencer.followers || '0',
+        isVerified: influencer.isVerified || false
+      }
+    };
+
+    // Call the API using the unified API client
+    const response = await apiClient.post<CampaignListMember>(
+      ENDPOINTS.CAMPAIGN_LISTS.LIST_MEMBER_CREATE,
+      requestData
+    );
+
+    // Handle errors
+    if (response.error) {
+      console.error('Error adding influencer to list:', response.error);
+      return { 
+        success: false, 
+        message: response.error.message 
+      };
+    }
+
+    // Return the success response
+    return {
+      success: true,
+      ...response.data
+    };
+  } catch (error) {
+    console.error('Unexpected error adding influencer to list:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'An unknown error occurred'
+    };
+  }
+}
+
+/**
+ * Get paginated members of a campaign list
+ * @param listId The campaign list ID
+ * @param page Page number (1-based)
+ * @param pageSize Items per page
+ * @returns Response with paginated list members
+ */
+export async function getCampaignListMembers(
+  listId: CampaignListId,
+  page: number = 1,
+  pageSize: number = 10
+): Promise<CampaignListMembersResponse> {
+  try {
+    const queryParams = new URLSearchParams({
+      page: page.toString(),
+      page_size: pageSize.toString(),
+      list_id: listId
+    });
+
+    const response = await apiClient.get<{
+      members: CampaignListMember[];
+      pagination: PaginationInfo;
+    }>(`${ENDPOINTS.CAMPAIGN_LISTS.LIST_MEMBERS('')}?${queryParams}`);
+
+    if (response.error) {
+      console.error('Error fetching paginated campaign list members:', response.error);
+      return { 
+        success: false, 
+        members: [],
+        pagination: {
+          page: 1,
+          page_size: pageSize,
+          total_items: 0,
+          total_pages: 1,
+          has_next: false,
+          has_previous: false
+        },
+        message: response.error.message 
+      };
+    }
+
+    return {
+      success: true,
+      members: response.data?.members || [],
+      pagination: response.data?.pagination || {
+        page: 1,
+        page_size: pageSize,
+        total_items: 0,
+        total_pages: 1,
+        has_next: false,
+        has_previous: false
+      }
+    };
+  } catch (error) {
+    console.error('Unexpected error fetching paginated campaign list members:', error);
+    return {
+      success: false,
+      members: [],
+      pagination: {
+        page: 1,
+        page_size: pageSize,
+        total_items: 0,
+        total_pages: 1,
+        has_next: false,
+        has_previous: false
+      },
+      message: error instanceof Error ? error.message : 'An unknown error occurred'
+    };
+  }
+}
+
+
+/**
+ * Remove an influencer from a campaign list
+ * @param listId The campaign list ID
+ * @param influencerId The influencer ID to remove
+ * @returns Response indicating success/failure
+ */
+export async function removeInfluencerFromList(
+  listId: CampaignListId,
+  influencerId: string
+): Promise<{ success: boolean; message?: string }> {
+  try {
+    // Call the API using the unified API client
+    const response = await apiClient.delete<{ success: boolean; message?: string }>(
+      `${ENDPOINTS.CAMPAIGN_LISTS.LIST_MEMBER_DELETE(influencerId)}`
+    );
+
+    // Handle errors
+    if (response.error) {
+      console.error('Error removing influencer from list:', response.error);
+      return { 
+        success: false, 
+        message: response.error.message 
+      };
+    }
+
+    // Return the success response
+    return {
+      success: true,
+      ...response.data
+    };
+  } catch (error) {
+    console.error('Unexpected error removing influencer from list:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'An unknown error occurred'
+    };
+  }
+}
+
+/**
+ * Check if an influencer is already in a campaign list
+ * @param listId The campaign list ID
+ * @param influencerId The influencer ID to check
+ * @returns Boolean indicating if the influencer is in the list
+ */
+export async function checkInfluencerInList(
+  listId: CampaignListId,
+  influencerId: string
+): Promise<boolean> {
+  try {
+    // Call the API using the unified API client
+    const response = await apiClient.get<{ exists: boolean }>(
+      `/api/v0/campaign-list-members/${listId}/${influencerId}/check`
+    );
+
+    // Handle errors
+    if (response.error) {
+      console.error('Error checking if influencer is in list:', response.error);
+      return false;
+    }
+
+    // Return whether the influencer exists in the list
+    return response.data?.exists || false;
+  } catch (error) {
+    console.error('Unexpected error checking if influencer is in list:', error);
+    return false;
+  }
+  
+}
