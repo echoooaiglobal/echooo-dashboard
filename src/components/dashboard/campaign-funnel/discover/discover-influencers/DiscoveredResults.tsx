@@ -1,15 +1,18 @@
 // src/components/dashboard/campaign-funnel/discover/discover-influencers/DiscoveredResults.tsx
 import React, { useState, useEffect } from 'react';
-import { DiscoverInfluencer, DiscoverSearchParams } from '@/lib/types';
+import { DiscoverInfluencer } from '@/lib/types';
 import { addInfluencerToList } from '@/services/campaign/campaign-list.service';
 import { Campaign } from '@/services/campaign/campaign.service';
 import { CampaignListMember } from '@/services/campaign/campaign-list.service';
+import { DiscoveredCreatorsResults, Influencer } from '@/types/insights-iq';
+import { SortField, SortOrder } from '@/lib/creator-discovery-types';
 
 interface DiscoverResultsProps {
   influencers: DiscoverInfluencer[];
+  discoveredCreatorsResults: DiscoveredCreatorsResults | null;
   isLoading: boolean;
   totalResults: number;
-  sortField: string;
+  sortField: SortField;
   sortDirection: 'asc' | 'desc';
   onSortChange: (field: string, direction: 'asc' | 'desc') => void;
   onLoadMore: () => void;
@@ -18,10 +21,16 @@ interface DiscoverResultsProps {
   campaignData?: Campaign | null;
   onInfluencerAdded?: () => void;
   shortlistedMembers: CampaignListMember[];
+  // Add pagination callbacks
+  onPageChange?: (page: number) => void;
+  onPageSizeChange?: (pageSize: number) => void;
+  currentPage?: number;
+  pageSize?: number;
 }
 
 const DiscoverResults: React.FC<DiscoverResultsProps> = ({
   influencers,
+  discoveredCreatorsResults,
   isLoading,
   totalResults,
   sortField,
@@ -32,13 +41,44 @@ const DiscoverResults: React.FC<DiscoverResultsProps> = ({
   nextBatchSize,
   campaignData,
   onInfluencerAdded,
-  shortlistedMembers
+  shortlistedMembers,
+  onPageChange,
+  onPageSizeChange,
+  currentPage = 1,
+  pageSize = 20
 }) => {
   const [addedInfluencers, setAddedInfluencers] = useState<Record<string, boolean>>({});
   const [isAdding, setIsAdding] = useState<Record<string, boolean>>({});
+  const [showPageSizeDropdown, setShowPageSizeDropdown] = useState(false);
+
+  // Get metadata with defaults
+  const metadata = discoveredCreatorsResults?.metadata || {
+    limit: pageSize,
+    offset: (currentPage - 1) * pageSize,
+    total_results: totalResults
+  };
+
+  // Calculate pagination info - Fix: Use actual page size, not metadata.limit
+  const actualPageSize = pageSize || metadata.limit;
+  const calculatedCurrentPage = currentPage;
+  const totalPages = Math.ceil(metadata.total_results / actualPageSize);
+  const hasNextPage = calculatedCurrentPage < totalPages;
+  const hasPreviousPage = calculatedCurrentPage > 1;
+  const startItem = ((calculatedCurrentPage - 1) * actualPageSize) + 1;
+  const endItem = Math.min(calculatedCurrentPage * actualPageSize, metadata.total_results);
+
+  // Page size options
+  const pageSizeOptions = [
+    10, 
+    20,
+    25, 
+    50, 
+    100, 
+    { label: 'Show All', value: metadata.total_results || 999999 }
+  ];
 
   // Check if an influencer is already in the shortlisted members
-  const isInfluencerInShortlist = (influencer: DiscoverInfluencer) => {
+  const isInfluencerInShortlist = (influencer: Influencer) => {
     return shortlistedMembers.some(member => 
       member.social_account?.platform_account_id === influencer.id
     );
@@ -48,9 +88,9 @@ const DiscoverResults: React.FC<DiscoverResultsProps> = ({
   useEffect(() => {
     const newAddedInfluencers: Record<string, boolean> = {};
     
-    influencers.forEach(influencer => {
-      if (isInfluencerInShortlist(influencer)) {
-        newAddedInfluencers[influencer.id] = true;
+    discoveredCreatorsResults?.influencers?.forEach(influencer => {
+      if (influencer.username && isInfluencerInShortlist(influencer)) {
+        newAddedInfluencers[influencer.username] = true;
       }
     });
     
@@ -58,15 +98,46 @@ const DiscoverResults: React.FC<DiscoverResultsProps> = ({
       ...prev,
       ...newAddedInfluencers
     }));
-  }, [shortlistedMembers, influencers]);
+  }, [shortlistedMembers, discoveredCreatorsResults]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showPageSizeDropdown) {
+        const target = event.target as Element;
+        if (!target.closest('.page-size-dropdown')) {
+          setShowPageSizeDropdown(false);
+        }
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [showPageSizeDropdown]);
+
+  // Map UI sort fields to API sort fields
+  const mapSortFieldToAPI = (field: string): string => {
+    const fieldMapping: Record<string, string> = {
+      'username': 'DESCRIPTION',
+      'followers': 'FOLLOWER_COUNT',
+      'engagementRate': 'ENGAGEMENT_RATE',
+      'average_likes': 'AVERAGE_LIKES',
+      'average_views': 'AVERAGE_VIEWS',
+      'content_count': 'CONTENT_COUNT',
+      'reels_views': 'REELS_VIEWS'
+    };
+    return fieldMapping[field] || field.toUpperCase();
+  };
 
   const handleSort = (field: string) => {
-    const direction = sortField === field && sortDirection === 'desc' ? 'asc' : 'desc';
-    onSortChange(field, direction);
+    const direction = sortField === mapSortFieldToAPI(field) && sortDirection === 'desc' ? 'asc' : 'desc';
+    onSortChange(mapSortFieldToAPI(field), direction);
   };
 
   const renderSortIcon = (field: string) => {
-    if (sortField !== field) return null;
+    if (sortField !== mapSortFieldToAPI(field)) return null;
     return (
       <span className="ml-1">
         {sortDirection === 'asc' ? '↑' : '↓'}
@@ -74,8 +145,7 @@ const DiscoverResults: React.FC<DiscoverResultsProps> = ({
     );
   };
 
-  const handleAddToList = async (influencer: DiscoverInfluencer) => {
-    
+  const handleAddToList = async (influencer: Influencer) => {
     if (!campaignData || !campaignData.campaign_lists || !campaignData.campaign_lists.length) {
       console.error('No campaign list found');
       return;
@@ -85,14 +155,14 @@ const DiscoverResults: React.FC<DiscoverResultsProps> = ({
     const platformId = "5d13c7b1-7e75-4fa2-86e3-2e37c2c8e84c"; // Hardcoded platform ID as requested
 
     // Set adding state for this influencer
-    setIsAdding(prev => ({ ...prev, [influencer.id]: true }));
+    setIsAdding(prev => ({ ...prev, [influencer.username]: true }));
 
     try {
       const response = await addInfluencerToList(listId, influencer, platformId);
       
       if (response.success) {
         // Update state to show influencer is added
-        setAddedInfluencers(prev => ({ ...prev, [influencer.id]: true }));
+        setAddedInfluencers(prev => ({ ...prev, [influencer.username]: true }));
         onInfluencerAdded && onInfluencerAdded();
       } else {
         console.error('Failed to add influencer to list:', response.message);
@@ -101,15 +171,69 @@ const DiscoverResults: React.FC<DiscoverResultsProps> = ({
       console.error('Error adding influencer to list:', error);
     } finally {
       // Clear adding state
-      setIsAdding(prev => ({ ...prev, [influencer.id]: false }));
+      setIsAdding(prev => ({ ...prev, [influencer.username]: false }));
     }
   };
 
-  const handleViewProfile = (influencer: DiscoverInfluencer) => {
+  const handleViewProfile = (influencer: Influencer) => {
     console.log('View profile clicked:', influencer);
   };
 
-  if (isLoading && influencers?.length === 0) {
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    if (onPageChange && page >= 1 && page <= totalPages) {
+      onPageChange(page);
+    }
+  };
+
+  // Handle page size change
+  const handlePageSizeChange = (newPageSize: number) => {
+    setShowPageSizeDropdown(false);
+    if (onPageSizeChange) {
+      onPageSizeChange(newPageSize);
+    }
+  };
+
+  // Generate page numbers for pagination
+  const generatePageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+    
+    if (totalPages <= maxVisiblePages) {
+      // Show all pages if total pages is small
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      // Show page 1, current page area, and last page with ellipsis
+      if (calculatedCurrentPage <= 3) {
+        // Show 1, 2, 3, ..., last
+        pages.push(1, 2, 3);
+        if (totalPages > 4) pages.push('...');
+        if (totalPages > 3) pages.push(totalPages);
+      } else if (calculatedCurrentPage >= totalPages - 2) {
+        // Show 1, ..., last-2, last-1, last
+        pages.push(1);
+        if (totalPages > 4) pages.push('...');
+        for (let i = totalPages - 2; i <= totalPages; i++) {
+          if (i > 1) pages.push(i);
+        }
+      } else {
+        // Show 1, ..., current-1, current, current+1, ..., last
+        pages.push(1);
+        pages.push('...');
+        pages.push(calculatedCurrentPage - 1, calculatedCurrentPage, calculatedCurrentPage + 1);
+        pages.push('...');
+        pages.push(totalPages);
+      }
+    }
+    
+    return pages;
+  };
+
+  const pageNumbers = generatePageNumbers();
+
+  if (isLoading && (!discoveredCreatorsResults?.influencers || discoveredCreatorsResults.influencers.length === 0)) {
     return (
       <div className="bg-white rounded-lg shadow p-6">
         <div className="flex justify-center py-12">
@@ -119,7 +243,7 @@ const DiscoverResults: React.FC<DiscoverResultsProps> = ({
     );
   }
 
-  if (!isLoading && influencers?.length === 0) {
+  if (!isLoading && (!discoveredCreatorsResults?.influencers || discoveredCreatorsResults.influencers.length === 0)) {
     return (
       <div className="bg-white rounded-lg shadow p-6">
         <div className="text-center py-12 text-gray-500">
@@ -142,7 +266,7 @@ const DiscoverResults: React.FC<DiscoverResultsProps> = ({
                   onClick={() => handleSort('username')}
                 >
                   <div className="flex items-center">
-                    <span className="truncate">Influencers Name ({totalResults})</span>
+                    <span className="truncate">Influencers Name ({metadata.total_results})</span>
                     {renderSortIcon('username')}
                   </div>
                 </th>
@@ -159,31 +283,31 @@ const DiscoverResults: React.FC<DiscoverResultsProps> = ({
                 <th
                   scope="col"
                   className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer w-1/10"
-                  onClick={() => handleSort('engagements')}
-                >
-                  <div className="flex items-center">
-                    <span className="truncate">Engagements</span>
-                    {renderSortIcon('engagements')}
-                  </div>
-                </th>
-                <th
-                  scope="col"
-                  className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer w-1/10"
-                  onClick={() => handleSort('avgLikes')}
-                >
-                  <div className="flex items-center">
-                    <span className="truncate">Avg Likes</span>
-                    {renderSortIcon('avgLikes')}
-                  </div>
-                </th>
-                <th
-                  scope="col"
-                  className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer w-1/10"
                   onClick={() => handleSort('engagementRate')}
                 >
                   <div className="flex items-center">
                     <span className="truncate">Eng Rate</span>
                     {renderSortIcon('engagementRate')}
+                  </div>
+                </th>
+                <th
+                  scope="col"
+                  className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer w-1/10"
+                  onClick={() => handleSort('average_likes')}
+                >
+                  <div className="flex items-center">
+                    <span className="truncate">Avg Likes</span>
+                    {renderSortIcon('average_likes')}
+                  </div>
+                </th>
+                <th
+                  scope="col"
+                  className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer w-1/10"
+                  onClick={() => handleSort('average_views')}
+                >
+                  <div className="flex items-center">
+                    <span className="truncate">Avg Views</span>
+                    {renderSortIcon('average_views')}
                   </div>
                 </th>
                 <th
@@ -207,12 +331,12 @@ const DiscoverResults: React.FC<DiscoverResultsProps> = ({
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {influencers?.map((influencer, key) => {
+              {discoveredCreatorsResults?.influencers?.map((influencer, key) => {
                 // Check if this influencer is already in shortlist or has been added during this session
-                const isAlreadyAdded = isInfluencerInShortlist(influencer) || addedInfluencers[influencer.id];
-                
+                const isAlreadyAdded = isInfluencerInShortlist(influencer) || addedInfluencers[influencer.username];
+               
                 return (
-                  <tr key={influencer.id || key} className="hover:bg-gray-50">
+                  <tr key={influencer.username || key} className="hover:bg-gray-50">
                     <td className="px-2 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-8 w-8 relative">
@@ -252,16 +376,18 @@ const DiscoverResults: React.FC<DiscoverResultsProps> = ({
                       </div>
                     </td>
                     <td className="px-2 py-4 whitespace-nowrap text-xs text-gray-500">
-                      {influencer.followers || '647.4M'}
+                      {influencer.followers?.toLocaleString() || 'N/A'}
                     </td>
                     <td className="px-2 py-4 whitespace-nowrap text-xs text-gray-500">
-                      {influencer.engagements || '195.3K'}
+                      {typeof influencer.engagementRate === 'number'
+                        ? `${(influencer.engagementRate * 100).toFixed(2)}%`
+                        : 'N/A'}
                     </td>
                     <td className="px-2 py-4 whitespace-nowrap text-xs text-gray-500">
-                      {influencer.avgLikes || '195.3K'}
+                      {influencer.average_likes?.toLocaleString() || 'N/A'}
                     </td>
                     <td className="px-2 py-4 whitespace-nowrap text-xs text-gray-500">
-                      {influencer.engagementRate || '0.03%'}
+                      {influencer.average_views?.toLocaleString() || 'N/A'}
                     </td>
                     <td className="px-2 py-4 whitespace-nowrap text-xs">
                       <button className="text-gray-500 flex items-center hover:text-gray-700">
@@ -285,10 +411,10 @@ const DiscoverResults: React.FC<DiscoverResultsProps> = ({
                       ) : (
                         <button 
                           onClick={() => handleAddToList(influencer)}
-                          disabled={isAdding[influencer.id]}
+                          disabled={isAdding[influencer.username]}
                           className="inline-flex items-center justify-center px-2 py-1 bg-purple-100 text-purple-600 rounded-md hover:bg-purple-200 transition-colors text-xs"
                         >
-                          {isAdding[influencer.id] ? (
+                          {isAdding[influencer.username] ? (
                             <div className="flex items-center">
                               <svg className="animate-spin -ml-1 mr-1 h-3 w-3 text-purple-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -321,51 +447,105 @@ const DiscoverResults: React.FC<DiscoverResultsProps> = ({
         </div>
       </div>
 
-      {/* Pagination */}
+      {/* Dynamic Pagination */}
       <div className="px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between border-t border-gray-200">
         <div className="flex items-center mb-4 sm:mb-0">
           <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-            <button className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+            {/* Previous button */}
+            <button 
+              onClick={() => handlePageChange(calculatedCurrentPage - 1)}
+              disabled={!hasPreviousPage}
+              className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               <span className="sr-only">Previous</span>
-              <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
               </svg>
             </button>
-            <button aria-current="page" className="z-10 bg-purple-50 border-purple-500 text-purple-600 relative inline-flex items-center px-4 py-2 border text-sm font-medium">
-              1
-            </button>
-            <button className="bg-white border-gray-300 text-gray-500 hover:bg-gray-50 relative inline-flex items-center px-4 py-2 border text-sm font-medium">
-              2
-            </button>
-            <button className="bg-white border-gray-300 text-gray-500 hover:bg-gray-50 relative inline-flex items-center px-4 py-2 border text-sm font-medium">
-              3
-            </button>
-            <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
-              ...
-            </span>
-            <button className="bg-white border-gray-300 text-gray-500 hover:bg-gray-50 relative inline-flex items-center px-4 py-2 border text-sm font-medium">
-              10
-            </button>
-            <button className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+
+            {/* Page numbers */}
+            {pageNumbers.map((pageNum, index) => (
+              <div key={index}>
+                {pageNum === '...' ? (
+                  <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                    ...
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => handlePageChange(pageNum as number)}
+                    className={`relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium ${
+                      pageNum === calculatedCurrentPage
+                        ? 'z-10 bg-purple-50 border-purple-500 text-purple-600'
+                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                )}
+              </div>
+            ))}
+
+            {/* Next button */}
+            <button 
+              onClick={() => handlePageChange(calculatedCurrentPage + 1)}
+              disabled={!hasNextPage}
+              className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               <span className="sr-only">Next</span>
-              <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
               </svg>
             </button>
           </nav>
         </div>
+        
         <div className="flex items-center">
           <p className="text-sm text-gray-700 mr-3">
-            Showing <span className="font-medium">1</span> to <span className="font-medium">10</span> of{' '}
-            <span className="font-medium">{totalResults || 50}</span> entries
+            Showing <span className="font-medium">{startItem}</span> to <span className="font-medium">{endItem}</span> of{' '}
+            <span className="font-medium">{metadata.total_results}</span> entries
           </p>
-          <div className="relative">
-            <button className="bg-white border border-gray-300 rounded-md shadow-sm px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none">
-              Show 8
-              <svg className="-mr-1 ml-1 h-5 w-5 inline-block" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+          <div className="ml-2 relative page-size-dropdown">
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowPageSizeDropdown(!showPageSizeDropdown);
+              }}
+              className="bg-white border border-gray-300 rounded-md shadow-sm px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none flex items-center"
+            >
+              Show {actualPageSize >= metadata.total_results ? 'All' : actualPageSize}
+              <svg className={`-mr-1 ml-1 h-5 w-5 transform transition-transform ${showPageSizeDropdown ? 'rotate-180' : ''}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
               </svg>
             </button>
+            
+            {/* Dropdown Menu - Opens UPWARD */}
+            {showPageSizeDropdown && (
+              <div className="absolute right-0 bottom-full mb-1 w-32 bg-white border border-gray-300 rounded-md shadow-lg z-50">
+                <div className="py-1">
+                  {pageSizeOptions.map((option, index) => {
+                    const isObject = typeof option === 'object';
+                    const value = isObject ? option.value : option;
+                    const label = isObject ? option.label : `Show ${option}`;
+                    const isActive = actualPageSize === value;
+                    
+                    return (
+                      <button
+                        key={index}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handlePageSizeChange(value);
+                        }}
+                        className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 transition-colors ${
+                          isActive ? 'bg-purple-50 text-purple-600 font-medium' : 'text-gray-700'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

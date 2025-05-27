@@ -18,7 +18,7 @@ export async function POST(request: Request) {
 
     // Construct the payload from the request body
     const apiPayload = {
-      audience_source: body.audience_source || "any",
+      audience_source: "instagram",
       sort: {
         field: body.sort?.field || "followers",
         direction: body.sort?.direction || "desc"
@@ -41,8 +41,6 @@ export async function POST(request: Request) {
       }
     };
 
-    console.log('API Payload:', apiPayload);
-
     const apiUrl = new URL(`${process.env.IMAI_BASE_API}/search/newv1?platform=instagram&n=0`);
 
     const controller = new AbortController();
@@ -63,7 +61,6 @@ export async function POST(request: Request) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('API Error:', errorText);
       return NextResponse.json(
         { 
           error: "external_api_error",
@@ -75,7 +72,7 @@ export async function POST(request: Request) {
     }
 
     const data = await response.json();
-    console.log('API Response:', data);
+    // console.log('API Response:', data);
 
     // Transform response
     const influencers = data.accounts?.map((item: any) => ({
@@ -98,7 +95,6 @@ export async function POST(request: Request) {
     return NextResponse.json({
       influencers,
       totalResults: data.total || 0,
-      data,
     });
 
   } catch (error: any) {

@@ -1,7 +1,8 @@
+// src/components/dashboard/campaign-funnel/discover/discover-influencers/DiscoverFilters.tsx
 import React, { useState, useRef, useEffect } from 'react';
 import { BsInstagram } from 'react-icons/bs';
 import { IoChevronDown } from 'react-icons/io5';
-import { DiscoverSearchParams } from '@/lib/types';
+import { InfluencerSearchFilter } from '@/lib/creator-discovery-types';
 
 // Import filter section components
 import DemographicsFilters from './filters/Demographics';
@@ -10,25 +11,25 @@ import ContentFilters from './filters/Content';
 import AccountFilters from './filters/Account';
 
 type DiscoverFiltersProps = {
-  filters: DiscoverSearchParams['filter'];
-  audience_source: DiscoverSearchParams['audience_source'];
-  onFilterChange: (updates: Partial<DiscoverSearchParams['filter']>) => void;
+  searchParams: InfluencerSearchFilter;
+  onFilterChange: (updates: Partial<InfluencerSearchFilter>) => void;
+  onApplyFilters: (appliedFilters: Partial<InfluencerSearchFilter>) => void;
   onClear: () => void;
 };
 
-export default function InfluencerFilters({
-  filters,
+export default function DiscoverFilters({
+  searchParams,
   onFilterChange,
+  onApplyFilters,
   onClear,
 }: DiscoverFiltersProps) {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedPlatform, setSelectedPlatform] = useState<string>('Instagram');
-  const [onlyVerified, setOnlyVerified] = useState<boolean>(false);
-  const [onlyCredible, setOnlyCredible] = useState<boolean>(false);
-  const [excludePrivate, setExcludePrivate] = useState<boolean>(false);
+  const [isApplying, setIsApplying] = useState<boolean>(false);
+  const [isClearing, setIsClearing] = useState<boolean>(false);
   
   // State to track pending filter changes before applying
-  const [pendingFilters, setPendingFilters] = useState<Partial<DiscoverSearchParams['filter']>>({});
+  const [pendingFilters, setPendingFilters] = useState<Partial<InfluencerSearchFilter>>({});
   
   // State to track which filter dropdown is open
   const [openFilterId, setOpenFilterId] = useState<string | null>(null);
@@ -49,7 +50,7 @@ export default function InfluencerFilters({
   }, []);
 
   // Handle filter changes by updating pending filters
-  const handlePendingFilterChange = (updates: Partial<DiscoverSearchParams['filter']>) => {
+  const handlePendingFilterChange = (updates: Partial<InfluencerSearchFilter>) => {
     setPendingFilters(prev => ({
       ...prev,
       ...updates
@@ -57,12 +58,36 @@ export default function InfluencerFilters({
   };
 
   // Apply all pending filters when button is clicked
-  const applyFilters = () => {
+  const applyFilters = async () => {
     if (Object.keys(pendingFilters).length > 0) {
-      onFilterChange(pendingFilters);
-      setPendingFilters({});
+      setIsApplying(true);
+      try {
+        await onApplyFilters(pendingFilters);
+        setPendingFilters({});
+        setOpenFilterId(null); // Close any open dropdowns
+      } catch (error) {
+        console.error('Error applying filters:', error);
+      } finally {
+        setIsApplying(false);
+      }
     }
-    setOpenFilterId(null); // Close any open dropdowns
+  };
+
+  // Clear all filters
+  const clearAllFilters = async () => {
+    setIsClearing(true);
+    try {
+      // Clear pending filters but don't modify existing searchParams automatically
+      setPendingFilters({});
+      setOpenFilterId(null);
+      
+      // Only call onClear to reset the actual applied filters
+      await onClear();
+    } catch (error) {
+      console.error('Error clearing filters:', error);
+    } finally {
+      setIsClearing(false);
+    }
   };
 
   // Toggle filter dropdown
@@ -75,10 +100,10 @@ export default function InfluencerFilters({
     return openFilterId === filterId;
   };
 
-  // Combine current filters with pending changes for display
-  const getDisplayFilters = () => {
+  // Combine current searchParams with pending changes for display
+  const getDisplayFilters = (): InfluencerSearchFilter => {
     return {
-      ...filters,
+      ...searchParams,
       ...pendingFilters
     };
   };
@@ -87,6 +112,9 @@ export default function InfluencerFilters({
 
   // Common style for filter buttons
   const filterButtonStyle = "flex justify-between items-center w-full bg-white text-gray-700 px-4 py-3 rounded-full border border-gray-200 hover:border-gray-300 focus:outline-none";
+
+  // Check if there are any pending changes
+  const hasPendingChanges = Object.keys(pendingFilters).length > 0;
 
   return (
     <div
@@ -114,7 +142,7 @@ export default function InfluencerFilters({
 
         {/* Demographics Filters */}
         <DemographicsFilters 
-          filters={displayFilters}
+          searchParams={displayFilters}
           onFilterChange={handlePendingFilterChange}
           filterButtonStyle={filterButtonStyle}
           openFilterId={openFilterId}
@@ -124,7 +152,7 @@ export default function InfluencerFilters({
 
         {/* Performance Filters */}
         <PerformanceFilters 
-          filters={displayFilters}
+          searchParams={displayFilters}
           onFilterChange={handlePendingFilterChange}
           filterButtonStyle={filterButtonStyle}
           openFilterId={openFilterId}
@@ -134,7 +162,7 @@ export default function InfluencerFilters({
 
         {/* Content Filters */}
         <ContentFilters 
-          filters={displayFilters}
+          searchParams={displayFilters}
           onFilterChange={handlePendingFilterChange}
           filterButtonStyle={filterButtonStyle}
           openFilterId={openFilterId}
@@ -142,42 +170,67 @@ export default function InfluencerFilters({
           isFilterOpen={isFilterOpen}
         />
 
-        {/* Account Filters */}
+        {/* Account Filters - Now uses internal toggle management */}
         <AccountFilters 
-          filters={displayFilters}
+          searchParams={displayFilters}
           onFilterChange={handlePendingFilterChange}
           filterButtonStyle={filterButtonStyle}
           openFilterId={openFilterId}
           toggleFilterDropdown={toggleFilterDropdown}
           isFilterOpen={isFilterOpen}
-          onlyVerified={onlyVerified}
-          setOnlyVerified={setOnlyVerified}
-          onlyCredible={onlyCredible}
-          setOnlyCredible={setOnlyCredible}
-          excludePrivate={excludePrivate}
-          setExcludePrivate={setExcludePrivate}
         />
+
+        {/* Pending Changes Indicator */}
+        {/* {hasPendingChanges && (
+          <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+            <div className="text-xs font-medium text-yellow-700 mb-1">
+              Pending Changes ({Object.keys(pendingFilters).length}):
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {Object.entries(pendingFilters).map(([key, value]) => (
+                <span 
+                  key={key}
+                  className="inline-flex items-center text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full"
+                >
+                  {key}: {String(value)}
+                </span>
+              ))}
+            </div>
+            <div className="text-xs text-yellow-600 mt-2">
+              Click "Apply Filters" to save these changes
+            </div>
+          </div>
+        )} */}
 
         {/* Action Buttons */}
-        <div className="flex justify-end space-x-4">
+        <div className="flex justify-end space-x-4 mt-6">
           <button 
-            onClick={() => {
-              setPendingFilters({});
-              onClear();
-              setOpenFilterId(null);
-              setOnlyVerified(false);
-              setOnlyCredible(false);
-              setExcludePrivate(false);
-            }}
-            className="border border-gray-300 text-gray-500 px-8 py-2 rounded-full hover:bg-gray-100 shadow-sm"
+            onClick={clearAllFilters}
+            disabled={isClearing || isApplying}
+            className={`border border-gray-300 px-8 py-2 rounded-full shadow-sm transition-colors flex items-center gap-2 ${
+              isClearing || isApplying
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                : 'text-gray-500 hover:bg-gray-100'
+            }`}
           >
-            Cancel
+            {isClearing && (
+              <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+            )}
+            Clear
           </button>
           <button 
             onClick={applyFilters}
-            className="bg-purple-600 text-white px-8 py-2 rounded-full hover:bg-purple-700 shadow-md"
+            disabled={!hasPendingChanges || isApplying || isClearing}
+            className={`px-8 py-2 rounded-full shadow-md transition-colors flex items-center gap-2 ${
+              hasPendingChanges && !isApplying && !isClearing
+                ? 'bg-purple-600 text-white hover:bg-purple-700'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
           >
-            Apply Filters
+            {isApplying && (
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            )}
+            Apply Filters {hasPendingChanges && !isApplying && `(${Object.keys(pendingFilters).length})`}
           </button>
         </div>
       </div>

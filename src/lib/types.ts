@@ -132,20 +132,45 @@ export interface DiscoverApiResponse {
     n: number,
   }
 
-
+//---------------------------------------New-----------------------------------------
+// Updated Location interface to support string IDs and match API response
 export interface Location {
-  id: number;
+  id: string; // UUID from API
   name: string;
-  title: string;
-  type: 'city' | 'country';
-  country: {
-    id: number;
-    code: string;
-    name: string;
+  display_name?: string; // Optional display name from API
+  type?: 'CITY' | 'COUNTRY' | 'STATE' | 'REGION'; // Match API type values
+}
+
+// Updated GeoLocation interface for filter usage
+export interface GeoLocation {
+  id: string; // Changed from number to string (UUID)
+  weight: number;
+}
+
+// Creator location selection interface
+export interface CreatorLocationSelection {
+  id: string;
+  name: string;
+  display_name?: string;
+  type?: 'CITY' | 'COUNTRY' | 'STATE' | 'REGION';
+}
+
+// API response interface for locations
+export interface LocationSearchResponse {
+  success: boolean;
+  data: Location[];
+  meta?: {
+    search_string: string;
+    limit: number;
+    offset: number;
+    count: number;
+    total?: number;
   };
-  city: {
-    id: number;
+  error?: {
+    type: string;
     code: string;
-  }
+    message: string;
+    status_code: number;
+  };
 }
 

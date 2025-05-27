@@ -1,17 +1,19 @@
+// src/components/dashboard/campaign-funnel/discover/discover-influencers/filters/Content/index.tsx
 import React from 'react';
 import { IoChevronDown } from 'react-icons/io5';
 import NicheAI from './NicheAI';
 import TopicsAI from './TopicsAI';
+import Hashtags from './Hashtags';
 import LookalikeAI from './LookalikeAI';
 import Mentions from './Mentions';
 import Interests from './Interests';
 import CaptionKeyword from './CaptionKeyword';
 import Partnerships from './Partnerships';
-import { DiscoverSearchParams } from '@/lib/types';
+import { InfluencerSearchFilter } from '@/lib/creator-discovery-types';
 
 type ContentFiltersProps = {
-  filters: DiscoverSearchParams['filter'];
-  onFilterChange: (updates: Partial<DiscoverSearchParams['filter']>) => void;
+  searchParams: InfluencerSearchFilter;
+  onFilterChange: (updates: Partial<InfluencerSearchFilter>) => void;
   filterButtonStyle: string;
   openFilterId: string | null;
   toggleFilterDropdown: (filterId: string) => void;
@@ -19,73 +21,76 @@ type ContentFiltersProps = {
 };
 
 const ContentFilters: React.FC<ContentFiltersProps> = ({
-  filters,
+  searchParams,
   onFilterChange,
   filterButtonStyle,
   openFilterId,
   toggleFilterDropdown,
   isFilterOpen
 }) => {
+
   return (
     <div className="mb-6">
       <h3 className="text-sm font-medium text-gray-600 mb-3">Content</h3>
       <div className="grid grid-cols-3 gap-4 mb-4">
         <NicheAI
-          filters={filters}
+          filters={searchParams}
           onFilterChange={onFilterChange}
           isOpen={isFilterOpen('nicheAI')}
           onToggle={() => toggleFilterDropdown('nicheAI')}
         />
         
         <TopicsAI
-          filters={filters}
+          filters={searchParams}
           onFilterChange={onFilterChange}
           isOpen={isFilterOpen('topicsAI')}
           onToggle={() => toggleFilterDropdown('topicsAI')}
         />
         
         <LookalikeAI
-          filters={filters}
+          filters={searchParams}
           onFilterChange={onFilterChange}
           isOpen={isFilterOpen('lookalikeAI')}
           onToggle={() => toggleFilterDropdown('lookalikeAI')}
         />
-        
-        <Mentions
-          filters={filters}
+
+        <Hashtags
+          filters={searchParams}
           onFilterChange={onFilterChange}
-          isOpen={isFilterOpen('mentions')}
-          onToggle={() => toggleFilterDropdown('mentions')}
+          isOpen={isFilterOpen('hashtags')}
+          onToggle={() => toggleFilterDropdown('hashtags')}
         />
         
         <Interests
-          filters={filters}
+          filters={searchParams}
           onFilterChange={onFilterChange}
           isOpen={isFilterOpen('interests')}
           onToggle={() => toggleFilterDropdown('interests')}
         />
         
-        <CaptionKeyword
-          filters={filters}
+        <Mentions
+          filters={searchParams}
           onFilterChange={onFilterChange}
-          isOpen={isFilterOpen('captionKeyword')}
-          onToggle={() => toggleFilterDropdown('captionKeyword')}
+          isOpen={isFilterOpen('mentions')}
+          onToggle={() => toggleFilterDropdown('mentions')}
         />
+        
+        
       </div>
       
       {/* Partnerships row - 2 items side by side */}
       <div className="grid grid-cols-2 gap-4">
+        <CaptionKeyword
+          filters={searchParams}
+          onFilterChange={onFilterChange}
+          isOpen={isFilterOpen('captionKeyword')}
+          onToggle={() => toggleFilterDropdown('captionKeyword')}
+        />
         <Partnerships
-          filters={filters}
+          filters={searchParams}
           onFilterChange={onFilterChange}
           isOpen={isFilterOpen('partnerships1')}
           onToggle={() => toggleFilterDropdown('partnerships1')}
-        />
-        <Partnerships
-          filters={filters}
-          onFilterChange={onFilterChange}
-          isOpen={isFilterOpen('partnerships2')}
-          onToggle={() => toggleFilterDropdown('partnerships2')}
         />
       </div>
     </div>

@@ -1,17 +1,14 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { IoTextOutline } from 'react-icons/io5';
+// src/components/dashboard/campaign-funnel/discover/discover-influencers/filters/Content/CaptionKeyword.tsx
+import React, { useState, useEffect, useRef } from 'react';
+import { IoTextOutline, IoInformationCircleOutline } from 'react-icons/io5';
 import FilterComponent from '../FilterComponent';
-import { DiscoverSearchParams } from '@/lib/types';
+import { InfluencerSearchFilter } from '@/lib/creator-discovery-types';
 
 interface CaptionKeywordProps {
-  filters: DiscoverSearchParams['filter'];
-  onFilterChange: (updates: Partial<DiscoverSearchParams['filter']>) => void;
+  filters: InfluencerSearchFilter;
+  onFilterChange: (updates: Partial<InfluencerSearchFilter>) => void;
   isOpen: boolean;
   onToggle: () => void;
-}
-
-interface KeywordSuggestion {
-  keyword: string;
 }
 
 const CaptionKeyword: React.FC<CaptionKeywordProps> = ({
@@ -20,99 +17,29 @@ const CaptionKeyword: React.FC<CaptionKeywordProps> = ({
   isOpen,
   onToggle,
 }) => {
-  const [keyword, setKeyword] = useState<string>(filters.keywords || '');
-  const [suggestions, setSuggestions] = useState<KeywordSuggestion[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [keyword, setKeyword] = useState<string>(filters.description_keywords || '');
+  const [inputValue, setInputValue] = useState<string>('');
+  const [showTooltip, setShowTooltip] = useState(false);
+  
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
   const shouldUpdateParent = useRef<boolean>(false);
 
+  // Initialize with existing filters
   useEffect(() => {
-    if (filters.keywords !== undefined && filters.keywords !== keyword) {
-      setKeyword(filters.keywords);
+    if (filters.description_keywords !== undefined && filters.description_keywords !== keyword) {
+      setKeyword(filters.description_keywords);
     }
-  }, [filters.keywords]);
+  }, [filters.description_keywords]);
 
-  const fetchSuggestions = useCallback(async (query: string) => {
-    if (query.length < 2) {
-      setSuggestions([]);
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const response = await fetch(`/api/keywords/suggestions?q=${encodeURIComponent(query)}`);
-      const data = await response.json();
-
-      let results: KeywordSuggestion[] = [];
-
-      if (Array.isArray(data)) {
-        results = data.map(item => ({ keyword: item }));
-      } else if (data?.suggestions) {
-        results = data.suggestions.map((item: any) => ({
-          keyword: typeof item === 'string' ? item : item.keyword
-        }));
-      } else if (data?.results) {
-        results = data.results.map((item: any) => ({
-          keyword: typeof item === 'string' ? item : item.keyword
-        }));
-      } else if (data?.data) {
-        results = data.data.map((item: any) => ({
-          keyword: typeof item === 'string' ? item : item.keyword
-        }));
-      }
-
-      setSuggestions(results);
-    } catch (error) {
-      console.error('Error fetching keyword suggestions:', error);
-      setSuggestions([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!shouldUpdateParent.current) return;
-
-    const timer = setTimeout(() => {
-      const trimmed = keyword.trim();
-      onFilterChange({ keywords: trimmed || undefined });
-      shouldUpdateParent.current = false;
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [keyword, onFilterChange]);
-
-  useEffect(() => {
-    if (keyword.length > 1) {
-      fetchSuggestions(keyword);
-    } else {
-      setSuggestions([]);
-    }
-  }, [keyword, fetchSuggestions]);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    shouldUpdateParent.current = true;
-    setKeyword(e.target.value);
-  };
-
-  const handleSelectKeyword = (selected: string) => {
-    shouldUpdateParent.current = true;
-    setKeyword(selected);
-    setSuggestions([]);
-    onToggle(); // Close the dropdown
-  };
-
-  const clearKeyword = () => {
-    shouldUpdateParent.current = true;
-    setKeyword('');
-    setSuggestions([]);
-    onFilterChange({ keywords: undefined });
-  };
-
+  // Handle clicks outside dropdown and tooltip
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         onToggle(); // Close when clicking outside
+      }
+      if (tooltipRef.current && !tooltipRef.current.contains(event.target as Node)) {
+        setShowTooltip(false);
       }
     };
 
@@ -122,55 +49,113 @@ const CaptionKeyword: React.FC<CaptionKeywordProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen, onToggle]);
 
+  // Debounced update to parent
+  useEffect(() => {
+    if (!shouldUpdateParent.current) return;
+
+    const timer = setTimeout(() => {
+      const trimmed = keyword.trim();
+      onFilterChange({ description_keywords: trimmed || undefined });
+      shouldUpdateParent.current = false;
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [keyword, onFilterChange]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputValue(e.target.value);
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && inputValue.trim()) {
+      const trimmedValue = inputValue.trim();
+      shouldUpdateParent.current = true;
+      setKeyword(trimmedValue);
+      setInputValue('');
+    }
+  };
+
+  const clearKeyword = () => {
+    shouldUpdateParent.current = true;
+    setKeyword('');
+    setInputValue('');
+    onFilterChange({ description_keywords: undefined });
+  };
+
+  // Clear tooltip when component closes
+  useEffect(() => {
+    if (!isOpen) {
+      setShowTooltip(false);
+    }
+  }, [isOpen]);
+
   return (
     <FilterComponent
+      hasActiveFilters={!!keyword}
       icon={<IoTextOutline size={18} />}
-      title="Caption Keyword"
+      title="Caption Keywords"
       isOpen={isOpen}
       onToggle={onToggle}
+      className=''
     >
       <div className="space-y-3 relative" ref={dropdownRef}>
-        <div>
-          <h4 className="text-sm font-medium text-gray-600 mb-1">Caption Keyword</h4>
-          <p className="text-xs text-gray-500 mb-2">
-            Tip: Search using the influencer's native language (e.g., German for German influencers).
-          </p>
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Search keywords..."
-              value={keyword}
-              onChange={handleInputChange}
-              onFocus={onToggle}
-              className="w-full p-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-300"
-            />
-            {isLoading && (
-              <div className="absolute right-3 top-2.5">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
-              </div>
-            )}
+        
+        {/* Header with Tooltip */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <h4 className="text-sm font-medium text-gray-600">Caption Keywords</h4>
+            
+            {/* Info Icon with Tooltip */}
+            <div className="relative" ref={tooltipRef}>
+              <button
+                type="button"
+                className="text-gray-400 hover:text-purple-500 transition-colors"
+                onMouseEnter={() => setShowTooltip(true)}
+                onMouseLeave={() => setShowTooltip(false)}
+                onClick={() => setShowTooltip(!showTooltip)}
+              >
+                <IoInformationCircleOutline size={14} />
+              </button>
+              
+              {/* Tooltip */}
+              {showTooltip && (
+                <div className="absolute left-0 top-6 z-[200] w-64 bg-gray-800 text-white text-xs rounded-lg p-3 shadow-lg">
+                  <div className="relative">
+                    {/* Tooltip arrow */}
+                    <div className="absolute -top-1 left-3 w-2 h-2 bg-gray-800 transform rotate-45"></div>
+                    
+                    {/* Tooltip content */}
+                    <div className="leading-relaxed">
+                      Filter creators by keywords that can be found in creator's posts captions.
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        {isOpen && suggestions.length > 0 && (
-          <div className="absolute z-50 w-full bg-white shadow-lg rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto max-h-60 mt-1">
-            {suggestions.map((suggestion, index) => (
-              <div
-                key={index}
-                className="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-purple-50"
-                onClick={() => handleSelectKeyword(suggestion.keyword)}
-              >
-                <div className="flex items-center">
-                  <span className="font-medium ml-3 block truncate">{suggestion.keyword}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <div>
+          
+          {/* Show input only when no keyword is set */}
+          {!keyword && (
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Enter keyword and press Enter..."
+                value={inputValue}
+                onChange={handleInputChange}
+                onKeyPress={handleKeyPress}
+                className="w-full p-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-300"
+              />
+            </div>
+          )}
+        </div>
 
+        {/* Show selected keyword */}
         {keyword && (
           <div className="mt-2">
-            <p className="text-xs text-gray-500">Filtering by keyword:</p>
+            <span className="text-xs text-gray-500">Filtering by keyword:</span>
             <div className="bg-purple-100 inline-flex items-center rounded-full px-3 py-1 mt-1">
               <span className="text-xs text-purple-800">{keyword}</span>
               <button

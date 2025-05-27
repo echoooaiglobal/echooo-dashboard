@@ -1,60 +1,155 @@
-import React from 'react';
-import { IoChevronDown } from 'react-icons/io5';
+// src/components/dashboard/campaign-funnel/discover/discover-influencers/filters/Account/index.tsx
+import React, { useState, useRef, useEffect } from 'react';
+import { IoChevronDown, IoInformationCircleOutline } from 'react-icons/io5';
 import LastPost from './LastPost';
 import AccountType from './AccountType';
 import Contacts from './Contacts';
-import { DiscoverSearchParams } from '@/lib/types';
+import { InfluencerSearchFilter } from '@/lib/creator-discovery-types';
 
 type AccountFiltersProps = {
-  filters: DiscoverSearchParams['filter'];
-  onFilterChange: (updates: Partial<DiscoverSearchParams['filter']>) => void;
+  searchParams: InfluencerSearchFilter;
+  onFilterChange: (updates: Partial<InfluencerSearchFilter>) => void;
   filterButtonStyle: string;
   openFilterId: string | null;
   toggleFilterDropdown: (filterId: string) => void;
   isFilterOpen: (filterId: string) => boolean;
-  onlyVerified: boolean;
-  setOnlyVerified: (value: boolean) => void;
-  onlyCredible: boolean;
-  setOnlyCredible: (value: boolean) => void;
-  excludePrivate: boolean;
-  setExcludePrivate: (value: boolean) => void;
+};
+
+// Toggle Switch Component
+const ToggleSwitch: React.FC<{
+  id: string;
+  label: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  tooltip?: string;
+  disabled?: boolean;
+}> = ({ id, label, checked, onChange, tooltip, disabled = false }) => {
+  const [showTooltip, setShowTooltip] = useState(false);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (tooltipRef.current && !tooltipRef.current.contains(event.target as Node)) {
+        setShowTooltip(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <div className="flex items-center gap-2">
+      {/* Toggle Switch */}
+      <div className="flex items-center">
+        <label htmlFor={id} className="inline-flex relative items-center cursor-pointer">
+          <input
+            type="checkbox"
+            id={id}
+            checked={checked}
+            onChange={(e) => onChange(e.target.checked)}
+            disabled={disabled}
+            className="sr-only peer"
+          />
+          <div className={`relative w-11 h-6 rounded-full transition-colors duration-200 ease-in-out ${
+            disabled 
+              ? 'bg-gray-200 cursor-not-allowed' 
+              : checked 
+                ? 'bg-purple-600' 
+                : 'bg-gray-200'
+          } peer-focus:ring-4 peer-focus:ring-purple-300`}>
+            <div className={`absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-5 w-5 transition-transform duration-200 ease-in-out ${
+              checked ? 'translate-x-5' : 'translate-x-0'
+            }`}></div>
+          </div>
+        </label>
+      </div>
+
+      {/* Label */}
+      <label 
+        htmlFor={id} 
+        className={`text-sm cursor-pointer select-none ${
+          disabled ? 'text-gray-400' : 'text-gray-700 hover:text-gray-900'
+        }`}
+      >
+        {label}
+      </label>
+
+      {/* Tooltip */}
+      {tooltip && (
+        <div className="relative" ref={tooltipRef}>
+          <button
+            type="button"
+            className="text-gray-400 hover:text-purple-500 transition-colors"
+            onMouseEnter={() => setShowTooltip(true)}
+            onMouseLeave={() => setShowTooltip(false)}
+            onClick={() => setShowTooltip(!showTooltip)}
+          >
+            <IoInformationCircleOutline size={14} />
+          </button>
+          
+          {showTooltip && (
+            <div className="absolute left-0 top-6 z-[200] w-64 bg-gray-800 text-white text-xs rounded-lg p-3 shadow-lg">
+              <div className="relative">
+                {/* Tooltip arrow */}
+                <div className="absolute -top-1 left-3 w-2 h-2 bg-gray-800 transform rotate-45"></div>
+                
+                {/* Tooltip content */}
+                <div className="leading-relaxed">
+                  {tooltip}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 };
 
 const AccountFilters: React.FC<AccountFiltersProps> = ({
-  filters,
+  searchParams,
   onFilterChange,
   filterButtonStyle,
   openFilterId,
   toggleFilterDropdown,
   isFilterOpen,
-  onlyVerified,
-  setOnlyVerified,
-  onlyCredible,
-  setOnlyCredible,
-  excludePrivate,
-  setExcludePrivate
 }) => {
+  const handleToggleChange = (filterKey: keyof InfluencerSearchFilter, value: boolean) => {
+    // Create update object with only the specific filter being changed
+    const updates: Partial<InfluencerSearchFilter> = {};
+    
+    // Set the specific filter value (or undefined if false to remove it)
+    if (value) {
+      (updates as any)[filterKey] = true;
+    } else {
+      (updates as any)[filterKey] = undefined; // Remove the filter when turned off
+    }
+    
+    onFilterChange(updates);
+  };
+
   return (
     <>
       <div className="mb-6">
         <h3 className="text-sm font-medium text-gray-600 mb-3">Account</h3>
         <div className="grid grid-cols-3 gap-4">
           <LastPost
-            filters={filters}
+            filters={searchParams}
             onFilterChange={onFilterChange}
             isOpen={isFilterOpen('lastPost')}
             onToggle={() => toggleFilterDropdown('lastPost')}
           />
           
           <AccountType
-            filters={filters}
+            filters={searchParams}
             onFilterChange={onFilterChange}
             isOpen={isFilterOpen('accountType')}
             onToggle={() => toggleFilterDropdown('accountType')}
           />
           
           <Contacts
-            filters={filters}
+            filters={searchParams}
             onFilterChange={onFilterChange}
             isOpen={isFilterOpen('contacts')}
             onToggle={() => toggleFilterDropdown('contacts')}
@@ -64,57 +159,64 @@ const AccountFilters: React.FC<AccountFiltersProps> = ({
 
       {/* Account Options */}
       <div className="mb-8">
-        <div className="flex flex-wrap gap-8">
-          <div className="flex items-center">
-            <input
-              type="radio"
-              id="onlyVerified"
-              checked={onlyVerified}
-              onChange={() => {
-                setOnlyVerified(true);
-                setOnlyCredible(false);
-                setExcludePrivate(false);
-              }}
-              className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
-            />
-            <label htmlFor="onlyVerified" className="ml-2 text-sm text-gray-700">
-              Only Verified Accounts
-            </label>
-          </div>
+        <h4 className="text-sm font-medium text-gray-600 mb-4">Account Options</h4>
+        
+        {/* Grid Layout for Toggle Switches */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           
-          <div className="flex items-center">
-            <input
-              type="radio"
-              id="onlyCredible"
-              checked={onlyCredible}
-              onChange={() => {
-                setOnlyVerified(false);
-                setOnlyCredible(true);
-                setExcludePrivate(false);
-              }}
-              className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
-            />
-            <label htmlFor="onlyCredible" className="ml-2 text-sm text-gray-700">
-              Only Credible Accounts
-            </label>
-          </div>
-          
-          <div className="flex items-center">
-            <input
-              type="radio"
-              id="excludePrivate"
-              checked={excludePrivate}
-              onChange={() => {
-                setOnlyVerified(false);
-                setOnlyCredible(false);
-                setExcludePrivate(true);
-              }}
-              className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
-            />
-            <label htmlFor="excludePrivate" className="ml-2 text-sm text-gray-700">
-              Exclude Private Accounts
-            </label>
-          </div>
+          {/* Verification Status */}
+          <ToggleSwitch
+            id="isVerified"
+            label="Only Verified Accounts"
+            checked={Boolean(searchParams.is_verified)}
+            onChange={(checked) => handleToggleChange('is_verified', checked)}
+            tooltip="Filter profiles by platform verification status. Shows only accounts with verified badges."
+          />
+
+          {/* Contact Details */}
+          <ToggleSwitch
+            id="hasContactDetails"
+            label="Has Contact Details"
+            checked={Boolean(searchParams.has_contact_details)}
+            onChange={(checked) => handleToggleChange('has_contact_details', checked)}
+            tooltip="Filter profiles by availability of contact details. Shows creators with accessible contact information."
+          />
+
+          {/* Sponsored Posts (Instagram only) */}
+          <ToggleSwitch
+            id="hasSponsoredPosts"
+            label="Has Sponsored Posts"
+            checked={Boolean(searchParams.has_sponsored_posts)}
+            onChange={(checked) => handleToggleChange('has_sponsored_posts', checked)}
+            tooltip="Filter profiles which have sponsored posts. Only available for Instagram creators."
+          />
+
+          {/* Official Artist (YouTube only) */}
+          <ToggleSwitch
+            id="isOfficialArtist"
+            label="Official Artist"
+            checked={Boolean(searchParams.is_official_artist)}
+            onChange={(checked) => handleToggleChange('is_official_artist', checked)}
+            tooltip="Filter YouTube profiles which are official artists. Shows music creators with official artist status."
+          />
+
+          {/* Audience Info */}
+          <ToggleSwitch
+            id="hasAudienceInfo"
+            label="Has Audience Info"
+            checked={Boolean(searchParams.has_audience_info)}
+            onChange={(checked) => handleToggleChange('has_audience_info', checked)}
+            tooltip="Fetches only profiles with audience information. Shows creators with demographic and engagement data."
+          />
+
+          {/* Exclude Private Profiles */}
+          <ToggleSwitch
+            id="excludePrivateProfiles"
+            label="Exclude Private Accounts"
+            checked={Boolean(searchParams.exclude_private_profiles)}
+            onChange={(checked) => handleToggleChange('exclude_private_profiles', checked)}
+            tooltip="Filter to exclude private profiles. Shows only public accounts that are accessible to everyone."
+          />
         </div>
       </div>
     </>
