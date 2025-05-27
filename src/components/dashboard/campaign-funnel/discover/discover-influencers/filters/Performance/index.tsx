@@ -1,14 +1,15 @@
+// src/components/dashboard/campaign-funnel/discover/discover-influencers/filters/Performance/index.tsx
 import React from 'react';
 import { IoChevronDown } from 'react-icons/io5';
 import Followers from './Followers';
 import Engagements from './Engagements';
 import Trending from './Trending';
 import ReelsPlays from './ReelsPlays';
-import { DiscoverSearchParams } from '@/lib/types';
+import { InfluencerSearchFilter } from '@/lib/creator-discovery-types';
 
 type PerformanceFiltersProps = {
-  filters: DiscoverSearchParams['filter'];
-  onFilterChange: (updates: Partial<DiscoverSearchParams['filter']>) => void;
+  searchParams: InfluencerSearchFilter;
+  onFilterChange: (updates: Partial<InfluencerSearchFilter>) => void;
   filterButtonStyle: string;
   openFilterId: string | null;
   toggleFilterDropdown: (filterId: string) => void;
@@ -16,13 +17,20 @@ type PerformanceFiltersProps = {
 };
 
 const PerformanceFilters: React.FC<PerformanceFiltersProps> = ({
-  filters,
+  searchParams,
   onFilterChange,
   filterButtonStyle,
   openFilterId,
   toggleFilterDropdown,
   isFilterOpen
 }) => {
+
+  // Enhanced filter change handler with logging
+  // const handleFilterChange = (updates: Partial<InfluencerSearchFilter>) => {  
+  //   // Call the parent's filter change handler
+  //   onFilterChange(updates);
+  // };
+
   return (
     <div className="mb-6">
       <h3 className="text-sm font-medium text-gray-600 mb-3">
@@ -30,19 +38,19 @@ const PerformanceFilters: React.FC<PerformanceFiltersProps> = ({
       </h3>
       <div className="grid grid-cols-3 gap-4 mb-4">
         <Followers
-          filters={filters}
+          filters={searchParams}
           onFilterChange={onFilterChange}
           isOpen={isFilterOpen('followers')}
           onToggle={() => toggleFilterDropdown('followers')}
         />
         <Engagements
-          filters={filters}
+          filters={searchParams}
           onFilterChange={onFilterChange}
           isOpen={isFilterOpen('engagements')}
           onToggle={() => toggleFilterDropdown('engagements')}
         />
         <Trending
-          filters={filters}
+          filters={searchParams}
           onFilterChange={onFilterChange}
           isOpen={isFilterOpen('trending')}
           onToggle={() => toggleFilterDropdown('trending')}
@@ -50,7 +58,7 @@ const PerformanceFilters: React.FC<PerformanceFiltersProps> = ({
       </div>
       <div className="grid grid-cols-1 gap-4">
         <ReelsPlays
-          filters={filters}
+          filters={searchParams}
           onFilterChange={onFilterChange}
           isOpen={isFilterOpen('reelsPlays')}
           onToggle={() => toggleFilterDropdown('reelsPlays')}

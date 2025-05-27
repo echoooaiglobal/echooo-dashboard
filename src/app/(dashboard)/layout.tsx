@@ -53,14 +53,14 @@ export default function DashboardLayout({
     return <SessionExpiredModal />;
   }
   
-  // Log what's available in development 
+ 
   if (process.env.NODE_ENV === 'development') {
-    console.log('Dashboard Layout:', {
-      userType: user.user_type,
-      hasPlatformSlot: !!platform,
-      hasCompanySlot: !!company,
-      hasInfluencerSlot: !!influencer,
-    });
+      console.log('Dashboard Layout:', {
+        userType: user.user_type,
+        hasPlatformSlot: !!platform,
+        hasCompanySlot: !!company,
+        hasInfluencerSlot: !!influencer,
+      });
   }
   
   // The content to display based on user type

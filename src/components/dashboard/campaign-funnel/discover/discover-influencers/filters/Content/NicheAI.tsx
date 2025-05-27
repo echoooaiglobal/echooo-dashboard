@@ -2,32 +2,33 @@ import React, { useState, useEffect } from 'react';
 import { IoGridOutline } from 'react-icons/io5';
 import { FaRobot } from 'react-icons/fa';
 import FilterComponent from '../FilterComponent';
-import { DiscoverSearchParams } from '@/lib/types';
+import { InfluencerSearchFilter } from '@/lib/creator-discovery-types';
 
 interface NicheAIProps {
-  filters: DiscoverSearchParams['filter'];
-  onFilterChange: (updates: Partial<DiscoverSearchParams['filter']>) => void;
-  isOpen: boolean;
-  onToggle: () => void;
+  filters: InfluencerSearchFilter;
+    onFilterChange: (updates: Partial<InfluencerSearchFilter>) => void;
+    isOpen: boolean;
+    onToggle: () => void;
 }
 
 const NicheAI: React.FC<NicheAIProps> = ({ filters, onFilterChange, isOpen, onToggle }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedNiches, setSelectedNiches] = useState<string[]>(filters.niches || []);
+  const [selectedNiches, setSelectedNiches] = useState<string[]>([]);
+  // const [selectedNiches, setSelectedNiches] = useState<string[]>(filters.niches || []);
   const [suggestedNiches, setSuggestedNiches] = useState<string[]>([]);
 
   // Initialize with existing filters - but only when filters.niches truly changes
-  useEffect(() => {
-    if (filters.niches) {
-      const areArraysDifferent =
-        filters.niches.length !== selectedNiches.length ||
-        filters.niches.some(niche => !selectedNiches.includes(niche));
+  // useEffect(() => {
+  //   if (filters.niches) {
+  //     const areArraysDifferent =
+  //       filters.niches.length !== selectedNiches.length ||
+  //       filters.niches.some(niche => !selectedNiches.includes(niche));
 
-      if (areArraysDifferent) {
-        setSelectedNiches(filters.niches);
-      }
-    }
-  }, [filters.niches]); // Only depend on filters.niches, not selectedNiches
+  //     if (areArraysDifferent) {
+  //       setSelectedNiches(filters.niches);
+  //     }
+  //   }
+  // }, [filters.niches]); // Only depend on filters.niches, not selectedNiches
 
   // Popular niches list - moved outside of useEffect to prevent unnecessary recreations
   const popularNiches = [
@@ -57,7 +58,7 @@ const NicheAI: React.FC<NicheAIProps> = ({ filters, onFilterChange, isOpen, onTo
     if (!selectedNiches.includes(niche)) {
       const newNiches = [...selectedNiches, niche];
       setSelectedNiches(newNiches);
-      onFilterChange({ niches: newNiches });
+      // onFilterChange({ niches: newNiches });
     }
     setSearchQuery(''); // Clear search after selection
   };
@@ -65,7 +66,7 @@ const NicheAI: React.FC<NicheAIProps> = ({ filters, onFilterChange, isOpen, onTo
   const handleRemoveNiche = (nicheToRemove: string) => {
     const newNiches = selectedNiches.filter(niche => niche !== nicheToRemove);
     setSelectedNiches(newNiches);
-    onFilterChange({ niches: newNiches });
+    // onFilterChange({ niches: newNiches });
   };
 
   return (
@@ -74,6 +75,7 @@ const NicheAI: React.FC<NicheAIProps> = ({ filters, onFilterChange, isOpen, onTo
       title="Niche AI"
       isOpen={isOpen}
       onToggle={onToggle}
+      className=""
     >
       <div className="space-y-3">
         <h4 className="text-xs font-medium text-gray-600 mb-1">

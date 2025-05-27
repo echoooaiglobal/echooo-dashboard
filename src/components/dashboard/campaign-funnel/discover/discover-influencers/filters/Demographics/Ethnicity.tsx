@@ -1,11 +1,12 @@
+// src/components/dashboard/campaign-funnel/discover/discover-influencers/filters/Demographics/Ethnicity.tsx
 import React from 'react';
 import { IoEarthOutline } from 'react-icons/io5';
 import FilterComponent from '../FilterComponent';
-import { DiscoverSearchParams } from '@/lib/types';
+import { InfluencerSearchFilter } from '@/lib/creator-discovery-types';
 
 interface EthnicityFilterProps {
-  filters: DiscoverSearchParams['filter'];
-  onFilterChange: (updates: Partial<DiscoverSearchParams['filter']>) => void;
+  filters: InfluencerSearchFilter;
+  onFilterChange: (updates: Partial<InfluencerSearchFilter>) => void;
   isOpen: boolean;
   onToggle: () => void;
 }
@@ -30,25 +31,25 @@ const Ethnicity: React.FC<EthnicityFilterProps> = ({
   const percentageOptions = Array.from({ length: 18 }, (_, i) => (i + 1) * 5);
 
   const handleEthnicityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const selectedCode = e.target.value;
-    const currentWeight = filters.audience_race?.weight || 0;
+    // const selectedCode = e.target.value;
+    // const currentWeight = filters.audience_race?.weight || 0;
 
-    onFilterChange({
-      audience_race: {
-        code: selectedCode,
-        weight: selectedCode ? currentWeight || 0.3 : 0
-      }
-    });
+    // onFilterChange({
+    //   audience_race: {
+    //     code: selectedCode,
+    //     weight: selectedCode ? currentWeight || 0.3 : 0
+    //   }
+    // });
   };
 
   const handlePercentageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const percentage = parseInt(e.target.value || '0');
-    onFilterChange({
-      audience_race: {
-        ...filters.audience_race,
-        weight: percentage / 100
-      }
-    });
+    // const percentage = parseInt(e.target.value || '0');
+    // onFilterChange({
+    //   audience_race: {
+    //     ...filters.audience_race,
+    //     weight: percentage / 100
+    //   }
+    // });
   };
 
   return (
@@ -62,7 +63,7 @@ const Ethnicity: React.FC<EthnicityFilterProps> = ({
       <div className="space-y-3 p-3">
         {/* Ethnicity Dropdown */}
         <select
-          value={filters.audience_race?.code || ''}
+          // value={filters.audience_race?.code || ''}
           onChange={handleEthnicityChange}
           className="w-full p-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-300"
         >
@@ -75,7 +76,7 @@ const Ethnicity: React.FC<EthnicityFilterProps> = ({
 
         {/* Percentage Threshold Dropdown */}
         <select
-          value={filters.audience_race?.weight ? Math.round(filters.audience_race.weight * 100) : ''}
+          // value={filters.audience_race?.weight ? Math.round(filters.audience_race.weight * 100) : ''}
           onChange={handlePercentageChange}
           className="w-full p-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-300"
         >
@@ -88,14 +89,14 @@ const Ethnicity: React.FC<EthnicityFilterProps> = ({
         </select>
 
         {/* Display Current Filter */}
-        {filters.audience_race?.code && (
+        {/* {filters.audience_race?.code && (
           <div className="text-xs text-purple-600 mt-2">
             Filtering: {ethnicityOptions.find(o => o.code === filters.audience_race?.code)?.name}
             {filters.audience_race?.weight
               ? ` (>${Math.round(filters.audience_race.weight * 100)}% audience)`
               : ''}
           </div>
-        )}
+        )} */}
       </div>
     </FilterComponent>
   );

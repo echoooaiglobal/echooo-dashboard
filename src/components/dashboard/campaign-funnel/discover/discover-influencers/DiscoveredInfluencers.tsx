@@ -5,18 +5,22 @@ import { useState } from 'react';
 import { Search } from 'react-feather';
 import DiscoverFilters from './DiscoverFilters';
 import DiscoveredResults from './DiscoveredResults';
-import { DiscoverInfluencer, DiscoverSearchParams } from '@/lib/types';
+import { DiscoverInfluencer } from '@/lib/types';
 import { Campaign } from '@/services/campaign/campaign.service';
 import { CampaignListMember } from '@/services/campaign/campaign-list.service';
+import { DiscoveredCreatorsResults } from '@/types/insights-iq';
+import { InfluencerSearchFilter } from '@/lib/creator-discovery-types';
 
 interface DiscoveredInfluencersProps {
   campaignData?: Campaign | null;
   influencers: DiscoverInfluencer[];
+  discoveredCreatorsResults: DiscoveredCreatorsResults | null; 
   isLoading: boolean;
   totalResults: number;
-  searchParams: DiscoverSearchParams;
+  searchParams: InfluencerSearchFilter;
   onSearchTextChange: (text: string) => void;
-  onFilterChange: (filterUpdates: Partial<DiscoverSearchParams['filter']>) => void;
+  onFilterChange: (filterUpdates: Partial<InfluencerSearchFilter>) => void; // Updated
+  onApplyFilters: (appliedFilters: Partial<InfluencerSearchFilter>) => void; // Updated
   onSortChange: (field: string, direction: 'asc' | 'desc') => void;
   onLoadMore: () => void;
   onClearFilters: () => void;
@@ -24,26 +28,32 @@ interface DiscoveredInfluencersProps {
   nextBatchSize: number;
   onInfluencerAdded?: () => void;
   shortlistedMembers: CampaignListMember[];
+  onPageChange?: (page: number) => void;
+  onPageSizeChange?: (pageSize: number) => void;
 }
 
 const DiscoveredInfluencers: React.FC<DiscoveredInfluencersProps> = ({ 
   campaignData = null,
   influencers,
+  discoveredCreatorsResults,
   isLoading,
   totalResults,
   searchParams,
   onSearchTextChange,
   onFilterChange,
+  onApplyFilters,
   onSortChange,
   onLoadMore,
   onClearFilters,
   hasMore,
   nextBatchSize,
   onInfluencerAdded,
-  shortlistedMembers
+  shortlistedMembers,
+  onPageChange,
+  onPageSizeChange
 }) => {
   const [showFilters, setShowFilters] = useState(false);
-  const [searchText, setSearchText] = useState('');
+  const [searchText, setSearchText] = useState(searchParams.description_keywords || '');
 
   // Toggle filters visibility
   const toggleFilters = () => {
@@ -108,9 +118,9 @@ const DiscoveredInfluencers: React.FC<DiscoveredInfluencersProps> = ({
       {/* Show filters only if showFilters is true */}
       {showFilters && (
         <DiscoverFilters 
-          filters={searchParams.filter}
-          audience_source={searchParams.audience_source}
+          searchParams={searchParams} // Pass the entire searchParams object
           onFilterChange={onFilterChange}
+          onApplyFilters={onApplyFilters}
           onClear={onClearFilters}
         />
       )}
@@ -118,10 +128,11 @@ const DiscoveredInfluencers: React.FC<DiscoveredInfluencersProps> = ({
       {/* Always show results */}
       <DiscoveredResults 
         influencers={influencers}
+        discoveredCreatorsResults={discoveredCreatorsResults}
         isLoading={isLoading}
         totalResults={totalResults}
-        sortField={searchParams.sort.field}
-        sortDirection={searchParams.sort.direction}
+        sortField={searchParams.sort_by?.field || 'FOLLOWER_COUNT'} // Updated to use sort_by
+        sortDirection={searchParams.sort_by?.order === 'ASCENDING' ? 'asc' : 'desc'} // Updated mapping
         onSortChange={onSortChange}
         onLoadMore={onLoadMore}
         hasMore={hasMore}
@@ -129,6 +140,10 @@ const DiscoveredInfluencers: React.FC<DiscoveredInfluencersProps> = ({
         campaignData={campaignData}
         onInfluencerAdded={onInfluencerAdded}
         shortlistedMembers={shortlistedMembers}
+        onPageChange={onPageChange}
+        onPageSizeChange={onPageSizeChange}
+        currentPage={Math.floor((searchParams.offset || 0) / (searchParams.limit || 20)) + 1} // Calculate current page
+        pageSize={searchParams.limit || 20} // Pass current page size
       />
     </div>
   );

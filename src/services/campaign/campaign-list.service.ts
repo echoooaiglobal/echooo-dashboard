@@ -3,7 +3,7 @@
 import { apiClient } from '@/lib/api'; // Import the unified API client
 import { ENDPOINTS } from '@/services/api/endpoints';
 import { DiscoverInfluencer } from '@/lib/types';
-
+import { Influencer } from '@/types/insights-iq';
 // Define the campaign list ID type
 export type CampaignListId = string;
 
@@ -93,7 +93,7 @@ export interface CampaignListMembersResponse {
  */
 export async function addInfluencerToList(
   listId: CampaignListId,
-  influencer: DiscoverInfluencer,
+  influencer: Influencer,
   platformId: string = '5d13c7b1-7e75-4fa2-86e3-2e37c2c8e84c' // Default platform ID
 ): Promise<CampaignListMember> {
   try {

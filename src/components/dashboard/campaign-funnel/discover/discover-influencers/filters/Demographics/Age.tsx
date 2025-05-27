@@ -1,97 +1,259 @@
-import React from 'react';
-import { IoTimeOutline } from 'react-icons/io5';
+import React, { useState, useRef, useEffect } from 'react';
+import { IoTimeOutline, IoChevronDown, IoClose } from 'react-icons/io5';
 import FilterComponent from '../FilterComponent';
-import { DiscoverSearchParams } from '@/lib/types';
+import { InfluencerSearchFilter, AudienceAgeFilter, NumericRange } from '@/lib/creator-discovery-types';
 
 interface AgeFilterProps {
-  filters: DiscoverSearchParams['filter'];
-  onFilterChange: (updates: Partial<DiscoverSearchParams['filter']>) => void;
+  filters: InfluencerSearchFilter;
+  onFilterChange: (updates: Partial<InfluencerSearchFilter>) => void;
   isOpen: boolean;
   onToggle: () => void;
 }
 
+// Predefined age ranges
+const AGE_OPTIONS = [
+  { value: 13, label: '13' },
+  { value: 18, label: '18' },
+  { value: 25, label: '25' },
+  { value: 35, label: '35' },
+  { value: 45, label: '45' },
+  { value: 55, label: '55' },
+  { value: 65, label: '65+' },
+];
+
+// Percentage options for audience age
+const PERCENTAGE_OPTIONS = [
+  { value: 1, label: '>1%' },
+  { value: 5, label: '>5%' },
+  { value: 10, label: '>10%' },
+  { value: 15, label: '>15%' },
+  { value: 20, label: '>20%' },
+  { value: 25, label: '>25%' },
+  { value: 30, label: '>30%' },
+  { value: 35, label: '>35%' },
+  { value: 40, label: '>40%' },
+  { value: 45, label: '>45%' },
+  { value: 50, label: '>50%' },
+  { value: 55, label: '>55%' },
+  { value: 60, label: '>60%' },
+  { value: 65, label: '>65%' },
+  { value: 70, label: '>70%' },
+  { value: 75, label: '>75%' },
+  { value: 80, label: '>80%' },
+  { value: 85, label: '>85%' },
+  { value: 90, label: '>90%' },
+  { value: 95, label: '>95%' }
+];
+
 const Age: React.FC<AgeFilterProps> = ({ filters, onFilterChange, isOpen, onToggle }) => {
-  const handleInfluencerAgeChange = (type: 'left_number' | 'right_number', value: string) => {
+  // Dropdown states
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Handle clicks outside dropdowns
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setOpenDropdown(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Close dropdowns when age filter closes
+  useEffect(() => {
+    if (!isOpen) {
+      setOpenDropdown(null);
+    }
+  }, [isOpen]);
+
+  // Creator age handlers
+  const handleCreatorAgeChange = (type: 'min' | 'max', value: number) => {
+    const currentAge = filters.creator_age || { min: 18, max: 65 };
     onFilterChange({
-      age: {
-        ...filters.age,
+      creator_age: {
+        ...currentAge,
         [type]: value
       }
     });
   };
 
-  const handleAudienceAgeChange = (ages: string[]) => {
+  const clearCreatorAge = () => {
+    onFilterChange({ creator_age: undefined });
+  };
+
+  // Audience age handlers
+  const handleAudienceAgeChange = (type: 'min' | 'max' | 'percentage_value', value: number) => {
+    const currentAge = filters.audience_age || { min: 18, max: 65, percentage_value: 5 };
     onFilterChange({
-      audience_age: ages
+      audience_age: {
+        ...currentAge,
+        [type]: value
+      }
     });
   };
 
-  return (
-    <FilterComponent
-      icon={<IoTimeOutline size={18} />}
-      title="Age"
-      isOpen={isOpen}
-      onToggle={onToggle}
-      className="border border-gray-200 rounded-md"
-    >
-      <div className="space-y-4 p-3">
-        {/* Influencer Age Filter */}
-        <div>
-          <h4 className="text-sm font-medium mb-2">Influencer Age</h4>
-          <div className="flex items-center space-x-2">
-            <input
-              type="number"
-              placeholder="Min"
-              min="13"
-              max="100"
-              value={filters.age?.left_number || ''}
-              onChange={(e) => handleInfluencerAgeChange('left_number', e.target.value)}
-              className="w-full p-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-300"
-            />
-            <span className="text-gray-400">to</span>
-            <input
-              type="number"
-              placeholder="Max"
-              min="13"
-              max="100"
-              value={filters.age?.right_number || ''}
-              onChange={(e) => handleInfluencerAgeChange('right_number', e.target.value)}
-              className="w-full p-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-300"
-            />
-          </div>
-        </div>
+  const clearAudienceAge = () => {
+    onFilterChange({ audience_age: undefined });
+  };
 
-        {/* Audience Age Filter */}
-        <div>
-          <h4 className="text-sm font-medium mb-2">Audience Age</h4>
-          <div className="flex items-center space-x-2">
-            <input
-              type="number"
-              placeholder="Min"
-              min="13"
-              max="100"
-              value={filters.audience_age?.[0] || ''}
-              onChange={(e) =>
-                handleAudienceAgeChange([e.target.value, filters.audience_age?.[1] || ''])
-              }
-              className="w-full p-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-300"
-            />
-            <span className="text-gray-400">to</span>
-            <input
-              type="number"
-              placeholder="Max"
-              min="13"
-              max="100"
-              value={filters.audience_age?.[1] || ''}
-              onChange={(e) =>
-                handleAudienceAgeChange([filters.audience_age?.[0] || '', e.target.value])
-              }
-              className="w-full p-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-300"
+  // Mini dropdown component
+  const MiniDropdown: React.FC<{
+    id: string;
+    value: number;
+    options: { value: number; label: string }[];
+    onChange: (value: number) => void;
+    placeholder: string;
+  }> = ({ id, value, options, onChange, placeholder }) => {
+    const isOpen = openDropdown === id;
+    const selectedOption = options.find(opt => opt.value === value);
+
+    return (
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setOpenDropdown(isOpen ? null : id)}
+          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white text-left focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 hover:border-gray-400 transition-colors"
+        >
+          <div className="flex items-center justify-between">
+            <span className={selectedOption ? 'text-gray-900' : 'text-gray-500'}>
+              {selectedOption ? selectedOption.label : placeholder}
+            </span>
+            <IoChevronDown 
+              size={14} 
+              className={`transition-transform ${isOpen ? 'rotate-180' : ''}`}
             />
           </div>
-        </div>
+        </button>
+
+        {isOpen && (
+          <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-40 overflow-y-auto">
+            {options.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => {
+                  onChange(option.value);
+                  setOpenDropdown(null);
+                }}
+                className={`w-full px-3 py-2 text-sm text-left hover:bg-blue-50 transition-colors ${
+                  value === option.value ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
-    </FilterComponent>
+    );
+  };
+
+  const hasCreatorAge = filters.creator_age !== undefined;
+  const hasAudienceAge = filters.audience_age !== undefined;
+  const selectedCount = (hasCreatorAge ? 1 : 0) + (hasAudienceAge ? 1 : 0);
+
+  const hasActiveFilters = hasCreatorAge || hasAudienceAge;
+  return (
+    <div ref={dropdownRef}>
+      <FilterComponent
+        hasActiveFilters={hasActiveFilters}
+        icon={<IoTimeOutline size={18} />}
+        title="Age"
+        isOpen={isOpen}
+        onToggle={onToggle}
+        className="border border-gray-200 rounded-md"
+        // selectedCount={selectedCount}
+      >
+        <div className="p-4 space-y-4">
+          
+          {/* Audience Age Section */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                <h4 className="text-sm font-semibold text-gray-800">Audience</h4>
+              </div>
+              {hasAudienceAge && (
+                <button
+                  onClick={clearAudienceAge}
+                  className="text-blue-600 hover:text-blue-800 transition-colors"
+                  title="Clear audience age filter"
+                >
+                  <IoClose size={16} />
+                </button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-3 gap-2">
+              <MiniDropdown
+                id="audience-min"
+                value={filters.audience_age?.min || 18}
+                options={AGE_OPTIONS.filter(opt => opt.value < (filters.audience_age?.max || 65))}
+                onChange={(value) => handleAudienceAgeChange('min', value)}
+                placeholder="Min"
+              />
+              <MiniDropdown
+                id="audience-max"
+                value={filters.audience_age?.max || 65}
+                options={AGE_OPTIONS.filter(opt => opt.value > (filters.audience_age?.min || 18))}
+                onChange={(value) => handleAudienceAgeChange('max', value)}
+                placeholder="Max"
+              />
+              <MiniDropdown
+                id="audience-percentage"
+                value={filters.audience_age?.percentage_value || 5}
+                options={PERCENTAGE_OPTIONS}
+                onChange={(value) => handleAudienceAgeChange('percentage_value', value)}
+                placeholder=">%"
+              />
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div className="border-t border-gray-200"></div>
+
+          {/* Influencer Age Section */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                <h4 className="text-sm font-semibold text-gray-800">Influencer</h4>
+              </div>
+              {hasCreatorAge && (
+                <button
+                  onClick={clearCreatorAge}
+                  className="text-purple-600 hover:text-purple-800 transition-colors"
+                  title="Clear influencer age filter"
+                >
+                  <IoClose size={16} />
+                </button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <MiniDropdown
+                id="creator-min"
+                value={filters.creator_age?.min || 18}
+                options={AGE_OPTIONS.filter(opt => opt.value < (filters.creator_age?.max || 65))}
+                onChange={(value) => handleCreatorAgeChange('min', value)}
+                placeholder="Min"
+              />
+              <MiniDropdown
+                id="creator-max"
+                value={filters.creator_age?.max || 65}
+                options={AGE_OPTIONS.filter(opt => opt.value > (filters.creator_age?.min || 18))}
+                onChange={(value) => handleCreatorAgeChange('max', value)}
+                placeholder="Max"
+              />
+            </div>
+          </div>
+
+        </div>
+      </FilterComponent>
+    </div>
   );
 };
 

@@ -2,18 +2,19 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import EmptyState from './EmptyState';
 import BrandInfoForm from './BrandInfoForm';
 import { Campaign } from '@/services/campaign/campaign.service';
 import DiscoveredInfluencers from '@/components/dashboard/campaign-funnel/discover/discover-influencers/DiscoveredInfluencers';
 import ShortlistedInfluencers from '@/components/dashboard/campaign-funnel/discover/shortlisted-influencers/ShortlistedInfluencers';
-import { DiscoverInfluencer, DiscoverSearchParams } from '@/lib/types';
-import { useDebounce } from '@/hooks/useDebounce';
+import { DiscoverInfluencer } from '@/lib/types';
+import { DiscoveredCreatorsResults } from '@/types/insights-iq';
 import { getCampaignListMembers, CampaignListMember, CampaignListMembersResponse } from '@/services/campaign/campaign-list.service';
+import { InfluencerSearchFilter } from '@/lib/creator-discovery-types';
 
 // Default Pakistan location ID (replace with actual ID from your API)
-const PAKISTAN_LOCATION_ID = 307573;
+const PAKISTAN_LOCATION_ID = "abd21c98-2950-45cd-b224-89b5a9f3c014";
 
 interface DiscoverTabProps {
   campaignData?: Campaign | null;
@@ -31,6 +32,7 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
   
   // States for discovered influencers
   const [influencers, setInfluencers] = useState<DiscoverInfluencer[]>([]);
+  const [discoveredCreatorsResults, setDiscoveredCreatorsResults] = useState<DiscoveredCreatorsResults | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [totalResults, setTotalResults] = useState(0);
   const [loadCount, setLoadCount] = useState(1);
@@ -46,60 +48,59 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
   const ageGroup = campaignData?.audience_age_group || '';
   const [left, right] = ageGroup.split('-');
 
-  // Search parameters state
-  const [searchParams, setSearchParams] = useState<DiscoverSearchParams>({
-    audience_source: 'any',
-    sort: {
-      field: 'followers',
-      direction: 'desc'
+  // Search parameters state using new InfluencerSearchFilter type
+  const [searchParams, setSearchParams] = useState<InfluencerSearchFilter>({
+    work_platform_id: "9bb8913b-ddd9-430b-a66a-d74d846e6c66", // Instagram platform ID
+    audience_gender: {
+      type: "ANY",
+      operator: "GT",
+      percentage_value: 0
     },
-    filter: {
-      ads_brands: [],
-      age: { 
-        left_number: left?.trim() || '',
-        right_number: right?.trim() || '',
-      },
-      audience_age: [],
-      audience_brand: [],
-      audience_brand_category: [],
-      audience_geo: [],
-      audience_lang: {},
-      audience_race: { code: '', weight: 0 },
-      brand: [],
-      brand_category: [],
-      audience_source: '',
-      engagement_rate: { operator: 'gte', value: null },
-      engagements: { left_number: '', right_number: '' },
-      followers: { left_number: '50000', right_number: '1000000' },
-      reels_plays: { left_number: '', right_number: '' },
-      gender: { code: 'FEMALE', weight: 0.3 },
-      geo: [{ id: PAKISTAN_LOCATION_ID, weight: 0.5 }],
-      keywords: '',
-      lang: {},
-      last_posted: null,
-      relevance: { value: '', weight: '' },
-      text: campaignData?.category?.name || '',
-      views: { left_number: '', right_number: '' },
-      with_contact: [],
-      saves: { left_number: '', right_number: '' },
-      shares: { left_number: '', right_number: '' },
-      account_type: []
+    creator_age: {
+      min: parseInt(left?.trim() || '18'),
+      max: parseInt(right?.trim() || '35')
     },
-    paging: {
-      skip: 0,
-      limit: 10
+    creator_locations: [],
+    creator_account_type: ["CREATOR"],
+    sort_by: {
+      field: "FOLLOWER_COUNT",
+      order: "DESCENDING"
     },
-    n: 0
+    limit: 20,
+    offset: 0,
+    post_type: "ALL",
   });
 
-  // Debounce the filter changes
-  const debouncedFilters = useDebounce(searchParams.filter, 500);
+  // Function to fetch influencers - make it a useCallback to prevent unnecessary re-renders
+  const fetchInfluencers = useCallback(async (params: InfluencerSearchFilter) => {
+    setIsLoading(true);
+    try {
+      const apiUrl = '/api/v0/discover/search';
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(params),
+      });
+      
+      const data = await response.json();
+      console.log('API response data:', data);
+      
+      // Always replace results for pagination (don't append)
+      setDiscoveredCreatorsResults(data);
+      setTotalResults(data?.metadata?.total_results || 0);
+    } catch (error) {
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   // Function to fetch campaign list members with pagination
   const fetchCampaignListMembers = async (page: number = 1, size: number = pageSize) => {
     // Check if campaign data exists and has campaign lists
     if (!campaignData?.campaign_lists || campaignData.campaign_lists.length === 0) {
-      console.log('No campaign lists found in campaign data');
       return;
     }
 
@@ -107,24 +108,20 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
     try {
       // Get the first campaign list ID from the campaign data
       const listId = campaignData.campaign_lists[0].id;
-      console.log('Fetching members for list ID:', listId, 'page:', page, 'pageSize:', size);
       
       const response = await getCampaignListMembers(listId, page, size);
       
       if (response.success) {
-        console.log('Campaign list members fetched successfully:', response);
         
         // Directly assign the members without transformation
         setShortlistedMembers(response);
         setShortlistedCount(response.pagination.total_items || 0);
         setCurrentPage(page);
       } else {
-        console.error('Failed to fetch campaign list members:', response.message);
         setShortlistedMembers(null);
         setShortlistedCount(0);
       }
     } catch (error) {
-      console.error('Error fetching campaign list members:', error);
       setShortlistedMembers(null);
       setShortlistedCount(0);
     } finally {
@@ -134,18 +131,58 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
 
   // Function to handle page changes from child component
   const handlePageChange = (page: number) => {
-    console.log('Page change requested:', page);
     fetchCampaignListMembers(page, pageSize);
   };
 
   // Function to handle page size changes from child component
   const handlePageSizeChange = (newPageSize: number) => {
-    console.log('Page size change requested:', newPageSize, 'Current pageSize:', pageSize);
     setPageSize(newPageSize);
     setCurrentPage(1); // Reset to page 1 when changing page size
     // Reset to page 1 when changing page size
     fetchCampaignListMembers(1, newPageSize);
   };
+
+  // NEW: Function to handle discovered influencers page changes
+  const handleDiscoveredPageChange = (page: number) => {
+    const newOffset = (page - 1) * (searchParams.limit || 20);
+    
+    const updatedParams = {
+      ...searchParams,
+      offset: newOffset
+    };
+    
+    setSearchParams(updatedParams);
+    
+    // Trigger API call with new pagination
+    if (activeFilter === 'discovered') {
+      fetchInfluencers(updatedParams);
+    }
+  };
+
+  // NEW: Function to handle discovered influencers page size changes
+  const handleDiscoveredPageSizeChange = (newPageSize: number) => {
+    
+    const updatedParams = {
+      ...searchParams,
+      offset: 0, // Reset to first page when changing page size
+      limit: newPageSize
+    };
+    
+    setSearchParams(updatedParams);
+    
+    // Trigger API call with new page size
+    if (activeFilter === 'discovered') {
+      fetchInfluencers(updatedParams);
+    }
+  };
+
+  // Initial load of influencers when component mounts
+  useEffect(() => {
+    // Only fetch if we're on the discovered tab and it's not a new campaign
+    if (activeFilter === 'discovered' && campaignData && !isNewCampaign) {
+      fetchInfluencers(searchParams);
+    }
+  }, [activeFilter, campaignData, isNewCampaign, fetchInfluencers]);
 
   // Fetch campaign list members when campaign data is available
   useEffect(() => {
@@ -156,7 +193,6 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
 
   // Function to refresh shortlisted influencers (call this after adding/removing)
   const refreshShortlistedInfluencers = () => {
-    console.log('Refreshing shortlisted influencers...');
     // Refresh the current page to maintain pagination state
     fetchCampaignListMembers(currentPage, pageSize);
   };
@@ -181,138 +217,135 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
     }
   };
 
-  // Handler for filter changes 
-  const handleFilterChange = (filterUpdates: Partial<DiscoverSearchParams['filter']>) => {
+  // Handler for filter changes - UPDATE: This now only updates state, doesn't trigger API call
+  const handleFilterChange = (filterUpdates: Partial<InfluencerSearchFilter>) => {
     setSearchParams(prev => ({
       ...prev,
-      filter: {
-        ...prev.filter,
-        ...filterUpdates
-      },
-      paging: {
-        ...prev.paging,
-        skip: 0 // Reset to first page when filters change
-      },
-      n: 0 // Reset n to 0 when filters change
+      ...filterUpdates,
+      offset: 0 // Reset to first page when filters change
     }));
     setLoadCount(1); // Reset load count when filters change
   };
 
-  // Handler for sort changes
-  const handleSortChange = (field: string, direction: 'asc' | 'desc') => {
-    setSearchParams(prev => ({
-      ...prev,
-      sort: { field, direction },
-      paging: {
-        ...prev.paging,
-        skip: 0 // Reset to first page when sort changes
-      },
-      n: 0 // Reset n to 0 when sort changes
-    }));
-    setLoadCount(1); // Reset load count when sort changes
+  // NEW: Handler for applying filters - this will trigger the API call
+  const handleApplyFilters = (appliedFilters: Partial<InfluencerSearchFilter>) => {
+    const updatedParams = {
+      ...searchParams,
+      ...appliedFilters,
+      offset: 0 // Reset to first page when filters are applied
+    };
+    
+    setSearchParams(updatedParams);
+    setLoadCount(1); // Reset load count when filters are applied
+    
+    // Trigger the API call with new filters
+    if (activeFilter === 'discovered') {
+      fetchInfluencers(updatedParams);
+    }
   };
 
-  // Handler for load more
-  const loadMore = () => {
-    const nextSkip = searchParams.paging.skip + searchParams.paging.limit;
-    const nextN = searchParams.n + 2; // Increment n by 2 each time
-    const nextLimit = nextN * 10; // Increase the limit by 10 each time
+  // Handler for sort changes
+  const handleSortChange = (field: string, direction: 'asc' | 'desc') => {
+    // Map the field and direction to the new sort format
+    const sortField = field.toUpperCase() as any; // Convert to uppercase for API
+
+    // Explicitly cast to SortOrder type
+    type SortOrder = 'ASCENDING' | 'DESCENDING';
+    const sortOrder: SortOrder = direction === 'asc' ? 'ASCENDING' : 'DESCENDING';
     
-    setSearchParams(prev => ({
-      ...prev,
-      paging: {
-        skip: nextSkip,
-        limit: nextLimit
+    const updatedParams = {
+      ...searchParams,
+      sort_by: { 
+        field: sortField, 
+        order: sortOrder 
       },
-      n: nextN
-    }));
+      offset: 0 // Reset to first page when sort changes
+    };
     
+    setSearchParams(updatedParams);
+    setLoadCount(1); // Reset load count when sort changes
+    
+    // Trigger API call for sort changes
+    if (activeFilter === 'discovered') {
+      fetchInfluencers(updatedParams);
+    }
+  };
+
+  // Handler for load more (if still needed)
+  const loadMore = () => {
+    const currentLimit = searchParams.limit || 20;
+    const currentOffset = searchParams.offset || 0;
+    const nextOffset = currentOffset + currentLimit;
+    
+    const updatedParams = {
+      ...searchParams,
+      offset: nextOffset
+    };
+    
+    setSearchParams(updatedParams);
     setLoadCount(prev => prev + 1);
+    
+    // Trigger API call for load more
+    if (activeFilter === 'discovered') {
+      fetchInfluencers(updatedParams);
+    }
   };
 
   // Handler for clearing all filters
-  const clearAllFilters = () => {
-    setSearchParams(prev => ({
-      ...prev,
-      filter: {
-        ...prev.filter,
-        text: '',
-        gender: { code: '', weight: 0 },
-        geo: [],
-        followers: { left_number: '', right_number: '' }
+  const handleClearFilters = () => {
+    const clearedParams: InfluencerSearchFilter = {
+      work_platform_id: "9bb8913b-ddd9-430b-a66a-d74d846e6c66",
+      follower_count: {
+        min: 1000,
+        max: 10000000
       },
-      paging: {
-        ...prev.paging,
-        skip: 0
+      audience_gender: {
+        type: "ANY",
+        operator: "GT",
+        percentage_value: 0
       },
-      n: 0
-    }));
-    setLoadCount(1); // Reset load count when filters are cleared
-  };
-
-  // Fetch influencers when filters, sort, or paging changes
-  useEffect(() => {
-    const fetchInfluencers = async () => {
-      setIsLoading(true);
-      try {
-        const apiUrl = '/api/discover/influencers';
-        console.log('Calling API with filters:', debouncedFilters);
-        
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(debouncedFilters),
-        });
-        
-        console.log('API call completed. Status:', response.status);
-        
-        const data = await response.json();
-        console.log('API response data:', data);
-        
-        // Append new results instead of replacing them, but only if we're not on first page
-        if (searchParams.paging.skip > 0) {
-          setInfluencers(prevInfluencers => [...prevInfluencers, ...data.influencers]);
-        } else {
-          // If we're on the first page (after filter change, etc.), replace the results
-          setInfluencers(data.influencers);
-        }
-        
-        setTotalResults(data.totalResults);
-      } catch (error) {
-        console.error('Error fetching influencers:', error);
-      } finally {
-        setIsLoading(false);
-      }
+      creator_gender: "ANY",
+      creator_locations: [],
+      sort_by: {
+        field: "FOLLOWER_COUNT",
+        order: "DESCENDING"
+      },
+      limit: searchParams.limit || 20,
+      offset: 0,
+      audience_source: "ANY",
+      has_audience_info: false,
+      exclude_private_profiles: false
     };
-  
-    // Only fetch if we're on the discovered tab
+    
+    setSearchParams(clearedParams);
+    setLoadCount(1); // Reset load count when filters are cleared
+    
+    // Trigger API call with cleared filters
     if (activeFilter === 'discovered') {
-      fetchInfluencers();
+      fetchInfluencers(clearedParams);
     }
-  }, [debouncedFilters, searchParams.sort, searchParams.paging, searchParams.n, activeFilter]);
+  };
 
   // Calculate the next batch size to unlock
   const getNextBatchSize = () => {
     return loadCount * 20;
   };
 
-  // Handle search text change
+  // Handle search text change - UPDATE: This still triggers immediately for search
   const handleSearchTextChange = (text: string) => {
-    setSearchParams(prev => ({
-      ...prev,
-      filter: {
-        ...prev.filter,
-        text: text
-      },
-      paging: {
-        ...prev.paging,
-        skip: 0
-      },
-      n: 0
-    }));
+    const updatedParams = {
+      ...searchParams,
+      description_keywords: text,
+      offset: 0
+    };
+    
+    setSearchParams(updatedParams);
     setLoadCount(1);
+    
+    // Trigger API call for search (search should still be immediate)
+    if (activeFilter === 'discovered') {
+      fetchInfluencers(updatedParams);
+    }
   };
 
   // If the brand form is being shown, display it
@@ -370,27 +403,32 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
         <DiscoveredInfluencers 
           campaignData={campaignData}
           influencers={influencers}
+          discoveredCreatorsResults={discoveredCreatorsResults}
           isLoading={isLoading}
           totalResults={totalResults}
           searchParams={searchParams}
           onSearchTextChange={handleSearchTextChange}
           onFilterChange={handleFilterChange}
+          onApplyFilters={handleApplyFilters}
           onSortChange={handleSortChange}
           onLoadMore={loadMore}
-          onClearFilters={clearAllFilters}
+          onClearFilters={handleClearFilters}
           hasMore={influencers?.length < totalResults}
           nextBatchSize={getNextBatchSize()}
-          onInfluencerAdded={refreshShortlistedInfluencers} // Add this prop to refresh after adding
-          shortlistedMembers={shortlistedMembers?.members || []} // Pass the shortlisted members to the discovered influencers
+          onInfluencerAdded={refreshShortlistedInfluencers}
+          shortlistedMembers={shortlistedMembers?.members || []}
+          // NEW: Add pagination handlers for discovered influencers
+          onPageChange={handleDiscoveredPageChange}
+          onPageSizeChange={handleDiscoveredPageSizeChange}
         />
       ) : (
         <ShortlistedInfluencers 
           campaignData={campaignData}
           isLoading={isLoadingShortlisted}
-          onInfluencerRemoved={refreshShortlistedInfluencers} // Add this prop to refresh after removing
-          onPageChange={handlePageChange} // Pass the pagination handler
-          onPageSizeChange={handlePageSizeChange} // Pass the page size change handler
-          shortlistedMembers={shortlistedMembers as CampaignListMembersResponse} // Pass the full response object
+          onInfluencerRemoved={refreshShortlistedInfluencers}
+          onPageChange={handlePageChange}
+          onPageSizeChange={handlePageSizeChange}
+          shortlistedMembers={shortlistedMembers as CampaignListMembersResponse}
         />
       )}
     </div>
