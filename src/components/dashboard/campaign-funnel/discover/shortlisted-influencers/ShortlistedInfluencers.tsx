@@ -1,9 +1,23 @@
+// src/components/dashboard/campaign-funnel/discover/shortlisted-influencers/ShortlistedInfluencers.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
 import { Search, X } from 'react-feather';
 import { Campaign } from '@/services/campaign/campaign.service';
 import { CampaignListMember, CampaignListMembersResponse, removeInfluencerFromList } from '@/services/campaign/campaign-list.service';
+import OutreachMessageForm from './OutreachMessageForm';
+import { apiGet, apiPost, useApiCall } from '@/lib/api-utils';
+
+interface MessageTemplate {
+  id: string;
+  subject: string;
+  content: string;
+  campaign_id: string;
+  company_id: string;
+  is_global: boolean;
+  created_at: string;
+  updated_at: string;
+}
 
 interface ShortlistedInfluencersProps {
   campaignData?: Campaign | null;
@@ -26,7 +40,15 @@ const ShortlistedInfluencers: React.FC<ShortlistedInfluencersProps> = ({
   const [selectedInfluencers, setSelectedInfluencers] = useState<string[]>([]);
   const [removingInfluencers, setRemovingInfluencers] = useState<string[]>([]);
   const [showPageSizeDropdown, setShowPageSizeDropdown] = useState(false);
+  const [isOutreachFormOpen, setIsOutreachFormOpen] = useState(false);
+  
+  // API Integration States
+  const [messageTemplates, setMessageTemplates] = useState<MessageTemplate[]>([]);
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
+  const [isSavingTemplate, setIsSavingTemplate] = useState(false);
 
+console.log('campaignData:', campaignData)
+  
   // Ensure shortlistedMembers has proper structure
   const members = shortlistedMembers?.members || [];
   const pagination = shortlistedMembers?.pagination || {
@@ -37,6 +59,155 @@ const ShortlistedInfluencers: React.FC<ShortlistedInfluencersProps> = ({
     has_next: false,
     has_previous: false
   };
+
+  /**
+   * Check if a message template exists for the current campaign
+   */
+  const hasMessageTemplateForCampaign = (): boolean => {
+    if (!campaignData?.id || !messageTemplates.length) {
+      return false;
+    }
+    
+    return messageTemplates.some(template => template.campaign_id === campaignData.id);
+  };
+
+  /**
+   * Handle Start Outreach button click - conditional logic based on template existence
+   */
+  const handleStartOutreach = () => {
+    if (hasMessageTemplateForCampaign()) {
+      // Template exists for this campaign - perform different action
+      console.log('Message template exists for campaign:', campaignData?.id);
+      console.log('Existing templates:', messageTemplates.filter(t => t.campaign_id === campaignData?.id));
+      
+      // TODO: Replace with your custom logic when template exists
+      // For now, we'll show an alert but you can replace this with your desired functionality
+      alert('Message template already exists for this campaign. Custom outreach logic will be implemented here.');
+      
+      // Example of what you might want to do:
+      // - Navigate to a different page
+      // - Show a different modal
+      // - Start the outreach process directly
+      // - etc.
+      
+    } else {
+      // No template exists - show the form to create one
+      console.log('No message template found for campaign:', campaignData?.id);
+      setIsOutreachFormOpen(true);
+    }
+  };
+
+  /**
+ * Get headers with Bearer token for API requests
+ */
+  const getAuthHeaders = (): HeadersInit => {
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+    
+    // Get token from localStorage and add to headers
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+        console.log('✅ Added Authorization header with token');
+      } else {
+        console.warn('⚠️ No accessToken found in localStorage');
+      }
+    }
+    
+    return headers;
+  };
+
+
+  // API Function: Fetch message templates by company
+  const fetchMessageTemplates = async () => {
+  if (!campaignData?.company_id) {
+    console.warn('No company_id available to fetch templates');
+    return;
+  }
+
+  setIsLoadingTemplates(true);
+  try {
+    console.log(`🔄 Fetching templates for company: ${campaignData.company_id}`);
+    
+    const response = await fetch(`/api/v0/message-templates/company/${campaignData.company_id}`, {
+      method: 'GET',
+      headers: getAuthHeaders() // 🔑 This adds the Bearer token
+    });
+    
+    if (response.ok) {
+      const templates = await response.json();
+      setMessageTemplates(templates);
+      console.log('✅ Templates fetched successfully:', templates);
+      
+      // Log whether template exists for current campaign
+      const hasTemplate = templates.some((t: MessageTemplate) => t.campaign_id === campaignData.id);
+      console.log(`Template exists for campaign ${campaignData.id}:`, hasTemplate);
+    } else {
+      const errorData = await response.json();
+      console.error('❌ Failed to fetch templates:', errorData);
+      setMessageTemplates([]);
+    }
+  } catch (error) {
+    console.error('❌ Error fetching templates:', error);
+    setMessageTemplates([]);
+  } finally {
+    setIsLoadingTemplates(false);
+  }
+};
+
+  // API Function: Save new message template
+  const saveMessageTemplate = async (data: { subject: string; message: string; campaignId?: string }) => {
+    if (!campaignData?.company_id || !campaignData?.id) {
+      console.error('Missing company_id or campaign_id for saving template');
+      return false;
+    }
+
+    setIsSavingTemplate(true);
+    try {
+      console.log('🔄 Saving template with data:', data);
+      
+      const response = await fetch('/api/v0/message-templates', {
+        method: 'POST',
+        headers: getAuthHeaders(), // 🔑 This adds the Bearer token
+        body: JSON.stringify({
+          subject: data.subject,
+          content: data.message,
+          company_id: campaignData.company_id,
+          campaign_id: campaignData.id,
+          is_global: true
+        }),
+      });
+
+      if (response.ok) {
+        const newTemplate = await response.json();
+        console.log('✅ Template saved successfully:', newTemplate);
+        
+        // Refresh the templates list
+        await fetchMessageTemplates();
+        return true;
+      } else {
+        const errorData = await response.json();
+        console.error('❌ Failed to save template:', errorData);
+        alert(`Failed to save template: ${errorData.error || 'Unknown error'}`);
+        return false;
+      }
+    } catch (error) {
+      console.error('❌ Error saving template:', error);
+      alert('An error occurred while saving the template');
+      return false;
+    } finally {
+      setIsSavingTemplate(false);
+    }
+  };
+
+  // Fetch templates when component mounts or campaignData changes
+  useEffect(() => {
+    if (campaignData?.company_id) {
+      fetchMessageTemplates();
+    }
+  }, [campaignData?.company_id]);
 
   // Filter shortlisted members based on search text
   const filteredMembers = searchText
@@ -352,7 +523,10 @@ const ShortlistedInfluencers: React.FC<ShortlistedInfluencersProps> = ({
             </button>
           )}
           
-          <button className="px-6 py-2 bg-purple-600 text-white rounded-full font-medium hover:bg-purple-700 transition-colors">
+          <button 
+            onClick={handleStartOutreach}
+            className="px-6 py-2 bg-purple-600 text-white rounded-full font-medium hover:bg-purple-700 transition-colors"
+          >
             Start Outreach
           </button>
         </div>
@@ -804,6 +978,18 @@ const ShortlistedInfluencers: React.FC<ShortlistedInfluencersProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Outreach Message Form - Only show if no template exists for this campaign */}
+      {!hasMessageTemplateForCampaign() && (
+        <OutreachMessageForm 
+          isOpen={isOutreachFormOpen}
+          onClose={() => setIsOutreachFormOpen(false)}
+          onSubmit={saveMessageTemplate}
+          messageTemplates={messageTemplates}
+          isLoadingTemplates={isLoadingTemplates}
+          isSavingTemplate={isSavingTemplate}
+        />
+      )}
     </div>
   );
 };

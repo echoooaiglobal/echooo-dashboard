@@ -8,6 +8,7 @@ export interface RegistrationData {
   full_name: string;
   phone_number?: string;
   user_type: 'influencer' | 'company';
+  role_name: string,
   company_name?: string;
   company_domain?: string;
 }

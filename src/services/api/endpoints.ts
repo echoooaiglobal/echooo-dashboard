@@ -41,4 +41,9 @@ export const ENDPOINTS = {
     REPORTS: '/analytics/reports',
     EXPORT: '/analytics/export',
   },
+  MESSAGE_TEMPLATES: {
+    CREATE: '/message-templates',
+    BY_COMPANY: (companyId: string) => `/message-templates/campaign/${companyId}`,
+    DETAIL: (templateId: string) => `/message-templates/${templateId}`,
+  },
 };

@@ -1,8 +1,8 @@
 // src/components/dashboard/campaign-funnel/discover/BrandInfoForm.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
-import { ChevronDown } from 'react-feather';
+import { useState, useEffect, useRef } from 'react';
+import { ChevronDown, Search, X } from 'react-feather';
 import { fetchCategories, Category } from '@/services/category/category.service';
 import { createCampaign, CreateCampaignRequest } from '@/services/campaign/campaign.service';
 import { useApiCall } from '@/hooks/useApiCall';
@@ -22,6 +22,13 @@ interface Currency {
   name: string;
 }
 
+// Brand interface based on API response
+interface Brand {
+  id: string;
+  name: string;
+  logo_url: string;
+}
+
 const currencies: Currency[] = [
   { code: 'USD', symbol: '$', name: 'US Dollar' },
   { code: 'EUR', symbol: '€', name: 'Euro' },
@@ -34,19 +41,56 @@ const currencies: Currency[] = [
   { code: 'CAD', symbol: 'C$', name: 'Canadian Dollar' },
 ];
 
+// Age options from Age.tsx component
+const AGE_OPTIONS = [
+  { value: 13, label: '13' },
+  { value: 18, label: '18' },
+  { value: 25, label: '25' },
+  { value: 35, label: '35' },
+  { value: 45, label: '45' },
+  { value: 55, label: '55' },
+  { value: 65, label: '65+' },
+];
+
 const BrandInfoForm: React.FC<BrandInfoFormProps> = ({ onComplete }) => {
   const [currentStep, setCurrentStep] = useState<FormStep>(1);
   const [formData, setFormData] = useState({
     brandName: '',
     brandCategory: '',
     audienceAgeGroup: '',
+    audienceAgeMin: 18,
+    audienceAgeMax: 65,
     campaignBudget: 0,
     campaignCurrency: 'USD',
     campaignName: ''
   });
+  
+  // States for brand search
+  const [brandSearchQuery, setBrandSearchQuery] = useState('');
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [filteredBrands, setFilteredBrands] = useState<Brand[]>([]);
+  const [showBrandDropdown, setShowBrandDropdown] = useState(false);
+  const [isManualBrandEntry, setIsManualBrandEntry] = useState(false);
+  const [isBrandSearchLoading, setIsBrandSearchLoading] = useState(false);
+  
+  // States for category search
+  const [categorySearchQuery, setCategorySearchQuery] = useState('');
   const [categories, setCategories] = useState<Category[]>([]);
+  const [filteredCategories, setFilteredCategories] = useState<Category[]>([]);
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+  
+  // States for age dropdowns
+  const [showAgeMinDropdown, setShowAgeMinDropdown] = useState(false);
+  const [showAgeMaxDropdown, setShowAgeMaxDropdown] = useState(false);
+  
   const [error, setError] = useState<string | null>(null);
   const [companyId, setCompanyId] = useState<string | null>(null);
+  
+  // Refs for dropdowns
+  const brandDropdownRef = useRef<HTMLDivElement>(null);
+  const categoryDropdownRef = useRef<HTMLDivElement>(null);
+  const ageMinDropdownRef = useRef<HTMLDivElement>(null);
+  const ageMaxDropdownRef = useRef<HTMLDivElement>(null);
   
   // Use auth context to get user info
   const { user } = useAuth();
@@ -54,10 +98,10 @@ const BrandInfoForm: React.FC<BrandInfoFormProps> = ({ onComplete }) => {
   // Use custom hook for API calls
   const categoriesApi = useApiCall<Category[]>();
   const campaignApi = useApiCall();
+  const brandsApi = useApiCall<{success: boolean, data: Brand[], total: number}>();
   
   // Fetch company data on component mount
   useEffect(() => {
-    // Get company info from stored data
     const company = getStoredCompany();
     if (company && company.id) {
       setCompanyId(company.id);
@@ -69,7 +113,6 @@ const BrandInfoForm: React.FC<BrandInfoFormProps> = ({ onComplete }) => {
     const getCategories = async () => {
       await categoriesApi.execute(fetchCategories());
     };
-    
     getCategories();
   }, []);
   
@@ -77,13 +120,13 @@ const BrandInfoForm: React.FC<BrandInfoFormProps> = ({ onComplete }) => {
   useEffect(() => {
     if (categoriesApi.data) {
       setCategories(categoriesApi.data);
+      setFilteredCategories(categoriesApi.data);
     }
     
     if (categoriesApi.error) {
       setError('Could not load categories. Please try again.');
-      
       // Mock data for development
-      setCategories([
+      const mockCategories = [
         { id: '1', name: 'Fashion' },
         { id: '2', name: 'Beauty' },
         { id: '3', name: 'Technology' },
@@ -91,9 +134,121 @@ const BrandInfoForm: React.FC<BrandInfoFormProps> = ({ onComplete }) => {
         { id: '5', name: 'Travel' },
         { id: '6', name: 'Fitness' },
         { id: '7', name: 'Lifestyle' }
-      ]);
+      ];
+      setCategories(mockCategories);
+      setFilteredCategories(mockCategories);
     }
   }, [categoriesApi.data, categoriesApi.error]);
+
+  // Fetch brands function
+  const fetchBrands = async (searchQuery: string = '') => {
+    try {
+      setIsBrandSearchLoading(true);
+      const url = searchQuery 
+        ? `/api/v0/discover/brands?q=${encodeURIComponent(searchQuery)}`
+        : '/api/v0/discover/brands';
+      
+      const response = await fetch(url);
+      const data = await response.json();
+      
+      if (data.success && data.data) {
+        setBrands(data.data);
+        setFilteredBrands(data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching brands:', error);
+    } finally {
+      setIsBrandSearchLoading(false);
+    }
+  };
+
+  // Handle brand search with debouncing
+  const handleBrandSearch = (query: string) => {
+    setBrandSearchQuery(query);
+    setShowBrandDropdown(true);
+    
+    if (query.length >= 2) {
+      // Clear previous results and show loading
+      setFilteredBrands([]);
+      setIsManualBrandEntry(false);
+      
+      // Debounce the API call
+      const timeoutId = setTimeout(() => {
+        fetchBrands(query);
+      }, 300);
+      
+      // Store timeout ID to clear it if user types again
+      return () => clearTimeout(timeoutId);
+    } else if (query.length === 0) {
+      setFilteredBrands([]);
+      setIsManualBrandEntry(false);
+      setIsBrandSearchLoading(false);
+    }
+  };
+
+  // Handle brand selection
+  const handleBrandSelect = (brandName: string) => {
+    setFormData(prev => ({ ...prev, brandName }));
+    setBrandSearchQuery(brandName);
+    setShowBrandDropdown(false);
+    setIsManualBrandEntry(false);
+  };
+
+  // Handle manual brand entry
+  const handleManualBrandEntry = () => {
+    setFormData(prev => ({ ...prev, brandName: brandSearchQuery }));
+    setIsManualBrandEntry(true);
+    setShowBrandDropdown(false);
+  };
+
+  // Handle category search
+  const handleCategorySearch = (query: string) => {
+    setCategorySearchQuery(query);
+    setShowCategoryDropdown(true);
+    
+    const filtered = categories.filter(category =>
+      category.name.toLowerCase().includes(query.toLowerCase())
+    );
+    setFilteredCategories(filtered);
+  };
+
+  // Handle category selection
+  const handleCategorySelect = (category: Category) => {
+    setFormData(prev => ({ ...prev, brandCategory: category.id }));
+    setCategorySearchQuery(category.name);
+    setShowCategoryDropdown(false);
+  };
+
+  // Handle age selection
+  const handleAgeSelection = (type: 'min' | 'max', value: number) => {
+    setFormData(prev => {
+      const newData = { ...prev, [`audienceAge${type === 'min' ? 'Min' : 'Max'}`]: value };
+      // Update the combined age group string
+      newData.audienceAgeGroup = `${newData.audienceAgeMin}-${newData.audienceAgeMax}`;
+      return newData;
+    });
+    
+    if (type === 'min') {
+      setShowAgeMinDropdown(false);
+    } else {
+      setShowAgeMaxDropdown(false);
+    }
+  };
+
+  // Handle budget input change with auto-remove zero
+  const handleBudgetChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value;
+    
+    // If user starts typing and the current value is 0, clear it
+    if (formData.campaignBudget === 0 && value !== '0' && value !== '') {
+      value = value.replace(/^0+/, '');
+    }
+    
+    setFormData(prev => ({
+      ...prev,
+      campaignBudget: parseFloat(value) || 0
+    }));
+  };
 
   // Handle input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -104,9 +259,29 @@ const BrandInfoForm: React.FC<BrandInfoFormProps> = ({ onComplete }) => {
     }));
   };
 
+  // Handle clicks outside dropdowns
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (brandDropdownRef.current && !brandDropdownRef.current.contains(event.target as Node)) {
+        setShowBrandDropdown(false);
+      }
+      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target as Node)) {
+        setShowCategoryDropdown(false);
+      }
+      if (ageMinDropdownRef.current && !ageMinDropdownRef.current.contains(event.target as Node)) {
+        setShowAgeMinDropdown(false);
+      }
+      if (ageMaxDropdownRef.current && !ageMaxDropdownRef.current.contains(event.target as Node)) {
+        setShowAgeMaxDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   // Handle next step
   const handleNext = () => {
-    // Validate current step before proceeding
     if (!validateCurrentStep()) {
       return;
     }
@@ -121,7 +296,7 @@ const BrandInfoForm: React.FC<BrandInfoFormProps> = ({ onComplete }) => {
     switch (currentStep) {
       case 1:
         if (!formData.brandName.trim()) {
-          setError('Please enter your brand name');
+          setError('Please enter or select your brand name');
           return false;
         }
         break;
@@ -143,7 +318,6 @@ const BrandInfoForm: React.FC<BrandInfoFormProps> = ({ onComplete }) => {
           return false;
         }
         
-        // Validate that budget is a valid number
         const budget = formData.campaignBudget;
         if (isNaN(budget) || budget <= 0) {
           setError('Please enter a valid budget amount');
@@ -169,34 +343,28 @@ const BrandInfoForm: React.FC<BrandInfoFormProps> = ({ onComplete }) => {
       return;
     }
     
-    // Check if company ID exists
     if (!companyId) {
       setError('Company information not found. Please log in again.');
       return;
     }
     
-    // Create request object with separate budget and currencyCode
     const campaignData: CreateCampaignRequest = {
       name: formData.campaignName,
       brand_name: formData.brandName,
       category_id: formData.brandCategory,
       audience_age_group: formData.audienceAgeGroup,
-      budget: formData.campaignBudget, // Just the numeric value
-      currency_code: formData.campaignCurrency, // Currency as separate field
-      company_id: companyId // From stored company data
+      budget: formData.campaignBudget,
+      currency_code: formData.campaignCurrency,
+      company_id: companyId
     };
     
     try {
-      // Call the campaign creation service and store the response
       const createdCampaign = await campaignApi.execute(createCampaign(campaignData));
       
-      // Check for errors after API call
       if (campaignApi.error) {
         setError('Failed to create the campaign. Please try again.');
         console.error('API error:', campaignApi.error);
       } else if (createdCampaign) {
-        // Important: Pass the actual API response which contains the campaign ID
-        // This allows for proper redirection after campaign creation
         console.log('Campaign created successfully:', createdCampaign);
         onComplete(createdCampaign);
       } else {
@@ -209,12 +377,18 @@ const BrandInfoForm: React.FC<BrandInfoFormProps> = ({ onComplete }) => {
   };
 
   // Determine if we're in a loading state
-  const isLoading = categoriesApi.isLoading || campaignApi.isLoading;
+  const isLoading = categoriesApi.isLoading || campaignApi.isLoading || brandsApi.isLoading;
 
   // Get selected currency symbol
   const getSelectedCurrencySymbol = () => {
     const currency = currencies.find(c => c.code === formData.campaignCurrency);
     return currency ? currency.symbol : '$';
+  };
+
+  // Get selected category name
+  const getSelectedCategoryName = () => {
+    const category = categories.find(c => c.id === formData.brandCategory);
+    return category ? category.name : '';
   };
 
   // Render the appropriate form step
@@ -223,16 +397,56 @@ const BrandInfoForm: React.FC<BrandInfoFormProps> = ({ onComplete }) => {
       case 1:
         return (
           <>
-            <input
-              type="text"
-              name="brandName"
-              placeholder="Your Brand Name"
-              value={formData.brandName}
-              onChange={handleInputChange}
-              className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-purple-500"
-              required
-              disabled={isLoading}
-            />
+            <div className="relative" ref={brandDropdownRef}>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                <input
+                  type="text"
+                  placeholder="Search your brand or enter manually"
+                  value={brandSearchQuery}
+                  onChange={(e) => handleBrandSearch(e.target.value)}
+                  onFocus={() => setShowBrandDropdown(true)}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  disabled={isLoading}
+                />
+              </div>
+              
+              {showBrandDropdown && (
+                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                  {isBrandSearchLoading ? (
+                    <div className="px-4 py-3 text-center text-gray-500">
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                        <span>Searching brands...</span>
+                      </div>
+                    </div>
+                  ) : filteredBrands.length > 0 ? (
+                    filteredBrands.map((brand) => (
+                      <button
+                        key={brand.id}
+                        type="button"
+                        onClick={() => handleBrandSelect(brand.name)}
+                        className="w-full px-4 py-3 text-left hover:bg-purple-50 transition-colors flex items-center gap-3"
+                      >
+                        {brand.logo_url && (
+                          <img src={brand.logo_url} alt={brand.name} className="w-6 h-6 object-contain" />
+                        )}
+                        <span className="text-gray-700">{brand.name}</span>
+                      </button>
+                    ))
+                  ) : brandSearchQuery.length >= 2 && !isBrandSearchLoading ? (
+                    <button
+                      type="button"
+                      onClick={handleManualBrandEntry}
+                      className="w-full px-4 py-3 text-left hover:bg-purple-50 transition-colors text-purple-600"
+                    >
+                      + Add "{brandSearchQuery}" as custom brand
+                    </button>
+                  ) : null}
+                </div>
+              )}
+            </div>
+            
             <button
               type="button"
               onClick={handleNext}
@@ -243,27 +457,40 @@ const BrandInfoForm: React.FC<BrandInfoFormProps> = ({ onComplete }) => {
             </button>
           </>
         );
+        
       case 2:
         return (
           <>
-            <div className="relative">
-              <select
-                name="brandCategory"
-                value={formData.brandCategory}
-                onChange={handleInputChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-purple-500 appearance-none"
-                required
-                disabled={isLoading}
-              >
-                <option value="">Your Brand Category</option>
-                {categories.map(category => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            <div className="relative" ref={categoryDropdownRef}>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                <input
+                  type="text"
+                  placeholder="Search brand category"
+                  value={categorySearchQuery}
+                  onChange={(e) => handleCategorySearch(e.target.value)}
+                  onFocus={() => setShowCategoryDropdown(true)}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  disabled={isLoading}
+                />
+              </div>
+              
+              {showCategoryDropdown && (
+                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                  {filteredCategories.map((category) => (
+                    <button
+                      key={category.id}
+                      type="button"
+                      onClick={() => handleCategorySelect(category)}
+                      className="w-full px-4 py-3 text-left hover:bg-purple-50 transition-colors text-gray-700"
+                    >
+                      {category.name}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
+            
             <button
               type="button"
               onClick={handleNext}
@@ -274,28 +501,82 @@ const BrandInfoForm: React.FC<BrandInfoFormProps> = ({ onComplete }) => {
             </button>
           </>
         );
+        
       case 3:
         return (
           <>
-            <div className="relative">
-              <select
-                name="audienceAgeGroup"
-                value={formData.audienceAgeGroup}
-                onChange={handleInputChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-purple-500 appearance-none"
-                required
-                disabled={isLoading}
-              >
-                <option value="">Audience Age Group</option>
-                <option value="13-17">13-17</option>
-                <option value="18-24">18-24</option>
-                <option value="25-34">25-34</option>
-                <option value="35-44">35-44</option>
-                <option value="45-54">45-54</option>
-                <option value="55+">55+</option>
-              </select>
-              <ChevronDown className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            <div className="grid grid-cols-2 gap-4">
+              {/* Min Age Dropdown */}
+              <div className="relative" ref={ageMinDropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setShowAgeMinDropdown(!showAgeMinDropdown)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-purple-500 appearance-none text-left"
+                  disabled={isLoading}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-700">Min: {formData.audienceAgeMin}</span>
+                    <ChevronDown className={`transition-transform ${showAgeMinDropdown ? 'rotate-180' : ''}`} size={20} />
+                  </div>
+                </button>
+                
+                {showAgeMinDropdown && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                    {AGE_OPTIONS.filter(opt => opt.value < formData.audienceAgeMax).map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => handleAgeSelection('min', option.value)}
+                        className={`w-full px-4 py-2 text-left hover:bg-purple-50 transition-colors ${
+                          formData.audienceAgeMin === option.value ? 'bg-purple-50 text-purple-700 font-medium' : 'text-gray-700'
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              {/* Max Age Dropdown */}
+              <div className="relative" ref={ageMaxDropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setShowAgeMaxDropdown(!showAgeMaxDropdown)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-purple-500 appearance-none text-left"
+                  disabled={isLoading}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-700">Max: {formData.audienceAgeMax === 65 ? '65+' : formData.audienceAgeMax}</span>
+                    <ChevronDown className={`transition-transform ${showAgeMaxDropdown ? 'rotate-180' : ''}`} size={20} />
+                  </div>
+                </button>
+                
+                {showAgeMaxDropdown && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                    {AGE_OPTIONS.filter(opt => opt.value > formData.audienceAgeMin).map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => handleAgeSelection('max', option.value)}
+                        className={`w-full px-4 py-2 text-left hover:bg-purple-50 transition-colors ${
+                          formData.audienceAgeMax === option.value ? 'bg-purple-50 text-purple-700 font-medium' : 'text-gray-700'
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
+            
+            {formData.audienceAgeGroup && (
+              <div className="mt-4 p-3 bg-purple-50 rounded-lg text-center">
+                <span className="text-purple-700 font-medium">Selected Age Group: {formData.audienceAgeGroup}</span>
+              </div>
+            )}
+            
             <button
               type="button"
               onClick={handleNext}
@@ -306,6 +587,7 @@ const BrandInfoForm: React.FC<BrandInfoFormProps> = ({ onComplete }) => {
             </button>
           </>
         );
+        
       case 4:
         return (
           <>
@@ -338,11 +620,11 @@ const BrandInfoForm: React.FC<BrandInfoFormProps> = ({ onComplete }) => {
                   <input
                     type="number"
                     name="campaignBudget"
-                    placeholder="Amount"
+                    placeholder="Enter amount"
                     min="0"
                     step="0.01"
-                    value={formData.campaignBudget}
-                    onChange={handleInputChange}
+                    value={formData.campaignBudget === 0 ? '' : formData.campaignBudget}
+                    onChange={handleBudgetChange}
                     className="w-full pl-8 px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-purple-500"
                     required
                     disabled={isLoading}
@@ -360,6 +642,7 @@ const BrandInfoForm: React.FC<BrandInfoFormProps> = ({ onComplete }) => {
             </button>
           </>
         );
+        
       case 5:
         return (
           <>
@@ -382,6 +665,7 @@ const BrandInfoForm: React.FC<BrandInfoFormProps> = ({ onComplete }) => {
             </button>
           </>
         );
+        
       default:
         return null;
     }
@@ -422,7 +706,7 @@ const BrandInfoForm: React.FC<BrandInfoFormProps> = ({ onComplete }) => {
   return (
     <div className="max-w-md mx-auto bg-white rounded-xl shadow-lg py-12 px-6">
       <h2 className="text-2xl font-bold text-gray-700 text-center mb-12">
-        Let's Us Little About Your Brand
+        Tell Us Little About Your Brand
       </h2>
 
       {renderCompanyWarning()}

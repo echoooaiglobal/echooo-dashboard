@@ -121,6 +121,7 @@ export default function CompanyRegistrationForm({ onSuccess }: CompanyRegistrati
         full_name: form.full_name,
         phone_number: form.phone_number || undefined,
         user_type: 'company',
+        role_name: 'company_admin',
         company_name: form.company_name,
         company_domain: form.company_domain
       };
