@@ -20,6 +20,7 @@ export interface BrandsResponse {
 export interface ProcessedBrand {
   id: string;
   name: string;
+  logo_url?:string;
   searchable: string; // Lowercase version for search
 }
 

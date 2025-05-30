@@ -1,12 +1,18 @@
 // src/components/dashboard/campaign-funnel/outreach/OutreachTab.tsx
 'use client';
 
+import MessageSent from './MessageSent';
+import ReadyToOnboard from './ReadyToOnboard';
+import OnBoarded from './OnBoarded';
+
 const OutreachTab: React.FC = () => {
   return (
-    <div>
-      <h2 className="text-2xl font-bold text-gray-700 mb-4">Outreach</h2>
-      <div className="bg-gray-50 p-6 rounded-lg border border-gray-200 text-center">
-        <p className="text-gray-500">Outreach content will be implemented soon.</p>
+    <div className="p-6">
+      <h2 className="text-2xl font-bold text-gray-700 mb-6">Outreach</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <MessageSent />
+        <ReadyToOnboard />
+        <OnBoarded />
       </div>
     </div>
   );
