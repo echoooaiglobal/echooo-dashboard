@@ -21,6 +21,8 @@ export interface CreateMessageTemplateRequest {
   company_id: string;
   campaign_id: string;
   is_global?: boolean;
+  auto_assign_agent?:boolean;
+  target_list_id:string;
 }
 
 /**
