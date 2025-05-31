@@ -176,7 +176,9 @@ console.log('campaignData:', campaignData)
           content: data.message,
           company_id: campaignData.company_id,
           campaign_id: campaignData.id,
-          is_global: true
+          is_global: true,
+          auto_assign_agent: true,
+          target_list_id: campaignData?.campaign_lists[0].id
         }),
       });
 

@@ -116,10 +116,10 @@ export default function Navbar() {
   // List of navigation items for dashboard
   const dashboardNavItems = [
     { name: 'Dashboard', href: '/dashboard' },
-    { name: 'Discover', href: '/discover' },
+    // { name: 'Discover', href: '/discover' },
     // { name: 'Influencers', href: '/influencers' },
     // { name: 'Clients', href: '/clients' },
-    { name: 'Analytics', href: '/analytics' },
+    // { name: 'Analytics', href: '/analytics' },
   ];
 
   // List of navigation items for landing page

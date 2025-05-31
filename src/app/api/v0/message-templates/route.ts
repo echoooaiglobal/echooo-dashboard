@@ -36,7 +36,9 @@ export async function POST(request: NextRequest) {
       content: body.content,
       company_id: body.company_id,
       campaign_id: body.campaign_id,
-      is_global: body.is_global ?? true
+      is_global: body.is_global ?? true,
+      auto_assign_agent: body.auto_assign_agent,
+      target_list_id: body.target_list_id
     }, authToken);
 
     return NextResponse.json(template, { status: 201 });
