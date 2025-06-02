@@ -85,6 +85,7 @@ const BrandInfoForm: React.FC<BrandInfoFormProps> = ({ onComplete }) => {
   
   const [error, setError] = useState<string | null>(null);
   const [companyId, setCompanyId] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Refs for dropdowns
   const brandDropdownRef = useRef<HTMLDivElement>(null);
@@ -348,6 +349,9 @@ const BrandInfoForm: React.FC<BrandInfoFormProps> = ({ onComplete }) => {
       return;
     }
     
+    // Set submitting state to true
+    setIsSubmitting(true);
+    
     const campaignData: CreateCampaignRequest = {
       name: formData.campaignName,
       brand_name: formData.brandName,
@@ -373,11 +377,14 @@ const BrandInfoForm: React.FC<BrandInfoFormProps> = ({ onComplete }) => {
     } catch (error) {
       console.error('Error submitting form:', error);
       setError('An unexpected error occurred. Please try again.');
+    } finally {
+      // Always reset submitting state
+      setIsSubmitting(false);
     }
   };
 
   // Determine if we're in a loading state
-  const isLoading = categoriesApi.isLoading || campaignApi.isLoading || brandsApi.isLoading;
+  const isLoading = categoriesApi.isLoading || campaignApi.isLoading || brandsApi.isLoading || isSubmitting;
 
   // Get selected currency symbol
   const getSelectedCurrencySymbol = () => {
@@ -658,10 +665,15 @@ const BrandInfoForm: React.FC<BrandInfoFormProps> = ({ onComplete }) => {
             />
             <button
               type="submit"
-              className="w-full mt-8 px-6 py-3 bg-purple-500 text-white rounded-full font-medium hover:bg-purple-600 transition-colors disabled:bg-purple-300"
+              className="w-full mt-8 px-6 py-3 bg-purple-500 text-white rounded-full font-medium hover:bg-purple-600 transition-colors disabled:bg-purple-300 disabled:cursor-not-allowed"
               disabled={isLoading}
             >
-              {isLoading ? 'Processing...' : 'Complete'}
+              {isSubmitting ? (
+                <div className="flex items-center justify-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>Creating Campaign...</span>
+                </div>
+              ) : isLoading ? 'Processing...' : 'Complete'}
             </button>
           </>
         );

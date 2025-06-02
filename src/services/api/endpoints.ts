@@ -46,4 +46,10 @@ export const ENDPOINTS = {
     BY_COMPANY: (companyId: string) => `/message-templates/campaign/${companyId}`,
     DETAIL: (templateId: string) => `/message-templates/${templateId}`,
   },
+  // NEW: Platforms endpoints
+  PLATFORMS: {
+    LIST: '/platforms',
+    DETAIL: (id: string) => `/platforms/${id}`,
+    BY_STATUS: (status: string) => `/platforms?status=${status}`,
+  },
 };

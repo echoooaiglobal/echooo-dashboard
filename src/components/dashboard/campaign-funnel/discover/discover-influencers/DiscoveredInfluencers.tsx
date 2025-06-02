@@ -10,6 +10,7 @@ import { Campaign } from '@/services/campaign/campaign.service';
 import { CampaignListMember } from '@/services/campaign/campaign-list.service';
 import { DiscoveredCreatorsResults } from '@/types/insights-iq';
 import { InfluencerSearchFilter } from '@/lib/creator-discovery-types';
+import { Platform } from '@/types/platform';
 
 interface DiscoveredInfluencersProps {
   campaignData?: Campaign | null;
@@ -19,8 +20,8 @@ interface DiscoveredInfluencersProps {
   totalResults: number;
   searchParams: InfluencerSearchFilter;
   onSearchTextChange: (text: string) => void;
-  onFilterChange: (filterUpdates: Partial<InfluencerSearchFilter>) => void; // Updated
-  onApplyFilters: (appliedFilters: Partial<InfluencerSearchFilter>) => void; // Updated
+  onFilterChange: (filterUpdates: Partial<InfluencerSearchFilter>) => void;
+  onApplyFilters: (appliedFilters: Partial<InfluencerSearchFilter>) => void;
   onSortChange: (field: string, direction: 'asc' | 'desc') => void;
   onLoadMore: () => void;
   onClearFilters: () => void;
@@ -30,6 +31,11 @@ interface DiscoveredInfluencersProps {
   shortlistedMembers: CampaignListMember[];
   onPageChange?: (page: number) => void;
   onPageSizeChange?: (pageSize: number) => void;
+  // NEW: Platform-related props
+  platforms?: Platform[];
+  selectedPlatform?: Platform | null;
+  onPlatformChange?: (platform: Platform) => void;
+  isLoadingPlatforms?: boolean;
 }
 
 const DiscoveredInfluencers: React.FC<DiscoveredInfluencersProps> = ({ 
@@ -50,7 +56,12 @@ const DiscoveredInfluencers: React.FC<DiscoveredInfluencersProps> = ({
   onInfluencerAdded,
   shortlistedMembers,
   onPageChange,
-  onPageSizeChange
+  onPageSizeChange,
+  // NEW: Platform props
+  platforms = [],
+  selectedPlatform = null,
+  onPlatformChange,
+  isLoadingPlatforms = false
 }) => {
   const [showFilters, setShowFilters] = useState(false);
   const [searchText, setSearchText] = useState(searchParams.description_keywords || '');
@@ -118,10 +129,15 @@ const DiscoveredInfluencers: React.FC<DiscoveredInfluencersProps> = ({
       {/* Show filters only if showFilters is true */}
       {showFilters && (
         <DiscoverFilters 
-          searchParams={searchParams} // Pass the entire searchParams object
+          searchParams={searchParams}
           onFilterChange={onFilterChange}
           onApplyFilters={onApplyFilters}
           onClear={onClearFilters}
+          // NEW: Pass platform-related props to filters
+          platforms={platforms}
+          selectedPlatform={selectedPlatform}
+          onPlatformChange={onPlatformChange}
+          isLoadingPlatforms={isLoadingPlatforms}
         />
       )}
       
@@ -131,8 +147,8 @@ const DiscoveredInfluencers: React.FC<DiscoveredInfluencersProps> = ({
         discoveredCreatorsResults={discoveredCreatorsResults}
         isLoading={isLoading}
         totalResults={totalResults}
-        sortField={searchParams.sort_by?.field || 'FOLLOWER_COUNT'} // Updated to use sort_by
-        sortDirection={searchParams.sort_by?.order === 'ASCENDING' ? 'asc' : 'desc'} // Updated mapping
+        sortField={searchParams.sort_by?.field || 'FOLLOWER_COUNT'}
+        sortDirection={searchParams.sort_by?.order === 'ASCENDING' ? 'asc' : 'desc'}
         onSortChange={onSortChange}
         onLoadMore={onLoadMore}
         hasMore={hasMore}
@@ -142,8 +158,8 @@ const DiscoveredInfluencers: React.FC<DiscoveredInfluencersProps> = ({
         shortlistedMembers={shortlistedMembers}
         onPageChange={onPageChange}
         onPageSizeChange={onPageSizeChange}
-        currentPage={Math.floor((searchParams.offset || 0) / (searchParams.limit || 20)) + 1} // Calculate current page
-        pageSize={searchParams.limit || 20} // Pass current page size
+        currentPage={Math.floor((searchParams.offset || 0) / (searchParams.limit || 20)) + 1}
+        pageSize={searchParams.limit || 20}
       />
     </div>
   );
