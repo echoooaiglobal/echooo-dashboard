@@ -1,6 +1,5 @@
-// src/services/auth/auth.utils.ts - full updated file
-
-import { User, Role, Company } from '@/types/auth';
+// src/services/auth/auth.utils.ts - Enhanced with role support
+import { User, Role, Company, DetailedRole } from '@/types/auth';
 
 /**
  * Safely access localStorage (handles SSR and browser cases)
@@ -41,7 +40,7 @@ export const getAuthToken = (): string | null => {
 };
 
 /**
- * Store authentication data in localStorage
+ * Store authentication data in localStorage with enhanced role support
  */
 export const storeAuthData = (
   accessToken: string,
@@ -58,7 +57,16 @@ export const storeAuthData = (
   safeLocalStorage.setItem('tokenExpiry', expiryTime.toString());
   safeLocalStorage.setItem('user', JSON.stringify(user));
   safeLocalStorage.setItem('roles', JSON.stringify(roles));
-  safeLocalStorage.setItem('company', JSON.stringify(company));
+  
+  if (company) {
+    safeLocalStorage.setItem('company', JSON.stringify(company));
+  }
+
+  // Store primary role for quick access
+  if (roles && roles.length > 0) {
+    safeLocalStorage.setItem('primaryRole', roles[0].name);
+    safeLocalStorage.setItem('userType', getUserTypeFromRole(roles[0].name));
+  }
 };
 
 /**
@@ -73,6 +81,8 @@ export const clearAuthData = () => {
   localStorage.removeItem('refreshToken');
   localStorage.removeItem('tokenExpiry');
   localStorage.removeItem('company');
+  localStorage.removeItem('primaryRole');
+  localStorage.removeItem('userType');
 };
 
 /**
@@ -127,13 +137,15 @@ export const getStoredUser = (): User | null => {
 /**
  * Get the stored company data
  */
-export const getStoredCompany = (): User | null => {
+export const getStoredCompany = (): Company | null => {
   const companyData = safeLocalStorage.getItem('company');
   if (!companyData) return null;
   if(companyData === 'undefined') return null; // Handle case where companyData is 'undefined' string
   
   try {
-    return JSON.parse(companyData);
+    const parsed = JSON.parse(companyData);
+    // Handle array case (from backend response)
+    return Array.isArray(parsed) ? parsed[0] : parsed;
   } catch (error) {
     console.error('Error parsing stored company data:', error);
     return null;
@@ -160,7 +172,33 @@ export const getStoredRoles = (): Role[] => {
 };
 
 /**
- * Check if the user has a specific role
+ * Get the primary role from localStorage (quick access)
+ */
+export const getStoredPrimaryRole = (): DetailedRole | null => {
+  const primaryRole = safeLocalStorage.getItem('primaryRole');
+  return primaryRole as DetailedRole || null;
+};
+
+/**
+ * Get the user type from localStorage (quick access)
+ */
+export const getStoredUserType = (): 'platform' | 'company' | 'influencer' | null => {
+  const userType = safeLocalStorage.getItem('userType');
+  return userType as 'platform' | 'company' | 'influencer' || null;
+};
+
+/**
+ * Get user type from detailed role
+ */
+export const getUserTypeFromRole = (detailedRole: DetailedRole): 'platform' | 'company' | 'influencer' => {
+  if (detailedRole.startsWith('platform_')) return 'platform';
+  if (detailedRole.startsWith('company_')) return 'company';
+  if (detailedRole.startsWith('influencer')) return 'influencer';
+  throw new Error(`Unknown role: ${detailedRole}`);
+};
+
+/**
+ * Check if the user has a specific role (legacy support)
  */
 export const hasRole = (roleName: string): boolean => {
   const roles = getStoredRoles();
@@ -168,10 +206,18 @@ export const hasRole = (roleName: string): boolean => {
 };
 
 /**
- * Checks if the user has any of the specified roles
- * @param requiredRoles Array of role names to check
+ * Check if the user has a specific detailed role
  */
-export const hasAnyRole = (requiredRoles: string[]): boolean => {
+export const hasDetailedRole = (roleName: DetailedRole): boolean => {
+  const roles = getStoredRoles();
+  return roles.some(role => role.name === roleName);
+};
+
+/**
+ * Checks if the user has any of the specified roles
+ * @param requiredRoles Array of detailed role names to check
+ */
+export const hasAnyRole = (requiredRoles: DetailedRole[]): boolean => {
   const roles = getStoredRoles();
   if (!roles.length) return false;
   
@@ -180,18 +226,240 @@ export const hasAnyRole = (requiredRoles: string[]): boolean => {
 };
 
 /**
- * Sets the user and roles in local storage
+ * Checks if the user has any of the specified detailed roles
+ * @param requiredRoles Array of detailed role names to check
  */
-export const setAuthData = (user: User, roles: Role[], token: string, refreshToken: string, expiresIn: number) => {
-  if (typeof window === 'undefined') return;
+export const hasAnyDetailedRole = (requiredRoles: DetailedRole[]): boolean => {
+  const roles = getStoredRoles();
+  if (!roles.length) return false;
   
-  // Store user and roles
-  localStorage.setItem('user', JSON.stringify(user));
-  localStorage.setItem('roles', JSON.stringify(roles));
-  
-  // Store tokens
-  localStorage.setItem('accessToken', token);
-  localStorage.setItem('refreshToken', refreshToken);
-  localStorage.setItem('tokenExpiry', (Date.now() + expiresIn * 1000).toString());
+  const userRoleNames = roles.map(role => role.name);
+  return requiredRoles.some(role => userRoleNames.includes(role));
 };
 
+/**
+ * Check if user is platform admin (highest level)
+ */
+export const isPlatformAdmin = (): boolean => {
+  return hasDetailedRole('platform_admin');
+};
+
+/**
+ * Check if user is platform agent
+ */
+export const isPlatformAgent = (): boolean => {
+  return hasDetailedRole('platform_agent');
+};
+
+/**
+ * Check if user is company admin
+ */
+export const isCompanyAdmin = (): boolean => {
+  return hasDetailedRole('company_admin');
+};
+
+/**
+ * Check if user has platform-level access
+ */
+export const hasPlatformAccess = (): boolean => {
+  const primaryRole = getStoredPrimaryRole();
+  return primaryRole ? primaryRole.startsWith('platform_') : false;
+};
+
+/**
+ * Check if user has company-level access
+ */
+export const hasCompanyAccess = (): boolean => {
+  const primaryRole = getStoredPrimaryRole();
+  return primaryRole ? primaryRole.startsWith('company_') : false;
+};
+
+/**
+ * Check if user has influencer-level access
+ */
+export const hasInfluencerAccess = (): boolean => {
+  const primaryRole = getStoredPrimaryRole();
+  return primaryRole ? primaryRole.startsWith('influencer') : false;
+};
+
+/**
+ * Get role hierarchy level for permission checking
+ */
+export const getRoleHierarchyLevel = (): number => {
+  const primaryRole = getStoredPrimaryRole();
+  if (!primaryRole) return 0;
+
+  const hierarchyMap: Record<DetailedRole, number> = {
+    // Platform hierarchy
+    'platform_admin': 100,
+    'platform_manager': 80,
+    'platform_developer': 75,
+    'platform_user': 60,
+    'platform_accountant': 50,
+    'platform_customer_support': 40,
+    'platform_content_moderator': 35,
+    'platform_agent': 30,
+    
+    // Company hierarchy
+    'company_admin': 100,
+    'company_manager': 80,
+    'company_marketer': 60,
+    'company_accountant': 50,
+    'company_content_creator': 40,
+    'company_user': 30,
+    
+    // Influencer hierarchy
+    'influencer_manager': 80,
+    'influencer': 50,
+  };
+  
+  return hierarchyMap[primaryRole] || 0;
+};
+
+/**
+ * Check if current user has higher hierarchy than target role
+ */
+export const hasHigherHierarchyThan = (targetRole: DetailedRole): boolean => {
+  const currentLevel = getRoleHierarchyLevel();
+  const targetHierarchyMap: Record<DetailedRole, number> = {
+    // Platform hierarchy
+    'platform_admin': 100,
+    'platform_manager': 80,
+    'platform_developer': 75,
+    'platform_user': 60,
+    'platform_accountant': 50,
+    'platform_customer_support': 40,
+    'platform_content_moderator': 35,
+    'platform_agent': 30,
+    
+    // Company hierarchy
+    'company_admin': 100,
+    'company_manager': 80,
+    'company_marketer': 60,
+    'company_accountant': 50,
+    'company_content_creator': 40,
+    'company_user': 30,
+    
+    // Influencer hierarchy
+    'influencer_manager': 80,
+    'influencer': 50,
+  };
+  
+  const targetLevel = targetHierarchyMap[targetRole] || 0;
+  return currentLevel > targetLevel;
+};
+
+/**
+ * Get appropriate dashboard route based on stored role
+ */
+export const getDashboardRoute = (): string => {
+  const userType = getStoredUserType();
+  const primaryRole = getStoredPrimaryRole();
+  
+  if (!userType || !primaryRole) return '/login';
+  
+  // Special routing for company users
+  if (userType === 'company') {
+    return '/dashboard'; // CompanyDashboardPage will handle redirection to campaigns
+  }
+  
+  return '/dashboard';
+};
+
+/**
+ * Sets the user and roles in local storage (legacy support)
+ */
+export const setAuthData = (
+  user: User, 
+  roles: Role[], 
+  token: string, 
+  refreshToken: string, 
+  expiresIn: number
+) => {
+  storeAuthData(token, refreshToken, expiresIn, user, roles);
+};
+
+/**
+ * Validate stored auth data integrity
+ */
+export const validateAuthData = (): boolean => {
+  const user = getStoredUser();
+  const roles = getStoredRoles();
+  const token = getAuthToken();
+  
+  // Check if all required data is present
+  if (!user || !roles.length || !token) {
+    clearAuthData();
+    return false;
+  }
+  
+  // Check if token is expired
+  if (isTokenExpired()) {
+    clearAuthData();
+    return false;
+  }
+  
+  // Check if role data is consistent
+  const primaryRole = getStoredPrimaryRole();
+  const userType = getStoredUserType();
+  
+  if (!primaryRole || !userType) {
+    // Repair missing quick access data
+    if (roles.length > 0) {
+      safeLocalStorage.setItem('primaryRole', roles[0].name);
+      safeLocalStorage.setItem('userType', getUserTypeFromRole(roles[0].name));
+    } else {
+      clearAuthData();
+      return false;
+    }
+  }
+  
+  return true;
+};
+
+/**
+ * Initialize auth state on app startup
+ */
+export const initializeAuthState = (): {
+  isAuthenticated: boolean;
+  user: User | null;
+  roles: Role[];
+  primaryRole: DetailedRole | null;
+  userType: 'platform' | 'company' | 'influencer' | null;
+} => {
+  const isValid = validateAuthData();
+  
+  if (!isValid) {
+    return {
+      isAuthenticated: false,
+      user: null,
+      roles: [],
+      primaryRole: null,
+      userType: null
+    };
+  }
+  
+  return {
+    isAuthenticated: true,
+    user: getStoredUser(),
+    roles: getStoredRoles(),
+    primaryRole: getStoredPrimaryRole(),
+    userType: getStoredUserType()
+  };
+};
+
+/**
+ * Debug function to log current auth state (development only)
+ */
+export const debugAuthState = () => {
+  if (process.env.NODE_ENV !== 'development') return;
+  
+  console.group('🔐 Auth State Debug');
+  console.log('User:', getStoredUser());
+  console.log('Roles:', getStoredRoles());
+  console.log('Primary Role:', getStoredPrimaryRole());
+  console.log('User Type:', getStoredUserType());
+  console.log('Token Valid:', !isTokenExpired());
+  console.log('Hierarchy Level:', getRoleHierarchyLevel());
+  console.groupEnd();
+};

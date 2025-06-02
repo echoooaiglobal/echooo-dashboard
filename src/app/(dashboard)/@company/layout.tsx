@@ -1,4 +1,4 @@
-// src/app/(dashboard)/@company/layout.tsx
+// src/app/(dashboard)/@company/layout.tsx - Enhanced with detailed role support
 'use client';
 
 import { ReactNode, useEffect } from 'react';
@@ -6,18 +6,30 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 
 export default function CompanyLayout({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, getUserType, getPrimaryRole } = useAuth();
   const router = useRouter();
   
   useEffect(() => {
-    // Verify user is a company
-    if (user && user.user_type !== 'company') {
+    // Verify user has company access
+    const userType = getUserType();
+    const primaryRole = getPrimaryRole();
+    
+    if (user && userType !== 'company') {
+      console.log('User does not have company access, redirecting to unauthorized');
       router.push('/unauthorized');
+      return;
     }
-  }, [user, router]);
+
+    // Log the specific company role for debugging
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Company user logged in with role:', primaryRole);
+    }
+    
+  }, [user, router, getUserType, getPrimaryRole]);
   
-  // Don't render anything if not a company
-  if (user?.user_type !== 'company') {
+  // Don't render anything if not a company user
+  const userType = getUserType();
+  if (user && userType !== 'company') {
     return null;
   }
   

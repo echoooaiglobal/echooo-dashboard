@@ -1,4 +1,4 @@
-// src/components/navbar/index.tsx - Fixed authentication flash
+// src/components/navbar/EnhancedNavbar.tsx
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -11,7 +11,7 @@ import CampaignsDropdown from './CampaignsDropdown';
 import { DetailedRole } from '@/types/auth';
 
 export default function EnhancedNavbar() {
-  const { isAuthenticated, user, logout, getPrimaryRole, getUserType, isLoading } = useAuth();
+  const { isAuthenticated, user, logout, getPrimaryRole, getUserType } = useAuth();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -48,18 +48,21 @@ export default function EnhancedNavbar() {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
+console.log('userType', userType)
   // Close dropdowns when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
+      // Handle profile dropdown
       if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
         setIsProfileMenuOpen(false);
       }
       
+      // Handle notifications dropdown
       if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
         setIsNotificationsOpen(false);
       }
       
+      // Handle campaigns dropdown
       if (campaignsRef.current && !campaignsRef.current.contains(event.target as Node)) {
         setIsCampaignsOpen(false);
       }
@@ -71,9 +74,12 @@ export default function EnhancedNavbar() {
     };
   }, []);
 
-  // Toggle functions
-  const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
+  // Toggle mobile menu
+  const toggleMenu = () => {
+    setIsMenuOpen(!isMenuOpen);
+  };
 
+  // Toggle profile dropdown
   const toggleProfileMenu = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsProfileMenuOpen(!isProfileMenuOpen);
@@ -81,6 +87,7 @@ export default function EnhancedNavbar() {
     if (isCampaignsOpen) setIsCampaignsOpen(false);
   };
 
+  // Toggle notifications dropdown
   const toggleNotifications = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsNotificationsOpen(!isNotificationsOpen);
@@ -88,6 +95,7 @@ export default function EnhancedNavbar() {
     if (isCampaignsOpen) setIsCampaignsOpen(false);
   };
 
+  // Toggle campaigns dropdown
   const toggleCampaigns = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsCampaignsOpen(!isCampaignsOpen);
@@ -95,8 +103,12 @@ export default function EnhancedNavbar() {
     if (isNotificationsOpen) setIsNotificationsOpen(false);
   };
 
-  const closeCampaigns = () => setIsCampaignsOpen(false);
+  // Close campaigns dropdown
+  const closeCampaigns = () => {
+    setIsCampaignsOpen(false);
+  };
 
+  // Handle logout
   const handleLogout = async () => {
     await logout();
     setIsProfileMenuOpen(false);
@@ -113,6 +125,7 @@ export default function EnhancedNavbar() {
 
     if (!primaryRole) return baseItems;
 
+    // Role-specific navigation
     switch (primaryRole) {
       case 'platform_admin':
         return [
@@ -125,8 +138,8 @@ export default function EnhancedNavbar() {
       case 'platform_agent':
         return [
           ...baseItems,
-          // { name: 'Assigned Lists', href: '/assigned-lists' },
-          // { name: 'Messages', href: '/messages' }
+          { name: 'Assigned Lists', href: '/assigned-lists' },
+          { name: 'Messages', href: '/messages' }
         ];
       
       case 'company_admin':
@@ -134,9 +147,8 @@ export default function EnhancedNavbar() {
       case 'company_marketer':
         return [
           ...baseItems,
-          // { name: 'Campaigns', href: '/campaigns' },
-          // { name: 'Discover', href: '/discover' },
-          // { name: 'Campaigns', href: '/campaigns' }
+          { name: 'Discover', href: '/discover' },
+          { name: 'Campaigns', href: '/campaigns' }
         ];
       
       default:
@@ -144,6 +156,7 @@ export default function EnhancedNavbar() {
     }
   };
 
+  // List of navigation items for landing page
   const landingNavItems = [
     { name: 'Features', href: '#features' },
     { name: 'Testimonials', href: '#testimonials' },
@@ -151,6 +164,10 @@ export default function EnhancedNavbar() {
     { name: 'Contact', href: '#contact' },
   ];
 
+  // Determine which navigation items to show
+  const navItems = isAuthenticated ? getDashboardNavItems() : landingNavItems;
+
+  // Get role display color
   const getRoleColor = (role: DetailedRole) => {
     if (role.startsWith('platform_')) return 'text-indigo-600';
     if (role.startsWith('company_')) return 'text-blue-600';
@@ -158,6 +175,7 @@ export default function EnhancedNavbar() {
     return 'text-gray-600';
   };
 
+  // Get notifications based on role
   const getRoleSpecificNotifications = () => {
     const baseNotifications = [
       { title: 'System update available', time: '5 minutes ago', read: false, type: 'system' }
@@ -190,37 +208,7 @@ export default function EnhancedNavbar() {
     return null;
   }
 
-  // **KEY FIX**: Don't render navbar content while authentication is loading
-  // This prevents the flash of unauthenticated content
-  if (isLoading) {
-    return (
-      <nav className="sticky top-0 left-0 right-0 z-50 bg-white shadow-md">
-        <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <Link href="/" className="flex items-center">
-                <Image 
-                  src="/echooo-logo.svg" 
-                  alt="Echooo" 
-                  width={120} 
-                  height={30} 
-                  className="h-8 w-auto" 
-                />
-              </Link>
-            </div>
-            {/* Show a minimal loading state */}
-            <div className="flex items-center">
-              <div className="h-8 w-8 rounded-full bg-gray-200 animate-pulse"></div>
-            </div>
-          </div>
-        </div>
-      </nav>
-    );
-  }
-
-  // **KEY FIX**: Now determine navigation items based on final auth state
-  const navItems = isAuthenticated ? getDashboardNavItems() : landingNavItems;
-
+  // Render different navbar styling based on authenticated state and page
   return (
     <nav className={`sticky top-0 left-0 right-0 z-50 transition-all duration-300 ${
       isScrolled || isAuthenticated 
@@ -263,11 +251,18 @@ export default function EnhancedNavbar() {
             </div>
           </div>
 
-          {/* Right navigation */}
+          {/* Right navigation: role indicator, campaigns dropdown, notifications, profile */}
           <div className="flex items-center">
             {isAuthenticated ? (
               // Authenticated nav options
               <div className="hidden md:flex md:items-center md:space-x-4">
+                {/* Role indicator */}
+                {primaryRole && (
+                  <div className={`px-3 py-1 rounded-full text-xs font-medium bg-gray-100 ${getRoleColor(primaryRole)}`}>
+                    {primaryRole.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                  </div>
+                )}
+
                 {/* Campaigns Dropdown Component - only for company users */}
                 {userType === 'company' && (
                   <div ref={campaignsRef}>
@@ -435,27 +430,7 @@ export default function EnhancedNavbar() {
         </div>
       </div>
 
-      {/* Mobile menu - simplified for space */}
-      {isMenuOpen && (
-        <div className="md:hidden">
-          <div className="pt-2 pb-3 space-y-1">
-            {navItems.map((item) => (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={`${
-                  pathname === item.href
-                    ? 'bg-purple-50 border-purple-500 text-purple-700'
-                    : 'border-transparent text-gray-600 hover:bg-gray-50'
-                } block pl-3 pr-4 py-2 border-l-4 text-base font-medium`}
-                onClick={() => setIsMenuOpen(false)}
-              >
-                {item.name}
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Mobile menu content here - truncated for brevity */}
     </nav>
   );
 }

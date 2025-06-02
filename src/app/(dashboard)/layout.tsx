@@ -1,11 +1,11 @@
-// src/app/(dashboard)/layout.tsx
+// src/app/(dashboard)/layout.tsx - Corrected with parallel routes support
 'use client';
 
 import { ReactNode, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import SessionExpiredModal from '@/components/auth/SessionExpiredModal'; // We'll create this component
+import SessionExpiredModal from '@/components/auth/SessionExpiredModal';
 
 // The props here come from Next.js parallel routes
 export default function DashboardLayout({
@@ -19,7 +19,14 @@ export default function DashboardLayout({
   company: ReactNode;
   influencer: ReactNode;
 }) {
-  const { isLoading, isAuthenticated, user, refreshUserSession } = useAuth();
+  const { 
+    isLoading, 
+    isAuthenticated, 
+    user, 
+    refreshUserSession,
+    getUserType,
+    getPrimaryRole
+  } = useAuth();
   const router = useRouter();
   
   // Use an effect for navigation after render, not during render
@@ -52,25 +59,29 @@ export default function DashboardLayout({
   if (!user?.user_type) {
     return <SessionExpiredModal />;
   }
-  
- 
+
+  // Get role information
+  const userType = getUserType();
+  const primaryRole = getPrimaryRole();
+
   if (process.env.NODE_ENV === 'development') {
-      console.log('Dashboard Layout:', {
-        userType: user.user_type,
-        hasPlatformSlot: !!platform,
-        hasCompanySlot: !!company,
-        hasInfluencerSlot: !!influencer,
-      });
+    console.log('Dashboard Layout:', {
+      userType,
+      primaryRole,
+      hasPlatformSlot: !!platform,
+      hasCompanySlot: !!company,
+      hasInfluencerSlot: !!influencer,
+    });
   }
   
-  // The content to display based on user type
+  // The content to display based on user type using parallel routes
   let content;
   
-  if (user.user_type === 'platform') {
+  if (userType === 'platform') {
     content = platform;
-  } else if (user.user_type === 'company') {
+  } else if (userType === 'company') {
     content = company;
-  } else if (user.user_type === 'influencer') {
+  } else if (userType === 'influencer') {
     content = influencer;
   } else {
     // This should almost never happen now with our improved checks

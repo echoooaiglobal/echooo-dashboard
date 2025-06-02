@@ -12,6 +12,7 @@ import { DiscoverInfluencer } from '@/lib/types';
 import { DiscoveredCreatorsResults } from '@/types/insights-iq';
 import { getCampaignListMembers, CampaignListMember, CampaignListMembersResponse } from '@/services/campaign/campaign-list.service';
 import { InfluencerSearchFilter } from '@/lib/creator-discovery-types';
+import { Platform } from '@/types/platform';
 
 // Default Pakistan location ID (replace with actual ID from your API)
 const PAKISTAN_LOCATION_ID = "abd21c98-2950-45cd-b224-89b5a9f3c014";
@@ -44,23 +45,30 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
+  // NEW: Platform states
+  const [platforms, setPlatforms] = useState<Platform[]>([]);
+  const [isLoadingPlatforms, setIsLoadingPlatforms] = useState(false);
+  const [selectedPlatform, setSelectedPlatform] = useState<Platform | null>(null);
+
   // Prepare age group from campaign data
+  const creatorInterests = campaignData?.category?.name || '';
   const ageGroup = campaignData?.audience_age_group || '';
   const [left, right] = ageGroup.split('-');
 
   // Search parameters state using new InfluencerSearchFilter type
   const [searchParams, setSearchParams] = useState<InfluencerSearchFilter>({
-    work_platform_id: "9bb8913b-ddd9-430b-a66a-d74d846e6c66", // Instagram platform ID
+    work_platform_id: "9bb8913b-ddd9-430b-a66a-d74d846e6c66", // Instagram platform ID (default)
     audience_gender: {
       type: "ANY",
       operator: "GT",
-      percentage_value: 0
+      percentage_value: 0 
     },
     creator_age: {
       min: parseInt(left?.trim() || '18'),
       max: parseInt(right?.trim() || '35')
     },
     creator_locations: [],
+    creator_interests: [creatorInterests],
     creator_account_type: ["CREATOR"],
     sort_by: {
       field: "FOLLOWER_COUNT",
@@ -71,11 +79,94 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
     post_type: "ALL",
   });
 
+  // NEW: Function to fetch platforms from your API
+  const fetchPlatforms = useCallback(async () => {
+    setIsLoadingPlatforms(true);
+    try {
+      console.log('🔄 Fetching platforms from API...');
+      
+      const response = await fetch('/api/v0/platforms?status=ACTIVE', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch platforms: ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        setPlatforms(result.data);
+        console.log('✅ Platforms loaded:', result.data.length, 'active platforms');
+        
+        // Set default platform (Instagram) if available and no platform is selected
+        if (!selectedPlatform && result.data.length > 0) {
+          const instagramPlatform = result.data.find((p: Platform) => 
+            p.name.toLowerCase().includes('instagram')
+          );
+          
+          if (instagramPlatform) {
+            setSelectedPlatform(instagramPlatform);
+            console.log('🎯 Default platform set to:', instagramPlatform.name);
+            
+            // Update search params with the default platform
+            setSearchParams(prev => ({
+              ...prev,
+              work_platform_id: instagramPlatform.work_platform_id
+            }));
+          }
+        }
+      } else {
+        console.error('❌ Invalid API response:', result);
+        setPlatforms([]);
+      }
+      
+    } catch (error) {
+      console.error('❌ Error fetching platforms:', error);
+      setPlatforms([]);
+    } finally {
+      setIsLoadingPlatforms(false);
+    }
+  }, [selectedPlatform]);
+
+  // NEW: Function to handle platform change
+  const handlePlatformChange = (platform: Platform) => {
+    console.log('🎯 Platform changed to:', platform.name, '(Work Platform ID:', platform.work_platform_id, ')');
+    
+    setSelectedPlatform(platform);
+    
+    // Update search params with new platform work_platform_id
+    const updatedParams = {
+      ...searchParams,
+      work_platform_id: platform.work_platform_id,
+      offset: 0 // Reset pagination when platform changes
+    };
+    
+    setSearchParams(updatedParams);
+    setLoadCount(1);
+    
+    // Trigger API call with new platform if we're on discovered tab
+    if (activeFilter === 'discovered' && !isNewCampaign) {
+      fetchInfluencers(updatedParams);
+    }
+  };
+
   // Function to fetch influencers - make it a useCallback to prevent unnecessary re-renders
   const fetchInfluencers = useCallback(async (params: InfluencerSearchFilter) => {
     setIsLoading(true);
     try {
       const apiUrl = '/api/v0/discover/search';
+      
+      console.log('🔍 Searching influencers with params:', {
+        platform: selectedPlatform?.name || 'Unknown',
+        work_platform_id: params.work_platform_id,
+        limit: params.limit,
+        offset: params.offset
+      });
       
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -86,16 +177,17 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
       });
       
       const data = await response.json();
-      console.log('API response data:', data);
+      console.log('📊 API response data:', data);
       
       // Always replace results for pagination (don't append)
       setDiscoveredCreatorsResults(data);
       setTotalResults(data?.metadata?.total_results || 0);
     } catch (error) {
+      console.error('❌ Error fetching influencers:', error);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [selectedPlatform]);
 
   // Function to fetch campaign list members with pagination
   const fetchCampaignListMembers = async (page: number = 1, size: number = pageSize) => {
@@ -112,7 +204,6 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
       const response = await getCampaignListMembers(listId, page, size);
       
       if (response.success) {
-        
         // Directly assign the members without transformation
         setShortlistedMembers(response);
         setShortlistedCount(response.pagination.total_items || 0);
@@ -138,11 +229,10 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
   const handlePageSizeChange = (newPageSize: number) => {
     setPageSize(newPageSize);
     setCurrentPage(1); // Reset to page 1 when changing page size
-    // Reset to page 1 when changing page size
     fetchCampaignListMembers(1, newPageSize);
   };
 
-  // NEW: Function to handle discovered influencers page changes
+  // Function to handle discovered influencers page changes
   const handleDiscoveredPageChange = (page: number) => {
     const newOffset = (page - 1) * (searchParams.limit || 20);
     
@@ -159,9 +249,8 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
     }
   };
 
-  // NEW: Function to handle discovered influencers page size changes
+  // Function to handle discovered influencers page size changes
   const handleDiscoveredPageSizeChange = (newPageSize: number) => {
-    
     const updatedParams = {
       ...searchParams,
       offset: 0, // Reset to first page when changing page size
@@ -176,13 +265,19 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
     }
   };
 
-  // Initial load of influencers when component mounts
+  // NEW: Load platforms when component mounts
   useEffect(() => {
-    // Only fetch if we're on the discovered tab and it's not a new campaign
-    if (activeFilter === 'discovered' && campaignData && !isNewCampaign) {
+    fetchPlatforms();
+  }, [fetchPlatforms]);
+
+  // Initial load of influencers when component mounts or platform changes
+  useEffect(() => {
+    // Only fetch if we're on the discovered tab, have a selected platform, and it's not a new campaign
+    if (activeFilter === 'discovered' && campaignData && !isNewCampaign && selectedPlatform) {
+      console.log('🚀 Initial influencer fetch triggered for platform:', selectedPlatform.name);
       fetchInfluencers(searchParams);
     }
-  }, [activeFilter, campaignData, isNewCampaign, fetchInfluencers]);
+  }, [activeFilter, campaignData, isNewCampaign, selectedPlatform, fetchInfluencers]);
 
   // Fetch campaign list members when campaign data is available
   useEffect(() => {
@@ -227,7 +322,7 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
     setLoadCount(1); // Reset load count when filters change
   };
 
-  // NEW: Handler for applying filters - this will trigger the API call
+  // Handler for applying filters - this will trigger the API call
   const handleApplyFilters = (appliedFilters: Partial<InfluencerSearchFilter>) => {
     const updatedParams = {
       ...searchParams,
@@ -294,7 +389,7 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
   // Handler for clearing all filters
   const handleClearFilters = () => {
     const clearedParams: InfluencerSearchFilter = {
-      work_platform_id: "9bb8913b-ddd9-430b-a66a-d74d846e6c66",
+      work_platform_id: selectedPlatform?.work_platform_id || "9bb8913b-ddd9-430b-a66a-d74d846e6c66",
       follower_count: {
         min: 1000,
         max: 10000000
@@ -369,7 +464,14 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
     <div>
       {/* Heading and Filter Tabs */}
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-4">
-        <h2 className="text-2xl font-bold text-gray-700">Influencers Result</h2>
+        <div className="flex items-center space-x-4">
+          <h2 className="text-2xl font-bold text-gray-700">Influencers Result</h2>
+          {selectedPlatform && (
+            <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+              Platform: {selectedPlatform.name}
+            </span>
+          )}
+        </div>
         
         {/* Filter Buttons */}
         <div className="flex mt-3 md:mt-0">
@@ -417,7 +519,12 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
           nextBatchSize={getNextBatchSize()}
           onInfluencerAdded={refreshShortlistedInfluencers}
           shortlistedMembers={shortlistedMembers?.members || []}
-          // NEW: Add pagination handlers for discovered influencers
+          // Platform-related props passed to DiscoveredInfluencers
+          platforms={platforms}
+          selectedPlatform={selectedPlatform}
+          onPlatformChange={handlePlatformChange}
+          isLoadingPlatforms={isLoadingPlatforms}
+          // Pagination handlers for discovered influencers
           onPageChange={handleDiscoveredPageChange}
           onPageSizeChange={handleDiscoveredPageSizeChange}
         />

@@ -1,4 +1,4 @@
-// src/context/AuthContext.tsx
+// src/context/AuthContext.tsx - Enhanced with detailed role support
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
@@ -7,7 +7,10 @@ import {
   AuthState, 
   LoginCredentials, 
   User, 
-  Role
+  Role,
+  DetailedRole,
+  UserType,
+  RoleCheckResult
 } from '@/types/auth';
 import { 
   login as loginService,
@@ -26,11 +29,31 @@ import {
   AccountInactiveError, 
   InvalidCredentialsError 
 } from '@/services/auth/auth.errors';
+import { 
+  checkRoleAccess, 
+  getPrimaryRole, 
+  getUserTypeFromRole,
+  hasDetailedRole,
+  hasAnyDetailedRole,
+  canAccessComponent,
+  PermissionCheck
+} from '@/utils/role-utils';
 
 interface AuthContextType extends AuthState {
   login: (credentials: LoginCredentials) => Promise<void>;
   logout: () => Promise<void>;
   refreshUserSession: () => Promise<boolean>;
+  
+  // Enhanced role checking methods
+  getPrimaryRole: () => DetailedRole | null;
+  getUserType: () => UserType | null;
+  hasRole: (role: DetailedRole) => boolean;
+  hasAnyRole: (roles: DetailedRole[]) => boolean;
+  checkRoleAccess: () => RoleCheckResult;
+  canAccess: (componentName: string, requiredRoles?: DetailedRole[], requiredPermissions?: PermissionCheck[]) => boolean;
+  
+  // Legacy support for existing code
+  isUserType: (type: UserType) => boolean;
 }
 
 const initialState: AuthState = {
@@ -252,11 +275,58 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Enhanced role checking methods
+  const getPrimaryRoleMethod = (): DetailedRole | null => {
+    return getPrimaryRole(authState.roles);
+  };
+
+  const getUserTypeMethod = (): UserType | null => {
+    const primaryRole = getPrimaryRole(authState.roles);
+    return primaryRole ? getUserTypeFromRole(primaryRole) : null;
+  };
+
+  const hasRoleMethod = (role: DetailedRole): boolean => {
+    return hasDetailedRole(authState.roles, role);
+  };
+
+  const hasAnyRoleMethod = (roles: DetailedRole[]): boolean => {
+    return hasAnyDetailedRole(authState.roles, roles);
+  };
+
+  const checkRoleAccessMethod = (): RoleCheckResult => {
+    return checkRoleAccess(authState.user, authState.roles);
+  };
+
+  const canAccessMethod = (
+    componentName: string, 
+    requiredRoles?: DetailedRole[], 
+    requiredPermissions?: PermissionCheck[]
+  ): boolean => {
+    return canAccessComponent(authState.roles, componentName, requiredRoles, requiredPermissions);
+  };
+
+  // Legacy support method
+  const isUserTypeMethod = (type: UserType): boolean => {
+    const userType = getUserTypeMethod();
+    return userType === type;
+  };
+
   const value = {
     ...authState,
     login,
     logout: () => handleLogout(true),
     refreshUserSession,
+    
+    // Enhanced role methods
+    getPrimaryRole: getPrimaryRoleMethod,
+    getUserType: getUserTypeMethod,
+    hasRole: hasRoleMethod,
+    hasAnyRole: hasAnyRoleMethod,
+    checkRoleAccess: checkRoleAccessMethod,
+    canAccess: canAccessMethod,
+    
+    // Legacy support
+    isUserType: isUserTypeMethod,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

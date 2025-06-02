@@ -152,7 +152,7 @@ const DiscoverResults: React.FC<DiscoverResultsProps> = ({
     }
 
     const listId = campaignData.campaign_lists[0].id;
-    const platformId = "5d13c7b1-7e75-4fa2-86e3-2e37c2c8e84c"; // Hardcoded platform ID as requested
+    const platformId = "7b71b156-c049-4972-832e-7e1357c08415"; // Hardcoded platform ID as requested
 
     // Set adding state for this influencer
     setIsAdding(prev => ({ ...prev, [influencer.username]: true }));
@@ -342,10 +342,10 @@ const DiscoverResults: React.FC<DiscoverResultsProps> = ({
                         <div className="flex-shrink-0 h-8 w-8 relative">
                           <img
                             className="rounded-full object-cover h-8 w-8"
-                            src={influencer.profileImage || '/images/default-avatar.png'}
+                            src={influencer.profileImage || '/user/profile-placeholder.png'}
                             alt={influencer.username}
                             onError={(e) => {
-                              (e.target as HTMLImageElement).src = '/images/default-avatar.png';
+                              (e.target as HTMLImageElement).src = '/user/profile-placeholder.png';
                             }}
                           />
                         </div>
