@@ -1,8 +1,30 @@
 // src/lib/apiHelper.ts
 import axios from 'axios';
 
+// Determine baseURL based on NODE_ENV
+const appEnv = process.env.NEXT_PUBLIC_APP_ENV || 'development';
+const apiVersion = process.env.NEXT_PUBLIC_API_VERSION || 'v0';               
+
+let baseURL = '';
+
+if (appEnv === 'production') {
+  baseURL = process.env.NEXT_PUBLIC_FASTAPI_BASE_URL_PRO!;
+} else if (appEnv === 'development') {
+  baseURL = process.env.NEXT_PUBLIC_FASTAPI_BASE_URL_DEV!;
+} else {
+  baseURL = process.env.NEXT_PUBLIC_FASTAPI_BASE_URL_LOC!;
+}
+
+// Fallback if not set
+if (!baseURL) {
+  console.warn('⚠️ No base URL set for environment. Using localhost fallback.');
+  baseURL = 'http://localhost:8000';
+}
+
+  baseURL = `${baseURL}/${apiVersion}`;
+
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_FASTAPI_BASE_URL || 'http://localhost:8000', // FastAPI backend URL
+  baseURL,
   headers: {
     'Content-Type': 'application/json',
   },

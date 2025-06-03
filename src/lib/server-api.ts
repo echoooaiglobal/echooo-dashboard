@@ -18,10 +18,28 @@ interface ServerApiResponse<T> {
 class ServerApiClient {
   private static instance: ServerApiClient;
   private baseUrl: string;
-  
+
   private constructor() {
-    // Get FastAPI backend URL from environment variables
-    this.baseUrl = process.env.NEXT_PUBLIC_FASTAPI_BASE_URL || 'http://localhost:8000';
+    const appEnv = process.env.NEXT_PUBLIC_APP_ENV || 'development';
+    const apiVersion = process.env.NEXT_PUBLIC_API_VERSION || 'v0';             
+
+    let apiUrl = '';
+
+    if (appEnv === 'production') {
+      apiUrl = process.env.NEXT_PUBLIC_FASTAPI_BASE_URL_PRO!;
+    } else if (appEnv === 'development') {
+      apiUrl = process.env.NEXT_PUBLIC_FASTAPI_BASE_URL_DEV!;
+    } else {
+      apiUrl = process.env.NEXT_PUBLIC_FASTAPI_BASE_URL_LOC!;
+    }
+    
+    this.baseUrl = `${apiUrl}/${apiVersion}`;
+
+    // Fallback
+    if (!this.baseUrl) {
+      console.warn('⚠️ No base URL set for environment. Using localhost fallback.');
+      this.baseUrl = 'http://localhost:8000';
+    }
   }
 
   /**

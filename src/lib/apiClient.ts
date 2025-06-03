@@ -7,8 +7,25 @@ interface FetchOptions extends RequestInit {
 
 async function apiClient(url: string, options: FetchOptions = {}) {
   const { auth = true, ...fetchOptions } = options;
-  const baseUrl = process.env.NEXT_PUBLIC_FASTAPI_BASE_URL;
-  const apiUrl = `${baseUrl}${url}`;
+  const appEnv = process.env.NEXT_PUBLIC_APP_ENV || 'development';
+  const apiVersion = process.env.NEXT_PUBLIC_API_VERSION || 'v0';  
+
+  let baseUrl = '';
+
+  if (appEnv === 'production') {
+    baseUrl = process.env.NEXT_PUBLIC_FASTAPI_BASE_URL_PRO!;
+  } else if (appEnv === 'development') {
+    baseUrl = process.env.NEXT_PUBLIC_FASTAPI_BASE_URL_DEV!;
+  } else {
+    baseUrl = process.env.NEXT_PUBLIC_FASTAPI_BASE_URL_LOC!;
+  }
+
+  // Optional: fallback warning
+  if (!baseUrl) {
+    throw new Error('Base URL not set for the current environment.');
+  }
+                 
+  const apiUrl = `${baseUrl}/${apiVersion}${url.startsWith('/') ? url : `/${url}`}`;
   
   const headers = new Headers(fetchOptions.headers);
   
