@@ -7,7 +7,7 @@ interface FetchOptions extends RequestInit {
 
 async function apiClient(url: string, options: FetchOptions = {}) {
   const { auth = true, ...fetchOptions } = options;
-  const baseUrl = process.env.FASTAPI_BASE_URL;
+  const baseUrl = process.env.NEXT_PUBLIC_FASTAPI_BASE_URL;
   const apiUrl = `${baseUrl}${url}`;
   
   const headers = new Headers(fetchOptions.headers);
