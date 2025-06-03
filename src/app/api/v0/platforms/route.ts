@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
     
     return NextResponse.json({
       success: false,
-      error: 'Failed to fetch platforms',
+      error: 'Failed to fetch platformss',
       message: error instanceof Error ? error.message : 'Unknown error occurred'
     }, { 
       status: 500,
