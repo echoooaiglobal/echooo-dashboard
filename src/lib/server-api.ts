@@ -11,7 +11,7 @@ interface ServerApiResponse<T> {
   error: Error | null;
   status: number;
 }
-
+ 
 /**
  * Server-side API client for calling FastAPI backend
  */
@@ -21,7 +21,7 @@ class ServerApiClient {
   
   private constructor() {
     // Get FastAPI backend URL from environment variables
-    this.baseUrl = process.env.FASTAPI_BASE_URL || 'http://localhost:8000';
+    this.baseUrl = process.env.NEXT_PUBLIC_FASTAPI_BASE_URL || 'http://localhost:8000';
   }
 
   /**
