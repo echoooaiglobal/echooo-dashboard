@@ -1,7 +1,6 @@
 // src/components/dashboard/campaign-funnel/discover/discover-influencers/DiscoveredResults.tsx
 import React, { useState, useEffect } from 'react';
 import { DiscoverInfluencer } from '@/lib/types';
-import { addInfluencerToList } from '@/services/campaign/campaign-list.service';
 import { Campaign } from '@/services/campaign/campaign.service';
 import { CampaignListMember } from '@/services/campaign/campaign-list.service';
 import { DiscoveredCreatorsResults, Influencer } from '@/types/insights-iq';
@@ -26,6 +25,11 @@ interface DiscoverResultsProps {
   onPageSizeChange?: (pageSize: number) => void;
   currentPage?: number;
   pageSize?: number;
+  // NEW: Props for handleAddToList function and related state
+  onAddToList: (influencer: Influencer) => Promise<void>;
+  addedInfluencers: Record<string, boolean>;
+  isAdding: Record<string, boolean>;
+  setAddedInfluencers: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
 }
 
 const DiscoverResults: React.FC<DiscoverResultsProps> = ({
@@ -45,10 +49,13 @@ const DiscoverResults: React.FC<DiscoverResultsProps> = ({
   onPageChange,
   onPageSizeChange,
   currentPage = 1,
-  pageSize = 20
+  pageSize = 20,
+  // NEW: Destructure the new props
+  onAddToList,
+  addedInfluencers,
+  isAdding,
+  setAddedInfluencers
 }) => {
-  const [addedInfluencers, setAddedInfluencers] = useState<Record<string, boolean>>({});
-  const [isAdding, setIsAdding] = useState<Record<string, boolean>>({});
   const [showPageSizeDropdown, setShowPageSizeDropdown] = useState(false);
 
   // Get metadata with defaults
@@ -98,7 +105,7 @@ const DiscoverResults: React.FC<DiscoverResultsProps> = ({
       ...prev,
       ...newAddedInfluencers
     }));
-  }, [shortlistedMembers, discoveredCreatorsResults]);
+  }, [shortlistedMembers, discoveredCreatorsResults, setAddedInfluencers]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -145,35 +152,7 @@ const DiscoverResults: React.FC<DiscoverResultsProps> = ({
     );
   };
 
-  const handleAddToList = async (influencer: Influencer) => {
-    if (!campaignData || !campaignData.campaign_lists || !campaignData.campaign_lists.length) {
-      console.error('No campaign list found');
-      return;
-    }
-
-    const listId = campaignData.campaign_lists[0].id;
-    const platformId = "7b71b156-c049-4972-832e-7e1357c08415"; // Hardcoded platform ID as requested
-
-    // Set adding state for this influencer
-    setIsAdding(prev => ({ ...prev, [influencer.username]: true }));
-
-    try {
-      const response = await addInfluencerToList(listId, influencer, platformId);
-      
-      if (response.success) {
-        // Update state to show influencer is added
-        setAddedInfluencers(prev => ({ ...prev, [influencer.username]: true }));
-        onInfluencerAdded && onInfluencerAdded();
-      } else {
-        console.error('Failed to add influencer to list:', response.message);
-      }
-    } catch (error) {
-      console.error('Error adding influencer to list:', error);
-    } finally {
-      // Clear adding state
-      setIsAdding(prev => ({ ...prev, [influencer.username]: false }));
-    }
-  };
+  // REMOVED: handleAddToList function - now passed as prop
 
   const handleViewProfile = (influencer: Influencer) => {
     console.log('View profile clicked:', influencer);
@@ -410,7 +389,7 @@ const DiscoverResults: React.FC<DiscoverResultsProps> = ({
                         </button>
                       ) : (
                         <button 
-                          onClick={() => handleAddToList(influencer)}
+                          onClick={() => onAddToList(influencer)}
                           disabled={isAdding[influencer.username]}
                           className="inline-flex items-center justify-center px-2 py-1 bg-purple-100 text-purple-600 rounded-md hover:bg-purple-200 transition-colors text-xs"
                         >

@@ -43,10 +43,18 @@ export const ENDPOINTS = {
   },
   MESSAGE_TEMPLATES: {
     CREATE: '/message-templates',
-    BY_COMPANY: (companyId: string) => `/message-templates/campaign/${companyId}`,
+    BY_COMPANY: (companyId: string) => `/message-templates/company/${companyId}`,
     DETAIL: (templateId: string) => `/message-templates/${templateId}`,
   },
-  // NEW: Platforms endpoints
+  LIST_ASSIGNMENTS: {
+    CREATE: '/list-assignments',
+    LIST: '/list-assignments',
+    DETAIL: (id: string) => `/list-assignments/${id}`,
+    UPDATE_STATUS: (id: string) => `/list-assignments/${id}/status`,
+    BY_LIST: (listId: string) => `/list-assignments/list/${listId}`,
+    BY_AGENT: (agentId: string) => `/list-assignments/agent/${agentId}`,
+    BY_STATUS: (status: string) => `/list-assignments?status=${status}`,
+  },
   PLATFORMS: {
     LIST: '/platforms',
     DETAIL: (id: string) => `/platforms/${id}`,
