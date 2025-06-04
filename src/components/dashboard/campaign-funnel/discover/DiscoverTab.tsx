@@ -74,7 +74,7 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
       field: "FOLLOWER_COUNT",
       order: "DESCENDING"
     },
-    limit: 20,
+    limit: 10,
     offset: 0,
     post_type: "ALL",
   });
@@ -484,7 +484,7 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
               }`}
               onClick={() => setActiveFilter('discovered')}
             >
-              Discovered Influencer ({totalResults || 450})
+              Discovered Influencer ({totalResults || 0})
             </button>
             <button
               className={`px-6 py-2 text-sm font-medium ${

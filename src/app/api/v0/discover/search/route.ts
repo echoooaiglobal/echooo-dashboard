@@ -37,11 +37,12 @@ export async function POST(request: Request) {
   try {
     const filters: InfluencerSearchFilter = await request.json();
     // console.log('filters00001: ', filters)
+    
     // Environment variables
     const apiUrl = process.env.INSIGHTIQ_BASE_URL;
     const clientId = process.env.INSIGHTIQ_CLIENT_ID;
     const clientSecret = process.env.INSIGHTIQ_CLIENT_SECRET;
-
+    
     // Validate required environment variables
     if (!apiUrl || !clientId || !clientSecret) {
       console.error('Missing required environment variables');
@@ -60,9 +61,12 @@ export async function POST(request: Request) {
     // Create dynamic Basic Auth header
     const basicAuth = createBasicAuthHeader(clientId, clientSecret);
 
-    // Set up request timeout
+    // Increased timeout to 30 seconds for better reliability
+    const TIMEOUT_DURATION = 30000; // 30 seconds instead of 10
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_DURATION);
+
+    console.log(`🔄 Making request to external API with ${TIMEOUT_DURATION / 1000}s timeout...`);
 
     try {
       const response = await fetch(endpoint, {
@@ -97,6 +101,7 @@ export async function POST(request: Request) {
       }
 
       const data = await response.json();
+      console.log(`✅ Successfully received data with ${data.data?.length || 0} influencers`);
 
       // Transform and normalize response data
       const influencers = data.data?.map((item: any) => ({
@@ -140,11 +145,11 @@ export async function POST(request: Request) {
       clearTimeout(timeoutId);
       
       if (fetchError.name === 'AbortError') {
-        console.error('Request timeout');
+        console.error(`Request timeout after ${TIMEOUT_DURATION / 1000} seconds`);
         return NextResponse.json(
           { 
             error: "timeout_error",
-            message: "Request timed out after 10 seconds"
+            message: `Request timed out after ${TIMEOUT_DURATION / 1000} seconds. The external API may be experiencing delays.`
           },
           { status: 408 }
         );

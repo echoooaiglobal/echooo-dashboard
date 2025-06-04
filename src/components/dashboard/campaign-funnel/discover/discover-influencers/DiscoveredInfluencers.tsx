@@ -7,8 +7,8 @@ import DiscoverFilters from './DiscoverFilters';
 import DiscoveredResults from './DiscoveredResults';
 import { DiscoverInfluencer } from '@/lib/types';
 import { Campaign } from '@/services/campaign/campaign.service';
-import { CampaignListMember } from '@/services/campaign/campaign-list.service';
-import { DiscoveredCreatorsResults } from '@/types/insights-iq';
+import { CampaignListMember, addInfluencerToList } from '@/services/campaign/campaign-list.service';
+import { DiscoveredCreatorsResults, Influencer } from '@/types/insights-iq';
 import { InfluencerSearchFilter } from '@/lib/creator-discovery-types';
 import { Platform } from '@/types/platform';
 
@@ -65,6 +65,9 @@ const DiscoveredInfluencers: React.FC<DiscoveredInfluencersProps> = ({
 }) => {
   const [showFilters, setShowFilters] = useState(false);
   const [searchText, setSearchText] = useState(searchParams.description_keywords || '');
+  // NEW: State for managing add to list operations
+  const [addedInfluencers, setAddedInfluencers] = useState<Record<string, boolean>>({});
+  const [isAdding, setIsAdding] = useState<Record<string, boolean>>({});
 
   // Toggle filters visibility
   const toggleFilters = () => {
@@ -77,6 +80,53 @@ const DiscoveredInfluencers: React.FC<DiscoveredInfluencersProps> = ({
     setSearchText(text);
     onSearchTextChange(text);
   };
+
+  // NEW: Moved handleAddToList function from DiscoveredResults
+  const handleAddToList = async (influencer: Influencer) => {
+    if (!campaignData || !campaignData.campaign_lists || !campaignData.campaign_lists.length) {
+      console.error('No campaign list found');
+      return;
+    }
+
+    if (!selectedPlatform || !selectedPlatform.id) {
+      console.error('No platform selected or platform ID missing');
+      return;
+    }
+
+    const listId = campaignData.campaign_lists[0].id;
+    const platformId = selectedPlatform.id; // Use selectedPlatform.id instead of hardcoded value
+
+    console.log('Adding influencer to list with platform ID:', platformId);
+
+    // Set adding state for this influencer
+    setIsAdding(prev => ({ ...prev, [influencer.username]: true }));
+
+    try {
+      const response = await addInfluencerToList(listId, influencer, platformId);
+      
+      if (response.success) {
+        // Update state to show influencer is added
+        setAddedInfluencers(prev => ({ ...prev, [influencer.username]: true }));
+        console.log('Successfully added influencer to list:', influencer.username);
+        
+        // Call the callback to refresh shortlisted members
+        onInfluencerAdded && onInfluencerAdded();
+      } else {
+        console.error('Failed to add influencer to list:', response.message);
+        // Optionally show an error message to the user
+        alert(`Failed to add ${influencer.name || influencer.username} to list: ${response.message}`);
+      }
+    } catch (error) {
+      console.error('Error adding influencer to list:', error);
+      // Optionally show an error message to the user
+      alert(`An error occurred while adding ${influencer.name || influencer.username} to the list`);
+    } finally {
+      // Clear adding state
+      setIsAdding(prev => ({ ...prev, [influencer.username]: false }));
+    }
+  };
+
+  console.log('selectedPlatform', selectedPlatform);
 
   return (
     <div className="space-y-6">
@@ -160,6 +210,11 @@ const DiscoveredInfluencers: React.FC<DiscoveredInfluencersProps> = ({
         onPageSizeChange={onPageSizeChange}
         currentPage={Math.floor((searchParams.offset || 0) / (searchParams.limit || 20)) + 1}
         pageSize={searchParams.limit || 20}
+        // NEW: Pass the handleAddToList function and related state
+        onAddToList={handleAddToList}
+        addedInfluencers={addedInfluencers}
+        isAdding={isAdding}
+        setAddedInfluencers={setAddedInfluencers}
       />
     </div>
   );

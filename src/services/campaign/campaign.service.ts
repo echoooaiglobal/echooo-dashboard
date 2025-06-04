@@ -29,6 +29,33 @@ export interface CampaignLists {
   description: string;
 }
 
+export interface CampaignTemplates {
+  id: string;
+  subject: string;
+  content: string;
+  company_id: string;
+  campaign_id: string;
+  is_global: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Status {
+  id: string;
+  name: string;
+}
+
+export interface ListAssignments {
+  id: string;
+  list_id: string;
+  agent_id: string;
+  status_id: string;
+  status: Status;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Campaign {
   id: string;
   name: string;
@@ -42,6 +69,8 @@ export interface Campaign {
   created_at: string;
   updated_at: string;
   campaign_lists: CampaignLists[];
+  message_templates: CampaignTemplates[];
+  list_assignments: ListAssignments[];
   company_id: string;
 }
 
