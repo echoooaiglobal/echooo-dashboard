@@ -18,8 +18,9 @@ export interface AddToListRequest {
     profileImage?: string;
     followers: string;
     isVerified?: boolean;
+    account_url?: string;
+    additional_metrics?: Record<string, string | number | boolean | null>;
   };
-  additional_metrics?: Record<string, string | number | boolean | null>;
 }
 
 // Define the response from the add to list API
@@ -62,9 +63,37 @@ export interface CampaignListMember {
     profile_pic_url: string;
     platform_id: string;
     is_verified: boolean;
-    
     followers_count: number;
     platform_account_id: string;
+    is_private: boolean;
+    is_business: boolean;
+    media_count?: number | null;
+    following_count?: number | null;
+    subscribers_count?: number | null;
+    likes_count?: number | null;
+    account_url?: string;
+    additional_metrics?: {
+      id?: string;
+      url?: string;
+      name?: string;
+      gender?: string;
+      language?: string;
+      username?: string;
+      age_group?: string;
+      followers?: string;
+      isVerified?: boolean;
+      engagements?: string | number;
+      external_id?: string;
+      introduction?: string;
+      profileImage?: string;
+      average_likes?: number;
+      average_views?: number | null;
+      content_count?: number | null;
+      engagementRate?: number;
+      subscriber_count?: number | null;
+      livestream_metrics?: any;
+      platform_account_type?: string;
+    };
   };
 }
 
@@ -108,17 +137,19 @@ export async function addInfluencerToList(
         name: influencer.name || influencer.username || '',
         profileImage: influencer.profileImage || '',
         followers: influencer.followers || '0',
-        isVerified: influencer.isVerified || false
-      },
-      additional_metrics: Object.fromEntries(
-        Object.entries(influencer).filter(
-          ([, value]) =>
-            typeof value === 'string' ||
-            typeof value === 'number' ||
-            typeof value === 'boolean' ||
-            value === null
+        isVerified: influencer.isVerified || false,
+        account_url: influencer.url || '',
+        additional_metrics: Object.fromEntries(
+          Object.entries(influencer).filter(
+            ([, value]) =>
+              typeof value === 'string' ||
+              typeof value === 'number' ||
+              typeof value === 'boolean' ||
+              value === null
+          )
         )
-      )
+      },
+      
     };
 
     // Call the API using the unified API client
