@@ -692,7 +692,7 @@ const ShortlistedInfluencers: React.FC<ShortlistedInfluencersProps> = ({
     <div className="space-y-6">
       {/* Search Box and Controls */}
       <div className="flex justify-between items-center mb-4">
-        <div className="relative w-1/3">
+        <div className="relative w-8/12">
           <input
             type="text"
             placeholder="Search Influencer"
@@ -759,7 +759,7 @@ const ShortlistedInfluencers: React.FC<ShortlistedInfluencersProps> = ({
       </div>
       
       {/* Main Content Area */}
-      <div className="flex space-x-6" style={{ minHeight: '630px' }}>
+      <div className="flex space-x-6" style={{ minHeight: '750px' }}>
         {/* Influencers Table Component */}
         <ShortlistedTable
           shortlistedMembers={shortlistedMembers}
