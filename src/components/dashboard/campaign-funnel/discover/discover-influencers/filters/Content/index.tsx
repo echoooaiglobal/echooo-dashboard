@@ -1,7 +1,7 @@
 // src/components/dashboard/campaign-funnel/discover/discover-influencers/filters/Content/index.tsx
 import React from 'react';
 import { IoChevronDown } from 'react-icons/io5';
-import NicheAI from './NicheAI';
+import BioPhrase from './BioPhrase';
 import TopicsAI from './TopicsAI';
 import Hashtags from './Hashtags';
 import LookalikeAI from './LookalikeAI';
@@ -33,11 +33,11 @@ const ContentFilters: React.FC<ContentFiltersProps> = ({
     <div className="mb-6">
       <h3 className="text-sm font-medium text-gray-600 mb-3">Content</h3>
       <div className="grid grid-cols-3 gap-4 mb-4">
-        <NicheAI
+        <BioPhrase
           filters={searchParams}
           onFilterChange={onFilterChange}
-          isOpen={isFilterOpen('nicheAI')}
-          onToggle={() => toggleFilterDropdown('nicheAI')}
+          isOpen={isFilterOpen('bioPhrase')}
+          onToggle={() => toggleFilterDropdown('bioPhrase')}
         />
         
         <TopicsAI

@@ -1,6 +1,6 @@
 // src/components/dashboard/campaign-funnel/discover/discover-influencers/filters/Content/Hashtags.tsx
 import React, { useState, useEffect, useRef } from 'react';
-import { IoDocumentTextOutline, IoClose } from 'react-icons/io5';
+import { IoDocumentTextOutline, IoClose, IoInformationCircleOutline } from 'react-icons/io5';
 import FilterComponent from '../FilterComponent';
 import { InfluencerSearchFilter, HashtagFilter } from '@/lib/creator-discovery-types';
 
@@ -21,9 +21,11 @@ const Hashtags: React.FC<HashtagsFilterProps> = ({
   const [selectedHashtags, setSelectedHashtags] = useState<HashtagFilter[]>(
     filters.hashtags || []
   );
+  const [showTooltip, setShowTooltip] = useState(false);
   
   const inputRef = useRef<HTMLInputElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
 
   // Initialize with existing filters
   useEffect(() => {
@@ -40,6 +42,30 @@ const Hashtags: React.FC<HashtagsFilterProps> = ({
     }
   }, [filters.hashtags]);
 
+  // Handle click outside for tooltip
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (tooltipRef.current && !tooltipRef.current.contains(event.target as Node)) {
+        setShowTooltip(false);
+      }
+    };
+
+    if (showTooltip) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showTooltip]);
+
+  // Close tooltip when main dropdown closes
+  useEffect(() => {
+    if (!isOpen) {
+      setShowTooltip(false);
+    }
+  }, [isOpen]);
+
   // Handle input change
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
@@ -50,6 +76,8 @@ const Hashtags: React.FC<HashtagsFilterProps> = ({
     if (e.key === 'Enter') {
       e.preventDefault();
       addHashtag();
+    } else if (e.key === 'Escape') {
+      inputRef.current?.blur();
     }
   };
 
@@ -124,11 +152,39 @@ const Hashtags: React.FC<HashtagsFilterProps> = ({
         selectedCount={selectedHashtags.length}
       >
         <div className="p-2 space-y-3">         
-          {/* Header */}
+          {/* Header with tooltip */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-green-500 rounded-full"></div>
               <h3 className="text-sm font-semibold text-gray-800">Add Hashtags</h3>
+              
+              {/* Info Icon with Tooltip */}
+              <div className="relative" ref={tooltipRef}>
+                <button
+                  type="button"
+                  className="text-gray-400 hover:text-green-500 transition-colors"
+                  onMouseEnter={() => setShowTooltip(true)}
+                  onMouseLeave={() => setShowTooltip(false)}
+                  onClick={() => setShowTooltip(!showTooltip)}
+                >
+                  <IoInformationCircleOutline size={14} />
+                </button>
+                
+                {/* Tooltip */}
+                {showTooltip && (
+                  <div className="absolute left-0 top-6 z-[200] w-64 bg-gray-800 text-white text-xs rounded-lg p-3 shadow-lg">
+                    <div className="relative">
+                      {/* Tooltip arrow */}
+                      <div className="absolute -top-1 left-3 w-2 h-2 bg-gray-800 transform rotate-45"></div>
+                      
+                      {/* Tooltip content */}
+                      <div className="leading-relaxed">
+                        Shows creators who have mentioned the added hashtags in their posts. 
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
             {hasHashtags && (
               <button
@@ -141,11 +197,6 @@ const Hashtags: React.FC<HashtagsFilterProps> = ({
             )}
           </div>
 
-          {/* Description */}
-          <div className="text-xs text-gray-600 bg-green-50 p-2 rounded-md border border-green-200">
-            💡 Choose hashtags the influencer uses frequently (e.g., #fashion, #travel, #food)
-          </div>
-
           {/* Input Field */}
           <div className="space-y-2">
             <div className="relative">
@@ -155,7 +206,7 @@ const Hashtags: React.FC<HashtagsFilterProps> = ({
                 placeholder="Type hashtag and press Enter..."
                 value={inputValue}
                 onChange={handleInputChange}
-                onKeyPress={handleKeyPress}
+                onKeyDown={handleKeyPress}
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-300 focus:border-green-400 transition-colors"
               />
             </div>

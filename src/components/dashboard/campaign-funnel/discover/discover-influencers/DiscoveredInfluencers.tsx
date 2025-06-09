@@ -78,7 +78,7 @@ const DiscoveredInfluencers: React.FC<DiscoveredInfluencersProps> = ({
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const text = e.target.value;
     setSearchText(text);
-    onSearchTextChange(text);
+    // onSearchTextChange(text);
   };
 
   // NEW: Moved handleAddToList function from DiscoveredResults

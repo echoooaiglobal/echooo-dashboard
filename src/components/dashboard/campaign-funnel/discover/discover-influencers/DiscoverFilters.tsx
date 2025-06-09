@@ -1,9 +1,17 @@
 // src/components/dashboard/campaign-funnel/discover/discover-influencers/DiscoverFilters.tsx
 import React, { useState, useRef, useEffect } from 'react';
 import { BsInstagram } from 'react-icons/bs';
-import { IoChevronDown } from 'react-icons/io5';
+import { IoChevronDown, IoChevronUp, IoClose, IoFilterOutline } from 'react-icons/io5';
 import { InfluencerSearchFilter } from '@/lib/creator-discovery-types';
 import { Platform } from '@/types/platform';
+
+// Import utility functions
+import { 
+  getActiveFilters, 
+  removeFilter, 
+  getActiveFilterCounts,
+  hasActiveFilters 
+} from '@/utils/filter-utils';
 
 // Import filter section components
 import DemographicsFilters from './filters/Demographics';
@@ -42,6 +50,12 @@ export default function DiscoverFilters({
   
   // State to track which filter dropdown is open
   const [openFilterId, setOpenFilterId] = useState<string | null>(null);
+  
+  // State to track which sections are collapsed - Default all collapsed except Demographics
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(
+    new Set(['performance', 'content', 'account'])
+  );
+  
   const filtersRef = useRef<HTMLDivElement>(null);
 
   // Platform dropdown states
@@ -51,18 +65,72 @@ export default function DiscoverFilters({
   // Define popular platforms that should appear first
   const POPULAR_PLATFORMS = ['instagram', 'tiktok', 'youtube', 'twitter', 'facebook'];
 
-  // Close dropdown when clicking outside
+  // Close dropdown when clicking outside - Enhanced to handle all dropdowns
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (filtersRef.current && !filtersRef.current.contains(event.target as Node)) {
+      const target = event.target as HTMLElement;
+      
+      // Check if click is completely outside the filters container
+      if (filtersRef.current && !filtersRef.current.contains(target)) {
+        setOpenFilterId(null);
+        setIsPlatformDropdownOpen(false);
+        return;
+      }
+      
+      // If click is inside the container, check if it's inside an open filter dropdown
+      if (filtersRef.current && filtersRef.current.contains(target) && openFilterId) {
+        // Find the closest filter component wrapper
+        const filterWrapper = target.closest('[data-filter-component]') as HTMLElement;
+        
+        if (filterWrapper) {
+          const filterId = filterWrapper.getAttribute('data-filter-id');
+          
+          // If clicking inside a different filter or outside any filter, close the current one
+          if (filterId !== openFilterId) {
+            setOpenFilterId(null);
+          }
+        } else {
+          // Clicking inside the main container but not in any filter component
+          // Check if it's not a section header or other interactive elements
+          const isInteractiveElement = target.closest('button, input, select, [role="button"]');
+          const isSectionHeader = target.closest('[data-section-header]');
+          
+          if (!isInteractiveElement && !isSectionHeader) {
+            setOpenFilterId(null);
+          }
+        }
+      }
+      
+      // Handle platform dropdown separately
+      if (isPlatformDropdownOpen) {
+        const platformDropdown = target.closest('[data-platform-dropdown]');
+        if (!platformDropdown) {
+          setIsPlatformDropdownOpen(false);
+        }
+      }
+    };
+
+    // Always listen for clicks
+    document.addEventListener('mousedown', handleClickOutside);
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [openFilterId, isPlatformDropdownOpen]); 
+
+  // Also add this new useEffect for ESC key handling:
+  useEffect(() => {
+    const handleEscKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
         setOpenFilterId(null);
         setIsPlatformDropdownOpen(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscKey);
+    
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscKey);
     };
   }, []);
 
@@ -72,6 +140,26 @@ export default function DiscoverFilters({
       ...prev,
       ...updates
     }));
+  };
+
+  // Toggle section collapse
+  const toggleSectionCollapse = (sectionId: string) => {
+    setCollapsedSections(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(sectionId)) {
+        newSet.delete(sectionId);
+      } else {
+        newSet.add(sectionId);
+        // Close any open filter dropdowns in the collapsed section
+        setOpenFilterId(null);
+      }
+      return newSet;
+    });
+  };
+
+  // Check if section is collapsed
+  const isSectionCollapsed = (sectionId: string) => {
+    return collapsedSections.has(sectionId);
   };
 
   // Handle platform selection
@@ -214,20 +302,134 @@ export default function DiscoverFilters({
     }
   };
 
+  // Use utility functions for active filters
+  const activeFilters = getActiveFilters(searchParams, pendingFilters);
+  const filterCounts = getActiveFilterCounts(searchParams, pendingFilters);
+
+  // Remove specific filter using utility function
+  const handleRemoveFilter = (filterKey: string) => {
+    const updatedFilters = removeFilter(filterKey, pendingFilters);
+    setPendingFilters(updatedFilters);
+  };
+
+  // Section Header Component
+  const SectionHeader: React.FC<{
+    title: string;
+    sectionId: string;
+    description?: string;
+    activeCount?: number;
+  }> = ({ title, sectionId, description, activeCount = 0 }) => {
+    const isCollapsed = isSectionCollapsed(sectionId);
+    const [showTooltip, setShowTooltip] = useState(false);
+    
+    return (
+      <div
+        data-section-header // Add this data attribute
+        className={`w-full flex items-center justify-between p-4 text-left transition-all duration-200 group border rounded-t-lg cursor-pointer ${
+          isCollapsed 
+            ? 'border-gray-200 bg-white hover:bg-gray-50 rounded-b-lg shadow-sm hover:shadow-md' 
+            : 'border-gray-200 bg-white shadow-md'
+        }`}
+        onClick={() => toggleSectionCollapse(sectionId)}
+      >
+        {/* Rest of your SectionHeader content remains the same */}
+        <div className="flex-1">
+          <div className="flex items-center gap-3">
+            <h3 className={`text-base font-semibold transition-colors ${
+              isCollapsed 
+                ? 'text-gray-700 group-hover:text-gray-900' 
+                : 'text-purple-700'
+            }`}>
+              {title}
+            </h3>
+            
+            {/* Info icon with tooltip */}
+            {description && (
+              <div className="relative">
+                <div
+                  className="text-gray-400 hover:text-purple-500 transition-colors cursor-help"
+                  onMouseEnter={() => setShowTooltip(true)}
+                  onMouseLeave={() => setShowTooltip(false)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowTooltip(!showTooltip);
+                  }}
+                >
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                
+                {showTooltip && (
+                  <div className="absolute left-0 top-6 z-[200] w-64 bg-gray-800 text-white text-xs rounded-lg p-3 shadow-lg">
+                    <div className="relative">
+                      {/* Tooltip arrow */}
+                      <div className="absolute -top-1 left-3 w-2 h-2 bg-gray-800 transform rotate-45"></div>
+                      
+                      {/* Tooltip content */}
+                      <div className="leading-relaxed">
+                        {description}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* Active filter count badge */}
+            {activeCount > 0 && (
+              <span className={`inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-medium rounded-full ${
+                isCollapsed
+                  ? 'bg-purple-100 text-purple-700'
+                  : 'bg-purple-200 text-purple-800'
+              }`}>
+                {activeCount}
+              </span>
+            )}
+            
+            {/* Status indicator */}
+            <div className={`w-2 h-2 rounded-full transition-colors ${
+              isCollapsed 
+                ? activeCount > 0 ? 'bg-purple-400' : 'bg-gray-300'
+                : 'bg-purple-500'
+            }`} />
+          </div>
+        </div>
+        
+        <div className={`transition-all duration-200 ${
+          isCollapsed ? '' : 'rotate-180'
+        }`}>
+          <IoChevronDown 
+            className={`w-5 h-5 transition-colors ${
+              isCollapsed 
+                ? 'text-gray-400 group-hover:text-gray-600' 
+                : 'text-purple-600'
+            }`} 
+          />
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div
-      className="p-6 bg-white rounded-lg shadow-lg"
+      className="p-6 bg-white rounded-xl shadow-lg border border-gray-100"
       ref={filtersRef}
     >
-      <div className="mb-6">
+      <div className="space-y-6">
         {/* Header with Platform selector */}
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-medium text-gray-700">
-            Narrow your discovered influencers
-          </h2>
+        <div className="flex justify-between items-start gap-4">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-800 mb-1">
+              Filter Influencers
+            </h2>
+            <p className="text-sm text-gray-600">
+              Narrow down your search with advanced filters
+            </p>
+          </div>
           
           {/* Platform selector dropdown */}
-          <div className="relative">
+          <div className="relative flex-shrink-0">
             {isLoadingPlatforms ? (
               <div className="flex items-center space-x-2 bg-gray-100 px-4 py-2 rounded-lg text-gray-500">
                 <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-gray-400"></div>
@@ -237,17 +439,17 @@ export default function DiscoverFilters({
               <>
                 <button 
                   onClick={() => setIsPlatformDropdownOpen(!isPlatformDropdownOpen)}
-                  className="flex items-center space-x-2 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg text-gray-700 transition-colors"
+                  className="flex items-center space-x-2 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 hover:border-purple-300 px-4 py-2 rounded-lg text-gray-700 transition-all duration-200 hover:shadow-md"
                 >
                   {selectedPlatform ? (
                     <>
                       {getPlatformIcon(selectedPlatform)}
-                      <span>{selectedPlatform.name}</span>
+                      <span className="font-medium">{selectedPlatform.name}</span>
                     </>
                   ) : (
                     <>
                       <BsInstagram className="text-pink-500" size={20} />
-                      <span>Select Platform</span>
+                      <span className="font-medium">Select Platform</span>
                     </>
                   )}
                   <IoChevronDown 
@@ -259,7 +461,7 @@ export default function DiscoverFilters({
 
                 {/* Platform dropdown menu */}
                 {isPlatformDropdownOpen && platforms.length > 0 && (
-                  <div className="absolute right-0 top-full mt-1 w-60 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-96 overflow-hidden">
+                  <div className="absolute right-0 top-full mt-1 w-60 bg-white border border-gray-200 rounded-lg shadow-xl z-50 max-h-96 overflow-hidden">
                     {/* Search box */}
                     <div className="p-3 border-b border-gray-100">
                       <div className="relative">
@@ -333,13 +535,13 @@ export default function DiscoverFilters({
                               </>
                             )}
                             
-                            {/* Other platforms (only shown when not searching) */}
+                            {/* Other platforms */}
                             {!platformSearchQuery.trim() && otherPlatforms.length > 0 && (
                               <>
                                 <div className="px-4 py-2 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-t border-gray-100">
                                   Other Platforms
                                 </div>
-                                {otherPlatforms.slice(0, 5).map((platform) => ( // Limit to 5 for initial display
+                                {otherPlatforms.slice(0, 5).map((platform) => (
                                   <button
                                     key={platform.id}
                                     onClick={() => handlePlatformSelect(platform)}
@@ -381,77 +583,159 @@ export default function DiscoverFilters({
           </div>
         </div>
 
-        {/* Demographics Filters */}
-        <DemographicsFilters 
-          searchParams={displayFilters}
-          onFilterChange={handlePendingFilterChange}
-          filterButtonStyle={filterButtonStyle}
-          openFilterId={openFilterId}
-          toggleFilterDropdown={toggleFilterDropdown}
-          isFilterOpen={isFilterOpen}
-        />
+        
+        {/* Filter Sections */}
+        <div className="space-y-3">
+          {/* Demographics Filters */}
+          <div className="border border-gray-200 rounded-lg shadow-sm">
+            <SectionHeader 
+              title="Demographics" 
+              sectionId="demographics"
+              description="Filter by creator and audience demographics"
+              activeCount={filterCounts.demographics || 0}
+            />
+            {!isSectionCollapsed('demographics') && (
+              <div className="p-4 border-t border-gray-200">
+                <DemographicsFilters 
+                  searchParams={displayFilters}
+                  onFilterChange={handlePendingFilterChange}
+                  filterButtonStyle={filterButtonStyle}
+                  openFilterId={openFilterId}
+                  toggleFilterDropdown={toggleFilterDropdown}
+                  isFilterOpen={isFilterOpen}
+                />
+              </div>
+            )}
+          </div>
 
-        {/* Performance Filters */}
-        <PerformanceFilters 
-          searchParams={displayFilters}
-          onFilterChange={handlePendingFilterChange}
-          filterButtonStyle={filterButtonStyle}
-          openFilterId={openFilterId}
-          toggleFilterDropdown={toggleFilterDropdown}
-          isFilterOpen={isFilterOpen}
-        />
+          {/* Performance Filters */}
+          <div className="border border-gray-200 rounded-lg shadow-sm">
+            <SectionHeader 
+              title="Performance" 
+              sectionId="performance"
+              description="Filter by engagement, followers, and performance metrics"
+              activeCount={filterCounts.performance || 0}
+            />
+            {!isSectionCollapsed('performance') && (
+              <div className="p-4 border-t border-gray-200">
+                <PerformanceFilters 
+                  searchParams={displayFilters}
+                  onFilterChange={handlePendingFilterChange}
+                  filterButtonStyle={filterButtonStyle}
+                  openFilterId={openFilterId}
+                  toggleFilterDropdown={toggleFilterDropdown}
+                  isFilterOpen={isFilterOpen}
+                />
+              </div>
+            )}
+          </div>
 
-        {/* Content Filters */}
-        <ContentFilters 
-          searchParams={displayFilters}
-          onFilterChange={handlePendingFilterChange}
-          filterButtonStyle={filterButtonStyle}
-          openFilterId={openFilterId}
-          toggleFilterDropdown={toggleFilterDropdown}
-          isFilterOpen={isFilterOpen}
-        />
+          {/* Content Filters */}
+          <div className="border border-gray-200 rounded-lg shadow-sm">
+            <SectionHeader 
+              title="Content" 
+              sectionId="content"
+              description="Filter by content topics, hashtags, and partnerships"
+              activeCount={filterCounts.content || 0}
+            />
+            {!isSectionCollapsed('content') && (
+              <div className="p-4 border-t border-gray-200">
+                <ContentFilters 
+                  searchParams={displayFilters}
+                  onFilterChange={handlePendingFilterChange}
+                  filterButtonStyle={filterButtonStyle}
+                  openFilterId={openFilterId}
+                  toggleFilterDropdown={toggleFilterDropdown}
+                  isFilterOpen={isFilterOpen}
+                />
+              </div>
+            )}
+          </div>
 
-        {/* Account Filters */}
-        <AccountFilters 
-          searchParams={displayFilters}
-          onFilterChange={handlePendingFilterChange}
-          filterButtonStyle={filterButtonStyle}
-          openFilterId={openFilterId}
-          toggleFilterDropdown={toggleFilterDropdown}
-          isFilterOpen={isFilterOpen}
-        />
+          {/* Account Filters */}
+          <div className="border border-gray-200 rounded-lg shadow-sm">
+            <SectionHeader 
+              title="Account" 
+              sectionId="account"
+              description="Filter by account settings and verification status"
+              activeCount={filterCounts.account || 0}
+            />
+            {!isSectionCollapsed('account') && (
+              <div className="p-4 border-t border-gray-200">
+                <AccountFilters 
+                  searchParams={displayFilters}
+                  onFilterChange={handlePendingFilterChange}
+                  filterButtonStyle={filterButtonStyle}
+                  openFilterId={openFilterId}
+                  toggleFilterDropdown={toggleFilterDropdown}
+                  isFilterOpen={isFilterOpen}
+                />
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* Action Buttons */}
-        <div className="flex justify-end space-x-4 mt-6">
-          <button 
-            onClick={clearAllFilters}
-            disabled={isClearing || isApplying}
-            className={`border border-gray-300 px-8 py-2 rounded-full shadow-sm transition-colors flex items-center gap-2 ${
-              isClearing || isApplying
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'text-gray-500 hover:bg-gray-100'
-            }`}
-          >
-            {isClearing && (
-              <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+        <div className="flex justify-between items-center pt-4 border-t border-gray-200">
+          <div className="text-sm text-gray-600">
+            {hasActiveFilters(searchParams, pendingFilters) && (
+              <span>{activeFilters.length} filter{activeFilters.length !== 1 ? 's' : ''} active</span>
             )}
-            Clear
-          </button>
-          <button 
-            onClick={applyFilters}
-            disabled={!hasPendingChanges || isApplying || isClearing}
-            className={`px-8 py-2 rounded-full shadow-md transition-colors flex items-center gap-2 ${
-              hasPendingChanges && !isApplying && !isClearing
-                ? 'bg-purple-600 text-white hover:bg-purple-700'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }`}
-          >
-            {isApplying && (
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-            )}
-            Apply Filters {hasPendingChanges && !isApplying && `(${Object.keys(pendingFilters).length})`}
-          </button>
+          </div>
+          
+          <div className="flex space-x-4">
+            <button 
+              onClick={clearAllFilters}
+              disabled={isClearing || isApplying}
+              className={`border border-gray-300 px-8 py-2 rounded-full shadow-sm transition-colors flex items-center gap-2 ${
+                isClearing || isApplying
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'text-gray-500 hover:bg-gray-100'
+              }`}
+            >
+              {isClearing && (
+                <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+              )}
+              Clear
+            </button>
+            <button 
+              onClick={applyFilters}
+              disabled={!hasPendingChanges || isApplying || isClearing}
+              className={`px-8 py-2 rounded-full shadow-md transition-colors flex items-center gap-2 ${
+                hasPendingChanges && !isApplying && !isClearing
+                  ? 'bg-purple-600 text-white hover:bg-purple-700'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              }`}
+            >
+              {isApplying && (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              )}
+              Apply Filters {hasPendingChanges && !isApplying && `(${Object.keys(pendingFilters).length})`}
+            </button>
+          </div>
         </div>
+
+        {/* Active Filters Display */}
+        {activeFilters.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {activeFilters.map((filter) => (
+              <span 
+                key={filter.key}
+                className="inline-flex items-center gap-2 bg-white border border-purple-300 text-purple-700 px-3 py-1.5 rounded-full text-sm font-medium shadow-sm hover:shadow-md transition-shadow"
+              >
+                <span className="font-medium">{filter.label}:</span>
+                <span>{filter.value}</span>
+                <button
+                  onClick={() => handleRemoveFilter(filter.key)}
+                  className="ml-1 text-purple-500 hover:text-purple-700 transition-colors"
+                  title={`Remove ${filter.label} filter`}
+                >
+                  <IoClose size={16} />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
