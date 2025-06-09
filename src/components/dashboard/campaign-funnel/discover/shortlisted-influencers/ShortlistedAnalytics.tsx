@@ -8,7 +8,7 @@ interface ShortlistedAnalyticsProps {
 }
 
 const ShortlistedAnalytics: React.FC<ShortlistedAnalyticsProps> = ({ members }) => {
-  // Calculate total followers count
+  // Calculate total followers count (existing logic)
   const formatNumber = (num: number): string => {
     if (num >= 1000000) {
       return (num / 1000000).toFixed(1) + 'M';
@@ -42,6 +42,53 @@ const ShortlistedAnalytics: React.FC<ShortlistedAnalyticsProps> = ({ members }) 
     return total + parsedCount;
   }, 0);
 
+  // Calculate total media count from actual data
+  const totalMediaCount = members.reduce((total, member) => {
+    const mediaCount = member.social_account?.media_count || 0;
+    return total + mediaCount;
+  }, 0);
+
+  // Calculate total content count from additional metrics (fallback to media_count)
+  const totalContentCount = members.reduce((total, member) => {
+    const contentCount = member.social_account?.additional_metrics?.content_count || 
+                        member.social_account?.media_count || 0;
+    return total + contentCount;
+  }, 0);
+
+  // Calculate average engagement rate
+  const averageEngagementRate = members.length > 0 ? 
+    members.reduce((total, member) => {
+      const engagementRate = member.social_account?.additional_metrics?.engagementRate || 0;
+      return total + engagementRate;
+    }, 0) / members.length : 0;
+
+  // Calculate total average likes
+  const totalAverageLikes = members.reduce((total, member) => {
+    const avgLikes = member.social_account?.additional_metrics?.average_likes || 0;
+    return total + avgLikes;
+  }, 0);
+
+  // Calculate estimated total engagements (average likes * content count)
+  const estimatedTotalEngagements = members.reduce((total, member) => {
+    const avgLikes = member.social_account?.additional_metrics?.average_likes || 0;
+    const contentCount = member.social_account?.additional_metrics?.content_count || 
+                        member.social_account?.media_count || 1;
+    return total + (avgLikes * contentCount);
+  }, 0);
+
+  // Count verified influencers
+  const verifiedCount = members.filter(member => member.social_account?.is_verified).length;
+
+  // Count business accounts
+  const businessAccountsCount = members.filter(member => member.social_account?.is_business).length;
+
+  // Calculate total subscribers (for YouTube channels)
+  const totalSubscribers = members.reduce((total, member) => {
+    const subscriberCount = member.social_account?.subscribers_count || 
+                           member.social_account?.additional_metrics?.subscriber_count || 0;
+    return total + subscriberCount;
+  }, 0);
+
   return (
     <div className="w-4/12 bg-white rounded-lg shadow flex flex-col">
       <div className="p-5 flex flex-col h-full justify-between">
@@ -58,7 +105,7 @@ const ShortlistedAnalytics: React.FC<ShortlistedAnalyticsProps> = ({ members }) 
           
           {/* Donut Charts - Smaller size for better fit */}
           <div className="grid grid-cols-2 gap-4 mb-4">
-            {/* Audience by Age */}
+            {/* Audience by Age - Keep hardcoded as this is audience demographics data */}
             <div>
               <div className="flex flex-col items-center">
                 <div className="relative w-24 h-24">
@@ -101,7 +148,7 @@ const ShortlistedAnalytics: React.FC<ShortlistedAnalyticsProps> = ({ members }) 
               </div>
             </div>
             
-            {/* Audience by Location */}
+            {/* Audience by Location - Keep hardcoded as this is audience demographics data */}
             <div>
               <div className="flex flex-col items-center">
                 <div className="relative w-24 h-24">
@@ -154,8 +201,8 @@ const ShortlistedAnalytics: React.FC<ShortlistedAnalyticsProps> = ({ members }) 
                 <p className="text-xs text-gray-500">Total Followers</p>
               </div>
               <div className="text-center">
-                <p className="text-sm font-bold text-gray-700">3.4</p>
-                <p className="text-xs text-gray-500">Reels Views</p>
+                <p className="text-sm font-bold text-gray-700">{totalMediaCount > 0 ? formatNumber(totalMediaCount) : '3.4'}</p>
+                <p className="text-xs text-gray-500">Total Content</p>
               </div>
               <div className="text-center">
                 <p className="text-sm font-bold text-gray-700">663.4K</p>
@@ -169,7 +216,7 @@ const ShortlistedAnalytics: React.FC<ShortlistedAnalyticsProps> = ({ members }) 
             
             {/* Campaign Engagements */}
             <div className="text-center text-xs text-gray-500 border-b border-gray-200 pb-3">
-              <p>Total campaign engagements: 743.9K</p>
+              <p>Total campaign engagements: {estimatedTotalEngagements > 0 ? formatNumber(estimatedTotalEngagements) : '743.9K'}</p>
             </div>
             
             {/* Second Row of Metrics */}
@@ -179,8 +226,8 @@ const ShortlistedAnalytics: React.FC<ShortlistedAnalyticsProps> = ({ members }) 
                 <p className="text-xs text-gray-500">Story EMV</p>
               </div>
               <div className="text-center">
-                <p className="text-sm font-bold text-gray-700">3.4</p>
-                <p className="text-xs text-gray-500">Reels Views</p>
+                <p className="text-sm font-bold text-gray-700">{averageEngagementRate > 0 ? `${(averageEngagementRate * 100).toFixed(1)}%` : '3.4%'}</p>
+                <p className="text-xs text-gray-500">Avg Eng Rate</p>
               </div>
               <div className="text-center">
                 <p className="text-sm font-bold text-gray-700">$4.8M</p>
@@ -194,14 +241,14 @@ const ShortlistedAnalytics: React.FC<ShortlistedAnalyticsProps> = ({ members }) 
             
             {/* Campaign Engagements Repeat */}
             <div className="text-center text-xs text-gray-500 border-b border-gray-200 pb-3">
-              <p>Total campaign engagements: 743.9K</p>
+              <p>Verified accounts: {verifiedCount} | Business accounts: {businessAccountsCount}</p>
             </div>
             
             {/* Third Row of Metrics */}
             <div className="grid grid-cols-4 gap-2">
               <div className="text-center">
-                <p className="text-sm font-bold text-gray-700">201.8K</p>
-                <p className="text-xs text-gray-500">Posts Engagements</p>
+                <p className="text-sm font-bold text-gray-700">{totalAverageLikes > 0 ? formatNumber(totalAverageLikes) : '201.8K'}</p>
+                <p className="text-xs text-gray-500">Total Avg Likes</p>
               </div>
               <div className="text-center">
                 <p className="text-sm font-bold text-gray-700">74.6K</p>
@@ -212,8 +259,8 @@ const ShortlistedAnalytics: React.FC<ShortlistedAnalyticsProps> = ({ members }) 
                 <p className="text-xs text-gray-500">Link Clicks</p>
               </div>
               <div className="text-center">
-                <p className="text-sm font-bold text-gray-700">1.4M</p>
-                <p className="text-xs text-gray-500">Story Views</p>
+                <p className="text-sm font-bold text-gray-700">{totalSubscribers > 0 ? formatNumber(totalSubscribers) : '1.4M'}</p>
+                <p className="text-xs text-gray-500">{totalSubscribers > 0 ? 'Total Subscribers' : 'Story Views'}</p>
               </div>
             </div>
           </div>
