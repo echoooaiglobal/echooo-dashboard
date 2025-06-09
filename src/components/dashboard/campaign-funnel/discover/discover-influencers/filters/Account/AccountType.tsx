@@ -149,17 +149,6 @@ const AccountType: React.FC<AccountTypeProps> = ({
             </div>
           </div>
         )}
-
-        {/* Empty State */}
-        {selectedTypes.length === 0 && (
-          <div className="text-center py-4">
-            <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-2">
-              <IoPersonCircleOutline className="w-4 h-4 text-gray-600" />
-            </div>
-            <div className="text-sm text-gray-600 font-medium">No Account Types Selected</div>
-            <div className="text-xs text-gray-400">Select account types to filter creators</div>
-          </div>
-        )}
       </div>
     </FilterComponent>
   );

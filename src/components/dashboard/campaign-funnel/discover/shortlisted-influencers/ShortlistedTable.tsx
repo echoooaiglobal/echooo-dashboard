@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { CampaignListMember, CampaignListMembersResponse, removeInfluencerFromList } from '@/services/campaign/campaign-list.service';
+import { formatNumber } from '@/utils/format';
 
 interface ShortlistedTableProps {
   shortlistedMembers: CampaignListMembersResponse;
@@ -236,7 +237,7 @@ const ShortlistedTable: React.FC<ShortlistedTableProps> = ({
                 />
               </th>
               <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
-                Influencers Name ({pagination.total_items})
+                Name ({pagination.total_items})
               </th>
               <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">
                 Followers
@@ -320,7 +321,7 @@ const ShortlistedTable: React.FC<ShortlistedTableProps> = ({
                   </td>
                   <td className="px-2 py-4 whitespace-nowrap text-sm text-gray-500 w-20">
                     <span className="truncate block">
-                      {member.social_account?.followers_count || 'N/A'}
+                      {formatNumber(member?.social_account?.followers_count ?? 0) || 'N/A'}
                     </span>
                   </td>
                   <td className="px-2 py-4 whitespace-nowrap text-sm text-gray-500 w-20">

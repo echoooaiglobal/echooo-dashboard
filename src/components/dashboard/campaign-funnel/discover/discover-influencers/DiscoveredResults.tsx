@@ -5,7 +5,8 @@ import { Campaign } from '@/services/campaign/campaign.service';
 import { CampaignListMember } from '@/services/campaign/campaign-list.service';
 import { DiscoveredCreatorsResults, Influencer } from '@/types/insights-iq';
 import { SortField, SortOrder } from '@/lib/creator-discovery-types';
-
+import ProfileInsightsModal from './ProfileInsightsModal';
+import { formatNumber } from '@/utils/format';
 interface DiscoverResultsProps {
   influencers: DiscoverInfluencer[];
   discoveredCreatorsResults: DiscoveredCreatorsResults | null;
@@ -30,6 +31,8 @@ interface DiscoverResultsProps {
   addedInfluencers: Record<string, boolean>;
   isAdding: Record<string, boolean>;
   setAddedInfluencers: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+  // NEW: Optional function to fetch influencer posts
+  onFetchInfluencerPosts?: (influencer: Influencer) => Promise<any[]>;
 }
 
 const DiscoverResults: React.FC<DiscoverResultsProps> = ({
@@ -54,9 +57,12 @@ const DiscoverResults: React.FC<DiscoverResultsProps> = ({
   onAddToList,
   addedInfluencers,
   isAdding,
-  setAddedInfluencers
+  setAddedInfluencers,
+  onFetchInfluencerPosts
 }) => {
   const [showPageSizeDropdown, setShowPageSizeDropdown] = useState(false);
+  const [selectedInfluencer, setSelectedInfluencer] = useState<Influencer | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Get metadata with defaults
   const metadata = discoveredCreatorsResults?.metadata || {
@@ -152,10 +158,23 @@ const DiscoverResults: React.FC<DiscoverResultsProps> = ({
     );
   };
 
-  // REMOVED: handleAddToList function - now passed as prop
+  // Handle opening influencer profile in new tab
+  const handleInfluencerClick = (influencer: Influencer) => {
+    if (influencer.url) {
+      window.open(influencer.url, '_blank', 'noopener,noreferrer');
+    }
+  };
 
-  const handleViewProfile = (influencer: Influencer) => {
-    console.log('View profile clicked:', influencer);
+  // Handle opening profile insights modal
+  const handleProfileInsights = (influencer: Influencer) => {
+    setSelectedInfluencer(influencer);
+    setIsModalOpen(true);
+  };
+
+  // Handle closing modal
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedInfluencer(null);
   };
 
   // Handle page change
@@ -233,302 +252,318 @@ const DiscoverResults: React.FC<DiscoverResultsProps> = ({
   }
 
   return (
-    <div className="bg-white rounded-lg shadow w-full">
-      <div className="w-full">
-        <div className="w-full min-w-full table-fixed">
-          <table className="min-w-full divide-y divide-gray-200 text-xs">
-            <thead className="bg-gray-50">
-              <tr>
-                <th
-                  scope="col"
-                  className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer w-1/5"
-                  onClick={() => handleSort('username')}
-                >
-                  <div className="flex items-center">
-                    <span className="truncate">Influencers Name ({metadata.total_results})</span>
-                    {renderSortIcon('username')}
-                  </div>
-                </th>
-                <th
-                  scope="col"
-                  className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer w-1/10"
-                  onClick={() => handleSort('followers')}
-                >
-                  <div className="flex items-center">
-                    <span className="truncate">Followers</span>
-                    {renderSortIcon('followers')}
-                  </div>
-                </th>
-                <th
-                  scope="col"
-                  className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer w-1/10"
-                  onClick={() => handleSort('engagementRate')}
-                >
-                  <div className="flex items-center">
-                    <span className="truncate">Eng Rate</span>
-                    {renderSortIcon('engagementRate')}
-                  </div>
-                </th>
-                <th
-                  scope="col"
-                  className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer w-1/10"
-                  onClick={() => handleSort('average_likes')}
-                >
-                  <div className="flex items-center">
-                    <span className="truncate">Avg Likes</span>
-                    {renderSortIcon('average_likes')}
-                  </div>
-                </th>
-                <th
-                  scope="col"
-                  className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer w-1/10"
-                  onClick={() => handleSort('average_views')}
-                >
-                  <div className="flex items-center">
-                    <span className="truncate">Avg Views</span>
-                    {renderSortIcon('average_views')}
-                  </div>
-                </th>
-                <th
-                  scope="col"
-                  className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/10"
-                >
-                  <span className="truncate">Insights</span>
-                </th>
-                <th
-                  scope="col"
-                  className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-1/10"
-                >
-                  <span className="truncate">Add to List</span>
-                </th>
-                <th
-                  scope="col"
-                  className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-1/10"
-                >
-                  <span className="truncate">View Profile</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {discoveredCreatorsResults?.influencers?.map((influencer, key) => {
-                // Check if this influencer is already in shortlist or has been added during this session
-                const isAlreadyAdded = isInfluencerInShortlist(influencer) || addedInfluencers[influencer.username];
-               
-                return (
-                  <tr key={influencer.username || key} className="hover:bg-gray-50">
-                    <td className="px-2 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-8 w-8 relative">
-                          <img
-                            className="rounded-full object-cover h-8 w-8"
-                            src={influencer.profileImage || '/user/profile-placeholder.png'}
-                            alt={influencer.username}
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = '/user/profile-placeholder.png';
-                            }}
-                          />
-                        </div>
-                        <div className="ml-3 truncate">
-                          <div className="text-xs font-medium text-gray-900 flex items-center">
-                            <span className="truncate">{influencer.name || influencer.username}</span>
-                            {influencer.isVerified && (
-                              <span className="ml-1 flex-shrink-0 text-blue-500" title="Verified">
-                                <svg
-                                  className="w-3 h-3"
-                                  fill="currentColor"
-                                  viewBox="0 0 24 24"
-                                  aria-hidden="true"
-                                >
-                                  <path
-                                    fillRule="evenodd"
-                                    d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm-1.177-7.86l-2.765-2.767L7 12.431l3.823 3.823 7.177-7.177-1.06-1.06-7.117 7.122z"
-                                    clipRule="evenodd"
-                                  />
-                                </svg>
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-xs text-gray-500 truncate">
-                            @{influencer.username}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-2 py-4 whitespace-nowrap text-xs text-gray-500">
-                      {influencer.followers?.toLocaleString() || 'N/A'}
-                    </td>
-                    <td className="px-2 py-4 whitespace-nowrap text-xs text-gray-500">
-                      {typeof influencer.engagementRate === 'number'
-                        ? `${(influencer.engagementRate * 100).toFixed(2)}%`
-                        : 'N/A'}
-                    </td>
-                    <td className="px-2 py-4 whitespace-nowrap text-xs text-gray-500">
-                      {influencer.average_likes?.toLocaleString() || 'N/A'}
-                    </td>
-                    <td className="px-2 py-4 whitespace-nowrap text-xs text-gray-500">
-                      {influencer.average_views?.toLocaleString() || 'N/A'}
-                    </td>
-                    <td className="px-2 py-4 whitespace-nowrap text-xs">
-                      <button className="text-gray-500 flex items-center hover:text-gray-700">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                        </svg>
-                        <span className="truncate">Profile Insights</span>
-                      </button>
-                    </td>
-                    <td className="px-2 py-4 whitespace-nowrap text-center">
-                      {isAlreadyAdded ? (
-                        <button 
-                          className="inline-flex items-center justify-center px-2 py-1 bg-green-100 text-green-600 rounded-md text-xs"
-                          disabled
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                          <span className="truncate">Added</span>
-                        </button>
-                      ) : (
-                        <button 
-                          onClick={() => onAddToList(influencer)}
-                          disabled={isAdding[influencer.username]}
-                          className="inline-flex items-center justify-center px-2 py-1 bg-purple-100 text-purple-600 rounded-md hover:bg-purple-200 transition-colors text-xs"
-                        >
-                          {isAdding[influencer.username] ? (
-                            <div className="flex items-center">
-                              <svg className="animate-spin -ml-1 mr-1 h-3 w-3 text-purple-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                              </svg>
-                              <span className="truncate">Adding...</span>
-                            </div>
-                          ) : (
-                            <span className="truncate">Add to List</span>
-                          )}
-                        </button>
-                      )}
-                    </td>
-                    <td className="px-2 py-4 whitespace-nowrap text-center">
-                      <button 
-                        onClick={() => handleViewProfile(influencer)}
-                        className="text-gray-500 hover:text-gray-700 inline-flex"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Dynamic Pagination */}
-      <div className="px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between border-t border-gray-200">
-        <div className="flex items-center mb-4 sm:mb-0">
-          <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-            {/* Previous button */}
-            <button 
-              onClick={() => handlePageChange(calculatedCurrentPage - 1)}
-              disabled={!hasPreviousPage}
-              className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <span className="sr-only">Previous</span>
-              <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-              </svg>
-            </button>
-
-            {/* Page numbers */}
-            {pageNumbers.map((pageNum, index) => (
-              <div key={index}>
-                {pageNum === '...' ? (
-                  <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
-                    ...
-                  </span>
-                ) : (
-                  <button
-                    onClick={() => handlePageChange(pageNum as number)}
-                    className={`relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium ${
-                      pageNum === calculatedCurrentPage
-                        ? 'z-10 bg-purple-50 border-purple-500 text-purple-600'
-                        : 'bg-white text-gray-700 hover:bg-gray-50'
-                    }`}
+    <>
+      <div className="bg-white rounded-lg shadow w-full">
+        <div className="w-full">
+          <div className="w-full min-w-full table-fixed">
+            <table className="min-w-full divide-y divide-gray-200 text-xs">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th
+                    scope="col"
+                    className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer w-1/5"
+                    onClick={() => handleSort('username')}
                   >
-                    {pageNum}
-                  </button>
-                )}
-              </div>
-            ))}
-
-            {/* Next button */}
-            <button 
-              onClick={() => handlePageChange(calculatedCurrentPage + 1)}
-              disabled={!hasNextPage}
-              className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <span className="sr-only">Next</span>
-              <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-              </svg>
-            </button>
-          </nav>
+                    <div className="flex items-center">
+                      <span className="truncate">Name</span>
+                      {renderSortIcon('username')}
+                    </div>
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer w-1/10"
+                    onClick={() => handleSort('followers')}
+                  >
+                    <div className="flex items-center">
+                      <span className="truncate">Followers</span>
+                      {renderSortIcon('followers')}
+                    </div>
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer w-1/10"
+                    onClick={() => handleSort('engagementRate')}
+                  >
+                    <div className="flex items-center">
+                      <span className="truncate">Eng Rate</span>
+                      {renderSortIcon('engagementRate')}
+                    </div>
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer w-1/10"
+                    onClick={() => handleSort('average_likes')}
+                  >
+                    <div className="flex items-center">
+                      <span className="truncate">Avg Likes</span>
+                      {renderSortIcon('average_likes')}
+                    </div>
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer w-1/10"
+                    onClick={() => handleSort('average_views')}
+                  >
+                    <div className="flex items-center">
+                      <span className="truncate">Avg Views</span>
+                      {renderSortIcon('average_views')}
+                    </div>
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/10"
+                  >
+                    <span className="truncate">Insights</span>
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-1/10"
+                  >
+                    <span className="truncate">Add to List</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {discoveredCreatorsResults?.influencers?.map((influencer, key) => {
+                  // Check if this influencer is already in shortlist or has been added during this session
+                  const isAlreadyAdded = isInfluencerInShortlist(influencer) || addedInfluencers[influencer.username];
+                 
+                  return (
+                    <tr key={influencer.username || key} className="hover:bg-gray-50">
+                      <td className="px-2 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="flex-shrink-0 h-8 w-8 relative">
+                            <img
+                              className="rounded-full object-cover h-8 w-8"
+                              src={influencer.profileImage || '/user/profile-placeholder.png'}
+                              alt={influencer.username}
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = '/user/profile-placeholder.png';
+                              }}
+                            />
+                          </div>
+                          <div className="ml-3 truncate">
+                            <div className="text-xs font-medium text-gray-900 flex items-center">
+                              {influencer.url ? (
+                                <button
+                                  onClick={() => handleInfluencerClick(influencer)}
+                                  className="truncate text-gray-900 hover:text-gray-700 cursor-pointer"
+                                  title={`Open ${influencer.name || influencer.username}'s profile`}
+                                >
+                                  {influencer.name || influencer.username}
+                                </button>
+                              ) : (
+                                <span className="truncate">{influencer.name || influencer.username}</span>
+                              )}
+                              {influencer.isVerified && (
+                                <span className="ml-1 flex-shrink-0 text-blue-500" title="Verified">
+                                  <svg
+                                    className="w-3 h-3"
+                                    fill="currentColor"
+                                    viewBox="0 0 24 24"
+                                    aria-hidden="true"
+                                  >
+                                    <path
+                                      fillRule="evenodd"
+                                      d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm-1.177-7.86l-2.765-2.767L7 12.431l3.823 3.823 7.177-7.177-1.06-1.06-7.117 7.122z"
+                                      clipRule="evenodd"
+                                    />
+                                  </svg>
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-xs text-gray-500 truncate">
+                              {influencer.url ? (
+                                <button
+                                  onClick={() => handleInfluencerClick(influencer)}
+                                  className="text-gray-500 hover:text-gray-700 cursor-pointer"
+                                  title={`Open @${influencer.username}'s profile`}
+                                >
+                                  @{influencer.username}
+                                </button>
+                              ) : (
+                                <span>@{influencer.username}</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-2 py-4 whitespace-nowrap text-xs text-gray-500">
+                        {influencer.followers?.toLocaleString() || 'N/A'}
+                      </td>
+                      <td className="px-2 py-4 whitespace-nowrap text-xs text-gray-500">
+                        {typeof influencer.engagementRate === 'number'
+                          ? `${(influencer.engagementRate * 100).toFixed(2)}%`
+                          : 'N/A'}
+                      </td>
+                      <td className="px-2 py-4 whitespace-nowrap text-xs text-gray-500">
+                        {influencer.average_likes !== undefined && influencer.average_likes !== null ? formatNumber(influencer.average_likes) : 'N/A'}
+                      </td>
+                      <td className="px-2 py-4 whitespace-nowrap text-xs text-gray-500">
+                        {influencer.average_views !== undefined && influencer.average_views !== null ? formatNumber(influencer.average_views) : 'N/A'}
+                      </td>
+                      <td className="px-2 py-4 whitespace-nowrap text-xs">
+                        <button 
+                          onClick={() => handleProfileInsights(influencer)}
+                          className="text-gray-500 flex items-center hover:text-gray-700 transition-colors"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                          </svg>
+                          <span className="truncate">Profile Insights</span>
+                        </button>
+                      </td>
+                      <td className="px-2 py-4 whitespace-nowrap text-center">
+                        {isAlreadyAdded ? (
+                          <button 
+                            className="inline-flex items-center justify-center px-2 py-1 bg-green-100 text-green-600 rounded-md text-xs"
+                            disabled
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            <span className="truncate">Added</span>
+                          </button>
+                        ) : (
+                          <button 
+                            onClick={() => onAddToList(influencer)}
+                            disabled={isAdding[influencer.username]}
+                            className="inline-flex items-center justify-center px-2 py-1 bg-purple-100 text-purple-600 rounded-md hover:bg-purple-200 transition-colors text-xs"
+                          >
+                            {isAdding[influencer.username] ? (
+                              <div className="flex items-center">
+                                <svg className="animate-spin -ml-1 mr-1 h-3 w-3 text-purple-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span className="truncate">Adding...</span>
+                              </div>
+                            ) : (
+                              <span className="truncate">Add to List</span>
+                            )}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
-        
-        <div className="flex items-center">
-          <p className="text-sm text-gray-700 mr-3">
-            Showing <span className="font-medium">{startItem}</span> to <span className="font-medium">{endItem}</span> of{' '}
-            <span className="font-medium">{metadata.total_results}</span> entries
-          </p>
-          <div className="ml-2 relative page-size-dropdown">
-            <button 
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowPageSizeDropdown(!showPageSizeDropdown);
-              }}
-              className="bg-white border border-gray-300 rounded-md shadow-sm px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none flex items-center"
-            >
-              Show {actualPageSize >= metadata.total_results ? 'All' : actualPageSize}
-              <svg className={`-mr-1 ml-1 h-5 w-5 transform transition-transform ${showPageSizeDropdown ? 'rotate-180' : ''}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-              </svg>
-            </button>
-            
-            {/* Dropdown Menu - Opens UPWARD */}
-            {showPageSizeDropdown && (
-              <div className="absolute right-0 bottom-full mb-1 w-32 bg-white border border-gray-300 rounded-md shadow-lg z-50">
-                <div className="py-1">
-                  {pageSizeOptions.map((option, index) => {
-                    const isObject = typeof option === 'object';
-                    const value = isObject ? option.value : option;
-                    const label = isObject ? option.label : `Show ${option}`;
-                    const isActive = actualPageSize === value;
-                    
-                    return (
-                      <button
-                        key={index}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handlePageSizeChange(value);
-                        }}
-                        className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 transition-colors ${
-                          isActive ? 'bg-purple-50 text-purple-600 font-medium' : 'text-gray-700'
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    );
-                  })}
+
+        {/* Dynamic Pagination */}
+        <div className="px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between border-t border-gray-200">
+          <div className="flex items-center mb-4 sm:mb-0">
+            <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+              {/* Previous button */}
+              <button 
+                onClick={() => handlePageChange(calculatedCurrentPage - 1)}
+                disabled={!hasPreviousPage}
+                className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span className="sr-only">Previous</span>
+                <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+              </button>
+
+              {/* Page numbers */}
+              {pageNumbers.map((pageNum, index) => (
+                <div key={index}>
+                  {pageNum === '...' ? (
+                    <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                      ...
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => handlePageChange(pageNum as number)}
+                      className={`relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium ${
+                        pageNum === calculatedCurrentPage
+                          ? 'z-10 bg-purple-50 border-purple-500 text-purple-600'
+                          : 'bg-white text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  )}
                 </div>
-              </div>
-            )}
+              ))}
+
+              {/* Next button */}
+              <button 
+                onClick={() => handlePageChange(calculatedCurrentPage + 1)}
+                disabled={!hasNextPage}
+                className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span className="sr-only">Next</span>
+                <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </nav>
+          </div>
+          
+          <div className="flex items-center">
+            <p className="text-sm text-gray-700 mr-3">
+              Showing <span className="font-medium">{startItem}</span> to <span className="font-medium">{endItem}</span> of{' '}
+              <span className="font-medium">{metadata.total_results}</span> entries
+            </p>
+            <div className="ml-2 relative page-size-dropdown">
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowPageSizeDropdown(!showPageSizeDropdown);
+                }}
+                className="bg-white border border-gray-300 rounded-md shadow-sm px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none flex items-center"
+              >
+                Show {actualPageSize >= metadata.total_results ? 'All' : actualPageSize}
+                <svg className={`-mr-1 ml-1 h-5 w-5 transform transition-transform ${showPageSizeDropdown ? 'rotate-180' : ''}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+              
+              {/* Dropdown Menu - Opens UPWARD */}
+              {showPageSizeDropdown && (
+                <div className="absolute right-0 bottom-full mb-1 w-32 bg-white border border-gray-300 rounded-md shadow-lg z-50">
+                  <div className="py-1">
+                    {pageSizeOptions.map((option, index) => {
+                      const isObject = typeof option === 'object';
+                      const value = isObject ? option.value : option;
+                      const label = isObject ? option.label : `Show ${option}`;
+                      const isActive = actualPageSize === value;
+                      
+                      return (
+                        <button
+                          key={index}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePageSizeChange(value);
+                          }}
+                          className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 transition-colors ${
+                            isActive ? 'bg-purple-50 text-purple-600 font-medium' : 'text-gray-700'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Profile Insights Modal */}
+      <ProfileInsightsModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        influencer={selectedInfluencer}
+        onFetchPosts={onFetchInfluencerPosts}
+      />
+    </>
   );
 };
 

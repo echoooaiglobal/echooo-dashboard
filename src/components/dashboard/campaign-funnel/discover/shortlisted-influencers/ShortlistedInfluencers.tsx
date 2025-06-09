@@ -9,6 +9,7 @@ import { ASSIGNMENT_STATUS } from '@/services/list-assignments/list-assignment.s
 import OutreachMessageForm from './OutreachMessageForm';
 import ShortlistedTable from './ShortlistedTable';
 import ShortlistedAnalytics from './ShortlistedAnalytics';
+import ExportButton from './ExportButton';
 
 interface MessageTemplate {
   id: string;
@@ -720,6 +721,13 @@ const ShortlistedInfluencers: React.FC<ShortlistedInfluencersProps> = ({
             </button>
           )}
           
+          {/* Export Button - Added before Start Outreach */}
+          <ExportButton 
+            members={members}
+            campaignName={campaignData?.name}
+            selectedMembers={selectedInfluencers.length > 0 ? members.filter(member => selectedInfluencers.includes(member.id ?? '')) : undefined}
+          />
+          
           {/* Enhanced Outreach Button with all status variants */}
           <button 
             onClick={handleStartOutreach}
@@ -766,8 +774,10 @@ const ShortlistedInfluencers: React.FC<ShortlistedInfluencersProps> = ({
           onRemovingChange={setRemovingInfluencers}
         />
         
-        {/* Analytics Component */}
-        <ShortlistedAnalytics members={members} />
+        {/* Analytics Component - Simplified without export button */}
+        <ShortlistedAnalytics 
+          members={members} 
+        />
       </div>
 
       {/* Outreach Message Form - Only show when action is 'open-form' */}

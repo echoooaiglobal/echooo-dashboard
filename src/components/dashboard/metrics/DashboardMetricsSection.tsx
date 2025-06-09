@@ -23,7 +23,7 @@ type MetricTab = 'stats' | 'performance' | 'both';
 const DashboardMetricsSection: React.FC<DashboardMetricsSectionProps> = ({ 
   userType = 'company' 
 }) => {
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false); // Changed from true to false
   const [activeTab, setActiveTab] = useState<MetricTab>('stats');
 
   // Sample stats metrics - this would come from an API in production

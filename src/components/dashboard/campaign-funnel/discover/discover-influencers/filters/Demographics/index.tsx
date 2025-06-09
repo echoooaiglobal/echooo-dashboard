@@ -100,13 +100,6 @@ const DemographicsFilters: React.FC<DemographicsFiltersProps> = ({
           isOpen={isFilterOpen('audienceType')}
           onToggle={() => toggleFilterDropdown('audienceType')}
         />
-        
-        <Ethnicity
-          filters={searchParams}
-          onFilterChange={onFilterChange}
-          isOpen={isFilterOpen('ethnicity')}
-          onToggle={() => toggleFilterDropdown('ethnicity')}
-        />
       </div>
     </div>
   );

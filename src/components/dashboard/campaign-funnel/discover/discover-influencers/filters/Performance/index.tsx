@@ -36,19 +36,14 @@ const PerformanceFilters: React.FC<PerformanceFiltersProps> = ({
       <h3 className="text-sm font-medium text-gray-600 mb-3">
         Performance
       </h3>
-      <div className="grid grid-cols-3 gap-4 mb-4">
+      <div className="grid grid-cols-2 gap-4 mb-4">
         <Followers
           filters={searchParams}
           onFilterChange={onFilterChange}
           isOpen={isFilterOpen('followers')}
           onToggle={() => toggleFilterDropdown('followers')}
         />
-        <Engagements
-          filters={searchParams}
-          onFilterChange={onFilterChange}
-          isOpen={isFilterOpen('engagements')}
-          onToggle={() => toggleFilterDropdown('engagements')}
-        />
+        
         <Trending
           filters={searchParams}
           onFilterChange={onFilterChange}
@@ -56,7 +51,13 @@ const PerformanceFilters: React.FC<PerformanceFiltersProps> = ({
           onToggle={() => toggleFilterDropdown('trending')}
         />
       </div>
-      <div className="grid grid-cols-1 gap-4">
+      <div className="grid grid-cols-2 gap-4 mb-4">
+        <Engagements
+          filters={searchParams}
+          onFilterChange={onFilterChange}
+          isOpen={isFilterOpen('engagements')}
+          onToggle={() => toggleFilterDropdown('engagements')}
+        />
         <ReelsPlays
           filters={searchParams}
           onFilterChange={onFilterChange}

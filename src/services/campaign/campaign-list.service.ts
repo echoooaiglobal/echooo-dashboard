@@ -19,6 +19,7 @@ export interface AddToListRequest {
     followers: string;
     isVerified?: boolean;
   };
+  additional_metrics?: Record<string, string | number | boolean | null>;
 }
 
 // Define the response from the add to list API
@@ -94,7 +95,7 @@ export interface CampaignListMembersResponse {
 export async function addInfluencerToList(
   listId: CampaignListId,
   influencer: Influencer,
-  platformId: string = '5d13c7b1-7e75-4fa2-86e3-2e37c2c8e84c' // Default platform ID
+  platformId: string,
 ): Promise<CampaignListMember> {
   try {
     // Transform the influencer data to match the expected API format
@@ -108,7 +109,16 @@ export async function addInfluencerToList(
         profileImage: influencer.profileImage || '',
         followers: influencer.followers || '0',
         isVerified: influencer.isVerified || false
-      }
+      },
+      additional_metrics: Object.fromEntries(
+        Object.entries(influencer).filter(
+          ([, value]) =>
+            typeof value === 'string' ||
+            typeof value === 'number' ||
+            typeof value === 'boolean' ||
+            value === null
+        )
+      )
     };
 
     // Call the API using the unified API client

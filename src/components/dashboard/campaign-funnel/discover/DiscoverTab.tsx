@@ -13,7 +13,7 @@ import { DiscoveredCreatorsResults } from '@/types/insights-iq';
 import { getCampaignListMembers, CampaignListMember, CampaignListMembersResponse } from '@/services/campaign/campaign-list.service';
 import { InfluencerSearchFilter } from '@/lib/creator-discovery-types';
 import { Platform } from '@/types/platform';
-
+import { formatNumber } from '@/utils/format'
 // Default Pakistan location ID (replace with actual ID from your API)
 const PAKISTAN_LOCATION_ID = "abd21c98-2950-45cd-b224-89b5a9f3c014";
 
@@ -57,19 +57,14 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
 
   // Search parameters state using new InfluencerSearchFilter type
   const [searchParams, setSearchParams] = useState<InfluencerSearchFilter>({
-    work_platform_id: "9bb8913b-ddd9-430b-a66a-d74d846e6c66", // Instagram platform ID (default)
-    audience_gender: {
-      type: "ANY",
-      operator: "GT",
-      percentage_value: 0 
-    },
+    work_platform_id: selectedPlatform?.work_platform_id || "9bb8913b-ddd9-430b-a66a-d74d846e6c66",
     creator_age: {
       min: parseInt(left?.trim() || '18'),
       max: parseInt(right?.trim() || '35')
     },
     creator_locations: [],
     creator_interests: [creatorInterests],
-    creator_account_type: ["CREATOR"],
+    // creator_account_type: ["CREATOR"],
     sort_by: {
       field: "FOLLOWER_COUNT",
       order: "DESCENDING"
@@ -101,7 +96,7 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
       
       if (result.success && result.data) {
         setPlatforms(result.data);
-        console.log('✅ Platforms loaded:', result.data.length, 'active platforms');
+       
         
         // Set default platform (Instagram) if available and no platform is selected
         if (!selectedPlatform && result.data.length > 0) {
@@ -160,13 +155,6 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
     setIsLoading(true);
     try {
       const apiUrl = '/api/v0/discover/search';
-      
-      console.log('🔍 Searching influencers with params:', {
-        platform: selectedPlatform?.name || 'Unknown',
-        work_platform_id: params.work_platform_id,
-        limit: params.limit,
-        offset: params.offset
-      });
       
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -473,7 +461,7 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
           )}
         </div>
         
-        {/* Filter Buttons */}
+        {/* Tab Navigation */}
         <div className="flex mt-3 md:mt-0">
           <div className="bg-red-200 rounded-full flex overflow-hidden">
             <button
@@ -484,7 +472,7 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
               }`}
               onClick={() => setActiveFilter('discovered')}
             >
-              Discovered Influencer ({totalResults || 0})
+              Discovered ({formatNumber(totalResults) || 0})
             </button>
             <button
               className={`px-6 py-2 text-sm font-medium ${
@@ -494,7 +482,7 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
               }`}
               onClick={() => setActiveFilter('shortlisted')}
             >
-              Shortlisted ({shortlistedCount})
+              Shortlisted ({formatNumber(shortlistedCount)})
             </button>
           </div>
         </div>

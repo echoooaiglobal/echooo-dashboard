@@ -236,54 +236,6 @@ const Followers: React.FC<FollowersFilterProps> = ({
             </div>
           </div>
 
-          {/* Divider */}
-          <div className="border-t border-gray-200"></div>
-
-          {/* Quick Select Presets */}
-          <div className="space-y-2">
-            <h4 className="text-xs font-semibold text-gray-700">Quick Select</h4>
-            <div className="grid grid-cols-1 gap-1">
-              {PRESET_RANGES.map((range) => {
-                const isSelected = filters?.follower_count?.min === range.min && 
-                                 filters?.follower_count?.max === range.max;
-                
-                return (
-                  <button
-                    key={range.label}
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      console.log(`Quick select: ${range.label}, min=${range.min}, max=${range.max}`);
-                      handlePresetSelect(range.min, range.max);
-                    }}
-                    className={`w-full text-left px-3 py-2 text-xs rounded-md transition-colors ${
-                      isSelected
-                        ? 'bg-blue-100 text-blue-800 border border-blue-300 font-medium'
-                        : 'text-gray-700 hover:bg-gray-50 border border-transparent'
-                    }`}
-                  >
-                    <div className="font-medium">{range.label}</div>
-                    <div className="text-xs text-gray-500">
-                      {formatNumber(range.min)} - {formatNumber(range.max)}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Empty State */}
-          {!hasFilter && (
-            <div className="text-center py-4">
-              <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                <IoPersonAddOutline className="w-4 h-4 text-gray-600" />
-              </div>
-              <div className="text-sm text-gray-600 font-medium">No follower filter applied</div>
-              <div className="text-xs text-gray-400 mt-1">Select a range above or use quick presets</div>
-            </div>
-          )}
-
         </div>
       </FilterComponent>
     </div>

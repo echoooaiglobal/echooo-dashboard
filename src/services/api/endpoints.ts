@@ -21,6 +21,13 @@ export const ENDPOINTS = {
     LIST_MEMBER_DELETE: (id: string) => `/campaign-list-members/${id}`,
     LIST_MEMBER_CREATE: '/campaign-list-members',
   },
+  CAMPAIGN_LIST_MEMBERS: {
+    DETAIL: (id: string) => `/campaign-list-members/${id}`,
+    UPDATE: (id: string) => `/campaign-list-members/${id}`,
+    DELETE: (id: string) => `/campaign-list-members/${id}`,
+    LIST: '/campaign-list-members',
+    CREATE: '/campaign-list-members',
+  },
   CATEGORIES: {
     LIST: '/categories',
     DETAIL: (id: string) => `/categories/${id}`,
@@ -59,5 +66,18 @@ export const ENDPOINTS = {
     LIST: '/platforms',
     DETAIL: (id: string) => `/platforms/${id}`,
     BY_STATUS: (status: string) => `/platforms?status=${status}`,
+  },
+
+  //Platform Agent
+  ASSIGNMENTS: {
+    LIST: '/assignments',
+    INFLUENCERS_LIST: (id: string) => `/assignments/${id}/members`,
+  },
+
+  // Statuses
+  STATUSES: {
+    LIST: '/statuses',
+    BY_MODEL: (model: string) => `/statuses/model/${model}`,
+    DETAIL: (id: string) => `/statuses/${id}`,
   },
 };
