@@ -289,7 +289,7 @@ const ShortlistedTable: React.FC<ShortlistedTableProps> = ({
   return (
     <div className="w-8/12 bg-white rounded-lg shadow overflow-hidden flex flex-col">
       <div className="flex-grow overflow-hidden">
-        <div className="max-h-[600px] overflow-y-auto">
+        <div className="max-h-[735px] overflow-y-auto">
           <table className="min-w-full divide-y divide-gray-200 text-xs">
             <thead className="bg-gray-50 sticky top-0 z-10">
               <tr>
