@@ -10,6 +10,8 @@ import { AssignmentMember, AssignmentMembersResponse } from '@/types/assignment-
 import { Status } from '@/types/statuses';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import EditMemberModal from './modals/EditMemberModal';
+import AddContactModal from './modals/AddContactModal';
+import ViewContactsModal from './modals/ViewContactsModal';
 import AssignmentStatsCards from './components/AssignmentStatsCards';
 import AssignmentSelector from './components/AssignmentSelector';
 import MembersTable from './components/MembersTable';
@@ -44,6 +46,8 @@ export default function PlatformAgentDashboard() {
   // UI State
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isAddContactModalOpen, setIsAddContactModalOpen] = useState(false);
+  const [isViewContactsModalOpen, setIsViewContactsModalOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<AssignmentMember | null>(null);
 
   useEffect(() => {
@@ -166,9 +170,9 @@ export default function PlatformAgentDashboard() {
   }, [isAuthenticated]);
 
   // Function to fetch assignment members
-  const fetchAssignmentMembers = async (assignmentId: string, page: number = 1, pageSize: number = 50) => {
+  const fetchAssignmentMembers = async (assignmentId: string, page: number = 1, pageSize: number = 10) => {
     try {
-      console.log(`🚀 Fetching members for assignment ${assignmentId}`);
+      console.log(`🚀 Fetching members for assignment ${assignmentId}, page ${page}, size ${pageSize}`);
       setMembersLoading(true);
       setMembersError(null);
       
@@ -194,7 +198,20 @@ export default function PlatformAgentDashboard() {
   // Handle assignment selection
   const handleAssignmentSelect = async (assignment: Assignment) => {
     setSelectedAssignment(assignment);
-    await fetchAssignmentMembers(assignment.id);
+    await fetchAssignmentMembers(assignment.id, 1, membersPagination.page_size);
+  };
+
+  // Handle pagination
+  const handlePageChange = (page: number) => {
+    if (selectedAssignment) {
+      fetchAssignmentMembers(selectedAssignment.id, page, membersPagination.page_size);
+    }
+  };
+
+  const handlePageSizeChange = (size: number) => {
+    if (selectedAssignment) {
+      fetchAssignmentMembers(selectedAssignment.id, 1, size);
+    }
   };
 
   // Handle member update
@@ -206,6 +223,7 @@ export default function PlatformAgentDashboard() {
     );
   };
 
+  // Handle member actions
   const handleEditMember = (member: AssignmentMember) => {
     setSelectedMember(member);
     setIsEditModalOpen(true);
@@ -214,6 +232,22 @@ export default function PlatformAgentDashboard() {
   const handleViewMember = (member: AssignmentMember) => {
     // TODO: Implement view details modal
     console.log('View member:', member);
+  };
+
+  const handleAddContact = (member: AssignmentMember) => {
+    setSelectedMember(member);
+    setIsAddContactModalOpen(true);
+  };
+
+  const handleViewContacts = (member: AssignmentMember) => {
+    setSelectedMember(member);
+    setIsViewContactsModalOpen(true);
+  };
+
+  // Handle contact operations
+  const handleContactAdded = () => {
+    // Optionally refresh member data or show success message
+    console.log('Contact added successfully');
   };
 
   return (
@@ -248,13 +282,21 @@ export default function PlatformAgentDashboard() {
           members={assignmentMembers}
           isLoading={membersLoading}
           error={membersError}
-          onRefresh={() => fetchAssignmentMembers(selectedAssignment.id)}
+          onRefresh={() => fetchAssignmentMembers(selectedAssignment.id, membersPagination.page, membersPagination.page_size)}
           onEditMember={handleEditMember}
           onViewMember={handleViewMember}
+          onAddContact={handleAddContact}
+          onViewContacts={handleViewContacts}
           availableStatuses={availableStatuses}
           assignmentName={selectedAssignment.campaign.name}
           brandName={selectedAssignment.campaign.brand_name}
           listName={selectedAssignment.campaign_list.name}
+          currentPage={membersPagination.page}
+          totalPages={membersPagination.total_pages}
+          totalItems={membersPagination.total_items}
+          pageSize={membersPagination.page_size}
+          onPageChange={handlePageChange}
+          onPageSizeChange={handlePageSizeChange}
         />
       )}
 
@@ -269,6 +311,32 @@ export default function PlatformAgentDashboard() {
         onUpdate={handleMemberUpdate}
         availableStatuses={availableStatuses}
         statusesLoading={statusesLoading}
+      />
+
+      {/* Add Contact Modal */}
+      <AddContactModal
+        member={selectedMember}
+        isOpen={isAddContactModalOpen}
+        onClose={() => {
+          setIsAddContactModalOpen(false);
+          setSelectedMember(null);
+        }}
+        onContactAdded={handleContactAdded}
+      />
+
+      {/* View Contacts Modal */}
+      <ViewContactsModal
+        member={selectedMember}
+        isOpen={isViewContactsModalOpen}
+        onClose={() => {
+          setIsViewContactsModalOpen(false);
+          setSelectedMember(null);
+        }}
+        onAddContact={() => {
+          setIsViewContactsModalOpen(false);
+          setIsAddContactModalOpen(true);
+          // selectedMember is already set
+        }}
       />
     </div>
   );

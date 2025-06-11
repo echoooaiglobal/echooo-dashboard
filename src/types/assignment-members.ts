@@ -8,6 +8,7 @@ export interface AssignmentMemberStatus {
 export interface AssignmentMemberPlatform {
   id: string;
   name: string;
+  logo_url?: string;
 }
 
 export interface AssignmentMemberSocialAccount {
@@ -19,6 +20,7 @@ export interface AssignmentMemberSocialAccount {
   platform_account_id: string;
   is_verified: boolean;
   profile_pic_url: string;
+  account_url: string;
   is_private: boolean;
   is_business: boolean;
   media_count: number | null;

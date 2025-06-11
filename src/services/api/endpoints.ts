@@ -38,6 +38,14 @@ export const ENDPOINTS = {
     ANALYTICS: (id: string) => `/influencers/${id}/analytics`,
     SEARCH: '/influencers/search',
   },
+  INFLUENCER_CONTACTS: {
+    CREATE: '/influencer-contacts',
+    BY_SOCIAL_ACCOUNT: (socialAccountId: string) => `/influencer-contacts/social-account/${socialAccountId}`,
+    DETAIL: (id: string) => `/influencer-contacts/${id}`,
+    UPDATE: (id: string) => `/influencer-contacts/${id}`,
+    DELETE: (id: string) => `/influencer-contacts/${id}`,
+    LIST: '/influencer-contacts',
+  },
   CLIENTS: {
     LIST: '/clients',
     DETAIL: (id: string) => `/clients/${id}`,

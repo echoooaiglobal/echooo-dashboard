@@ -359,31 +359,6 @@ export default function EditMemberModal({
             />
           </div>
 
-          {/* Current Values Display */}
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-            <h5 className="font-medium text-blue-900 mb-2">Current Values</h5>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-              <div>
-                <span className="text-blue-700">Last Contacted:</span>{' '}
-                <span className="text-blue-900">{formatDate(member.last_contacted_at || '')}</span>
-              </div>
-              <div>
-                <span className="text-blue-700">Next Contact:</span>{' '}
-                <span className="text-blue-900">{formatDate(member.next_contact_at || '')}</span>
-              </div>
-              <div>
-                <span className="text-blue-700">Responded:</span>{' '}
-                <span className="text-blue-900">{formatDate(member.responded_at || '')}</span>
-              </div>
-              <div>
-                <span className="text-blue-700">Price:</span>{' '}
-                <span className="text-blue-900">
-                  {member.collaboration_price ? `${member.collaboration_price}` : 'Not set'}
-                </span>
-              </div>
-            </div>
-          </div>
-
           {/* Action Buttons */}
           <div className="flex justify-end space-x-3 mt-8 pt-6 border-t border-gray-200">
             <button

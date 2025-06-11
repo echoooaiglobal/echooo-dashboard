@@ -42,10 +42,10 @@ const AudienceType: React.FC<AudienceTypeProps> = ({
       onToggle={onToggle}
       className="border border-gray-200 rounded-md"
     >
-      <div className="p-4 space-y-3">
+      <div className="p-1">
 
         {/* Radio Options */}
-        <div className="space-y-2">
+        <div className="space-y-1">
           {AUDIENCE_SOURCE_OPTIONS.map(({ label, value, description }) => (
             <label 
               key={value} 
@@ -62,9 +62,9 @@ const AudienceType: React.FC<AudienceTypeProps> = ({
               <div className="ml-3 flex-1">
                 <div className="text-sm font-medium text-gray-900">
                   {label} {description && (
-                  <div className="text-xs text-gray-500">
+                  <span className="text-xs text-gray-500">
                     ({description})
-                  </div>
+                  </span>
                 )}
                 </div>
               </div>

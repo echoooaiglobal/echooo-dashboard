@@ -330,10 +330,10 @@ const ReelsPlays: React.FC<ReelsPlaysProps> = ({
           </div>
 
           {/* Divider */}
-          <div className="border-t border-gray-200"></div>
+          {/* <div className="border-t border-gray-200"></div> */}
 
           {/* Quick Select Presets */}
-          <div className="space-y-3">
+          {/* <div className="space-y-3">
             <div className="flex items-center justify-between text-xs text-gray-600">
               <span>Quick Select Ranges</span>
             </div>
@@ -353,7 +353,7 @@ const ReelsPlays: React.FC<ReelsPlaysProps> = ({
                 </button>
               ))}
             </div>
-          </div>
+          </div> */}
         </div>
       </FilterComponent>
     </div>
