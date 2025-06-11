@@ -9,6 +9,7 @@ interface CaptionKeywordProps {
   onFilterChange: (updates: Partial<InfluencerSearchFilter>) => void;
   isOpen: boolean;
   onToggle: () => void;
+  onCloseFilter: () => void;
 }
 
 const CaptionKeyword: React.FC<CaptionKeywordProps> = ({
@@ -16,6 +17,7 @@ const CaptionKeyword: React.FC<CaptionKeywordProps> = ({
   onFilterChange,
   isOpen,
   onToggle,
+  onCloseFilter
 }) => {
   const [keyword, setKeyword] = useState<string>(filters.description_keywords || '');
   const [inputValue, setInputValue] = useState<string>('');
@@ -95,6 +97,7 @@ const CaptionKeyword: React.FC<CaptionKeywordProps> = ({
       icon={<IoTextOutline size={18} />}
       title="Caption Keywords"
       isOpen={isOpen}
+      onClose={onCloseFilter}
       onToggle={onToggle}
       className=''
     >

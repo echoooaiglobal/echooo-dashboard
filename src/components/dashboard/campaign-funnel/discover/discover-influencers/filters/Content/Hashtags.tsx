@@ -9,13 +9,15 @@ interface HashtagsFilterProps {
   onFilterChange: (updates: Partial<InfluencerSearchFilter>) => void;
   isOpen: boolean;
   onToggle: () => void;
+  onCloseFilter: () => void;
 }
 
 const Hashtags: React.FC<HashtagsFilterProps> = ({ 
   filters, 
   onFilterChange, 
   isOpen, 
-  onToggle 
+  onToggle,
+  onCloseFilter
 }) => {
   const [inputValue, setInputValue] = useState('');
   const [selectedHashtags, setSelectedHashtags] = useState<HashtagFilter[]>(
@@ -147,6 +149,7 @@ const Hashtags: React.FC<HashtagsFilterProps> = ({
         icon={<IoDocumentTextOutline size={16} />}
         title="Hashtags"
         isOpen={isOpen}
+        onClose={onCloseFilter}
         onToggle={onToggle}
         className="border border-gray-200 rounded-md"
         selectedCount={selectedHashtags.length}

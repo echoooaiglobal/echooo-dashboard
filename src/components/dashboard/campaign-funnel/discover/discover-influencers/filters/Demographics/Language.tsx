@@ -13,9 +13,16 @@ interface LanguageFilterProps {
   onFilterChange: (updates: Partial<InfluencerSearchFilter>) => void;
   isOpen: boolean;
   onToggle: () => void;
+  onCloseFilter: () => void;
 }
 
-const Language: React.FC<LanguageFilterProps> = ({ filters, onFilterChange, isOpen, onToggle }) => {
+const Language: React.FC<LanguageFilterProps> = ({ 
+  filters, 
+  onFilterChange, 
+  isOpen, 
+  onToggle,
+  onCloseFilter  
+}) => {
   const [creatorSearchQuery, setCreatorSearchQuery] = useState('');
   const [audienceSearchQuery, setAudienceSearchQuery] = useState('');
   const [creatorLanguages, setCreatorLanguages] = useState<Language[]>([]);
@@ -25,7 +32,6 @@ const Language: React.FC<LanguageFilterProps> = ({ filters, onFilterChange, isOp
   
   const creatorDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const audienceDebounceRef = useRef<NodeJS.Timeout | null>(null);
-  const wrapperRef = useRef<HTMLDivElement>(null);
 
   // Search creator languages
   const searchCreatorLanguages = async (query: string) => {
@@ -176,12 +182,13 @@ const Language: React.FC<LanguageFilterProps> = ({ filters, onFilterChange, isOp
 
   
   return (
-    <div ref={wrapperRef} className="relative z-30">
+    <div className="relative z-30">
       <FilterComponent
         hasActiveFilters={hasActiveFilters}
         icon={<IoLanguageOutline size={18} />}
         title="Language"
         isOpen={isOpen}
+        onClose={onCloseFilter}
         onToggle={onToggle}
         className="border border-gray-200 rounded-md"
         selectedCount={totalSelectedCount}

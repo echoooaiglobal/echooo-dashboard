@@ -9,6 +9,7 @@ interface MentionsProps {
   onFilterChange: (updates: Partial<InfluencerSearchFilter>) => void;
   isOpen: boolean;
   onToggle: () => void;
+  onCloseFilter: () => void;
 }
 
 interface UserhandleResult {
@@ -32,7 +33,8 @@ const Mentions: React.FC<MentionsProps> = ({
   filters, 
   onFilterChange, 
   isOpen, 
-  onToggle 
+  onToggle,
+  onCloseFilter 
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<UserhandleResult[]>([]);
@@ -46,7 +48,6 @@ const Mentions: React.FC<MentionsProps> = ({
   
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const wrapperRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
 
   // Initialize with existing filters
@@ -63,22 +64,6 @@ const Mentions: React.FC<MentionsProps> = ({
       }
     }
   }, [filters.mentions]);
-
-  // Handle clicks outside dropdown and tooltip
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setShowDropdown(false);
-        setSearchQuery('');
-      }
-      if (tooltipRef.current && !tooltipRef.current.contains(event.target as Node)) {
-        setShowTooltip(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   // Search userhandles with API
   const searchUserhandles = useCallback(async (query: string) => {
@@ -248,198 +233,197 @@ const Mentions: React.FC<MentionsProps> = ({
   const hasMentions = selectedMentions.length > 0;
 
   return (
-    <div ref={wrapperRef}>
-      <FilterComponent
-        hasActiveFilters={hasMentions}
-        icon={<IoAtOutline size={18} />}
-        title="Mentions"
-        isOpen={isOpen}
-        onToggle={onToggle}
-        className="border border-gray-200 rounded-md"
-        selectedCount={selectedMentions.length}
-      >
-        <div className="p-2 space-y-3">
-            
-            {/* Header */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                <h3 className="text-sm font-semibold text-gray-800">Add Mentions</h3>
-                
-                {/* Info Icon with Tooltip */}
-                <div className="relative" ref={tooltipRef}>
-                  <button
-                    type="button"
-                    className="text-gray-400 hover:text-purple-500 transition-colors"
-                    onMouseEnter={() => setShowTooltip(true)}
-                    onMouseLeave={() => setShowTooltip(false)}
-                    onClick={() => setShowTooltip(!showTooltip)}
-                  >
-                    <IoInformationCircleOutline size={14} />
-                  </button>
-                  
-                  {/* Tooltip */}
-                  {showTooltip && (
-                    <div className="absolute left-0 top-6 z-[200] w-64 bg-gray-800 text-white text-xs rounded-lg p-3 shadow-lg">
-                      <div className="relative">
-                        {/* Tooltip arrow */}
-                        <div className="absolute -top-1 left-3 w-2 h-2 bg-gray-800 transform rotate-45"></div>
-                        
-                        {/* Tooltip content */}
-                        <div className="leading-relaxed">
-                          Shows creators who have mentioned the added usernames in their posts.
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-              {hasMentions && (
+    <FilterComponent
+      hasActiveFilters={hasMentions}
+      icon={<IoAtOutline size={18} />}
+      title="Mentions"
+      isOpen={isOpen}
+      onClose={onCloseFilter}
+      onToggle={onToggle}
+      className="border border-gray-200 rounded-md"
+      selectedCount={selectedMentions.length}
+    >
+      <div className="p-2 space-y-3">
+          
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+              <h3 className="text-sm font-semibold text-gray-800">Add Mentions</h3>
+              
+              {/* Info Icon with Tooltip */}
+              <div className="relative" ref={tooltipRef}>
                 <button
-                  onClick={clearAllMentions}
-                  className="text-purple-600 hover:text-purple-800 transition-colors"
-                  title="Clear all mentions"
+                  type="button"
+                  className="text-gray-400 hover:text-purple-500 transition-colors"
+                  onMouseEnter={() => setShowTooltip(true)}
+                  onMouseLeave={() => setShowTooltip(false)}
+                  onClick={() => setShowTooltip(!showTooltip)}
                 >
-                  <IoClose size={16} />
+                  <IoInformationCircleOutline size={14} />
                 </button>
-              )}
-            </div>
-
-            {/* Input Field with Search */}
-            <div className="space-y-2">
-              <div className="relative" ref={dropdownRef}>
-                <input
-                  ref={inputRef}
-                  type="text"
-                  placeholder="Search usernames..."
-                  value={searchQuery}
-                  onChange={handleInputChange}
-                  onKeyPress={handleKeyPress}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-purple-300 focus:border-purple-400 transition-colors"
-                />
-                {isLoading && (
-                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
-                  </div>
-                )}
-
-                {/* Error Message */}
-                {error && (
-                  <div className="mt-1 text-xs text-red-600 px-2 py-1 bg-red-50 rounded border border-red-200">
-                    {error}
-                  </div>
-                )}
-
-                {/* Search Results Dropdown */}
-                {showDropdown && searchResults.length > 0 && (
-                  <div className="absolute z-[100] w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
-                    {searchResults.map((result) => (
-                      <button
-                        key={result.user_id}
-                        type="button"
-                        className="w-full px-3 py-2 text-left hover:bg-purple-50 transition-colors"
-                        onClick={() => handleSelectUserhandle(result.username)}
-                        disabled={selectedMentions.some(mention => mention.name.toLowerCase() === result.username.toLowerCase())}
-                      >
-                        <div className="flex items-center gap-2">
-                          {result.picture && (
-                            <img
-                              src={result.picture}
-                              alt={result.username}
-                              className="w-6 h-6 rounded-full object-cover"
-                            />
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1">
-                              <span className="text-sm font-medium text-gray-900">
-                                @{result.username}
-                              </span>
-                              {result.is_verified && (
-                                <div className="w-3 h-3 bg-purple-500 rounded-full flex items-center justify-center">
-                                  <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
-                                </div>
-                              )}
-                              {selectedMentions.some(mention => mention.name.toLowerCase() === result.username.toLowerCase()) && (
-                                <span className="text-xs text-gray-500">(Selected)</span>
-                              )}
-                            </div>
-                            {result.fullname && (
-                              <div className="text-xs text-gray-500 truncate">
-                                {result.fullname}
-                              </div>
-                            )}
-                            {result.followers && (
-                              <div className="text-xs text-gray-400">
-                                {parseInt(result.followers).toLocaleString()} followers
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {/* No Results */}
-                {showDropdown && searchResults.length === 0 && searchQuery.length >= 2 && !isLoading && (
-                  <div className="absolute z-[100] w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg">
-                    <div className="px-3 py-4 text-center text-sm text-gray-500">
-                      No users found for "@{searchQuery}"
-                      <div className="text-xs text-gray-400 mt-1">
-                        Press Enter to add manually
+                
+                {/* Tooltip */}
+                {showTooltip && (
+                  <div className="absolute left-0 top-6 z-[200] w-64 bg-gray-800 text-white text-xs rounded-lg p-3 shadow-lg">
+                    <div className="relative">
+                      {/* Tooltip arrow */}
+                      <div className="absolute -top-1 left-3 w-2 h-2 bg-gray-800 transform rotate-45"></div>
+                      
+                      {/* Tooltip content */}
+                      <div className="leading-relaxed">
+                        Shows creators who have mentioned the added usernames in their posts.
                       </div>
                     </div>
                   </div>
                 )}
               </div>
             </div>
+            {hasMentions && (
+              <button
+                onClick={clearAllMentions}
+                className="text-purple-600 hover:text-purple-800 transition-colors"
+                title="Clear all mentions"
+              >
+                <IoClose size={16} />
+              </button>
+            )}
+          </div>
 
-            {/* Selected Mentions */}
-            {selectedMentions.length > 0 && (
-              <div className="space-y-2">
-                <h4 className="text-xs font-medium text-gray-600">
-                  Selected Mentions ({selectedMentions.length}):
-                </h4>
-                <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                  {selectedMentions.map((mention) => (
-                    <div
-                      key={mention.name}
-                      className="flex items-center justify-between p-2 bg-purple-50 rounded-md border border-purple-200"
+          {/* Input Field with Search */}
+          <div className="space-y-2">
+            <div className="relative" ref={dropdownRef}>
+              <input
+                ref={inputRef}
+                type="text"
+                placeholder="Search usernames..."
+                value={searchQuery}
+                onChange={handleInputChange}
+                onKeyPress={handleKeyPress}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-purple-300 focus:border-purple-400 transition-colors"
+              />
+              {isLoading && (
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+                </div>
+              )}
+
+              {/* Error Message */}
+              {error && (
+                <div className="mt-1 text-xs text-red-600 px-2 py-1 bg-red-50 rounded border border-red-200">
+                  {error}
+                </div>
+              )}
+
+              {/* Search Results Dropdown */}
+              {showDropdown && searchResults.length > 0 && (
+                <div className="absolute z-[100] w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                  {searchResults.map((result) => (
+                    <button
+                      key={result.user_id}
+                      type="button"
+                      className="w-full px-3 py-2 text-left hover:bg-purple-50 transition-colors"
+                      onClick={() => handleSelectUserhandle(result.username)}
+                      disabled={selectedMentions.some(mention => mention.name.toLowerCase() === result.username.toLowerCase())}
                     >
                       <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                        <span className="text-sm text-purple-800 font-medium">
-                          @{mention.name}
-                        </span>
+                        {result.picture && (
+                          <img
+                            src={result.picture}
+                            alt={result.username}
+                            className="w-6 h-6 rounded-full object-cover"
+                          />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1">
+                            <span className="text-sm font-medium text-gray-900">
+                              @{result.username}
+                            </span>
+                            {result.is_verified && (
+                              <div className="w-3 h-3 bg-purple-500 rounded-full flex items-center justify-center">
+                                <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
+                              </div>
+                            )}
+                            {selectedMentions.some(mention => mention.name.toLowerCase() === result.username.toLowerCase()) && (
+                              <span className="text-xs text-gray-500">(Selected)</span>
+                            )}
+                          </div>
+                          {result.fullname && (
+                            <div className="text-xs text-gray-500 truncate">
+                              {result.fullname}
+                            </div>
+                          )}
+                          {result.followers && (
+                            <div className="text-xs text-gray-400">
+                              {parseInt(result.followers).toLocaleString()} followers
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveMention(mention.name)}
-                        className="text-purple-600 hover:text-purple-800 transition-colors"
-                        title="Remove mention"
-                      >
-                        <IoClose size={14} />
-                      </button>
-                    </div>
+                    </button>
                   ))}
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Empty State */}
-            {selectedMentions.length === 0 && (
-              <div className="text-center py-4">
-                <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                  <IoAtOutline className="w-4 h-4 text-purple-600" />
+              {/* No Results */}
+              {showDropdown && searchResults.length === 0 && searchQuery.length >= 2 && !isLoading && (
+                <div className="absolute z-[100] w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg">
+                  <div className="px-3 py-4 text-center text-sm text-gray-500">
+                    No users found for "@{searchQuery}"
+                    <div className="text-xs text-gray-400 mt-1">
+                      Press Enter to add manually
+                    </div>
+                  </div>
                 </div>
-                <div className="text-sm text-gray-600 font-medium">No mentions added</div>
-                <div className="text-xs text-gray-500">Search usernames or type and press Enter</div>
-              </div>
-            )}
-
+              )}
+            </div>
           </div>
-      </FilterComponent>
-    </div>
+
+          {/* Selected Mentions */}
+          {selectedMentions.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-xs font-medium text-gray-600">
+                Selected Mentions ({selectedMentions.length}):
+              </h4>
+              <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                {selectedMentions.map((mention) => (
+                  <div
+                    key={mention.name}
+                    className="flex items-center justify-between p-2 bg-purple-50 rounded-md border border-purple-200"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                      <span className="text-sm text-purple-800 font-medium">
+                        @{mention.name}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveMention(mention.name)}
+                      className="text-purple-600 hover:text-purple-800 transition-colors"
+                      title="Remove mention"
+                    >
+                      <IoClose size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Empty State */}
+          {selectedMentions.length === 0 && (
+            <div className="text-center py-4">
+              <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                <IoAtOutline className="w-4 h-4 text-purple-600" />
+              </div>
+              <div className="text-sm text-gray-600 font-medium">No mentions added</div>
+              <div className="text-xs text-gray-500">Search usernames or type and press Enter</div>
+            </div>
+          )}
+
+        </div>
+    </FilterComponent>
   );
 };
 

@@ -9,6 +9,7 @@ interface AgeFilterProps {
   onFilterChange: (updates: Partial<InfluencerSearchFilter>) => void;
   isOpen: boolean;
   onToggle: () => void;
+  onCloseFilter: () => void;
 }
 
 // Predefined age ranges
@@ -46,22 +47,15 @@ const PERCENTAGE_OPTIONS = [
   { value: 95, label: '>95%' }
 ];
 
-const Age: React.FC<AgeFilterProps> = ({ filters, onFilterChange, isOpen, onToggle }) => {
+const Age: React.FC<AgeFilterProps> = ({ 
+  filters, 
+  onFilterChange, 
+  isOpen, 
+  onToggle,
+  onCloseFilter  
+}) => {
   // Dropdown states
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  // Handle clicks outside dropdowns
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setOpenDropdown(null);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   // Close dropdowns when age filter closes
   useEffect(() => {
@@ -158,103 +152,102 @@ const Age: React.FC<AgeFilterProps> = ({ filters, onFilterChange, isOpen, onTogg
 
   const hasActiveFilters = hasCreatorAge || hasAudienceAge;
   return (
-    <div ref={dropdownRef}>
-      <FilterComponent
-        hasActiveFilters={hasActiveFilters}
-        icon={<IoTimeOutline size={18} />}
-        title="Age"
-        isOpen={isOpen}
-        onToggle={onToggle}
-        className="border border-gray-200 rounded-md"
-        // selectedCount={selectedCount}
-      >
-        <div className="p-4 space-y-4">
-          
-          {/* Audience Age Section */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <h4 className="text-sm font-semibold text-gray-800">Audience</h4>
-              </div>
-              {hasAudienceAge && (
-                <button
-                  onClick={clearAudienceAge}
-                  className="text-blue-600 hover:text-blue-800 transition-colors"
-                  title="Clear audience age filter"
-                >
-                  <IoClose size={16} />
-                </button>
-              )}
+    <FilterComponent
+      hasActiveFilters={hasActiveFilters}
+      icon={<IoTimeOutline size={18} />}
+      title="Age"
+      isOpen={isOpen}
+      onClose={onCloseFilter}
+      onToggle={onToggle}
+      className="border border-gray-200 rounded-md"
+      // selectedCount={selectedCount}
+    >
+      <div className="p-4 space-y-4">
+        
+        {/* Audience Age Section */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+              <h4 className="text-sm font-semibold text-gray-800">Audience</h4>
             </div>
-
-            <div className="grid grid-cols-3 gap-2">
-              <MiniDropdown
-                id="audience-min"
-                value={filters.audience_age?.min || 18}
-                options={AGE_OPTIONS.filter(opt => opt.value < (filters.audience_age?.max || 65))}
-                onChange={(value) => handleAudienceAgeChange('min', value)}
-                placeholder="Min"
-              />
-              <MiniDropdown
-                id="audience-max"
-                value={filters.audience_age?.max || 65}
-                options={AGE_OPTIONS.filter(opt => opt.value > (filters.audience_age?.min || 18))}
-                onChange={(value) => handleAudienceAgeChange('max', value)}
-                placeholder="Max"
-              />
-              <MiniDropdown
-                id="audience-percentage"
-                value={filters.audience_age?.percentage_value || 5}
-                options={PERCENTAGE_OPTIONS}
-                onChange={(value) => handleAudienceAgeChange('percentage_value', value)}
-                placeholder=">%"
-              />
-            </div>
+            {hasAudienceAge && (
+              <button
+                onClick={clearAudienceAge}
+                className="text-blue-600 hover:text-blue-800 transition-colors"
+                title="Clear audience age filter"
+              >
+                <IoClose size={16} />
+              </button>
+            )}
           </div>
 
-          {/* Divider */}
-          <div className="border-t border-gray-200"></div>
-
-          {/* Influencer Age Section */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                <h4 className="text-sm font-semibold text-gray-800">Influencer</h4>
-              </div>
-              {hasCreatorAge && (
-                <button
-                  onClick={clearCreatorAge}
-                  className="text-purple-600 hover:text-purple-800 transition-colors"
-                  title="Clear influencer age filter"
-                >
-                  <IoClose size={16} />
-                </button>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <MiniDropdown
-                id="creator-min"
-                value={filters.creator_age?.min || 18}
-                options={AGE_OPTIONS.filter(opt => opt.value < (filters.creator_age?.max || 65))}
-                onChange={(value) => handleCreatorAgeChange('min', value)}
-                placeholder="Min"
-              />
-              <MiniDropdown
-                id="creator-max"
-                value={filters.creator_age?.max || 65}
-                options={AGE_OPTIONS.filter(opt => opt.value > (filters.creator_age?.min || 18))}
-                onChange={(value) => handleCreatorAgeChange('max', value)}
-                placeholder="Max"
-              />
-            </div>
+          <div className="grid grid-cols-3 gap-2">
+            <MiniDropdown
+              id="audience-min"
+              value={filters.audience_age?.min || 18}
+              options={AGE_OPTIONS.filter(opt => opt.value < (filters.audience_age?.max || 65))}
+              onChange={(value) => handleAudienceAgeChange('min', value)}
+              placeholder="Min"
+            />
+            <MiniDropdown
+              id="audience-max"
+              value={filters.audience_age?.max || 65}
+              options={AGE_OPTIONS.filter(opt => opt.value > (filters.audience_age?.min || 18))}
+              onChange={(value) => handleAudienceAgeChange('max', value)}
+              placeholder="Max"
+            />
+            <MiniDropdown
+              id="audience-percentage"
+              value={filters.audience_age?.percentage_value || 5}
+              options={PERCENTAGE_OPTIONS}
+              onChange={(value) => handleAudienceAgeChange('percentage_value', value)}
+              placeholder=">%"
+            />
           </div>
-
         </div>
-      </FilterComponent>
-    </div>
+
+        {/* Divider */}
+        <div className="border-t border-gray-200"></div>
+
+        {/* Influencer Age Section */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+              <h4 className="text-sm font-semibold text-gray-800">Influencer</h4>
+            </div>
+            {hasCreatorAge && (
+              <button
+                onClick={clearCreatorAge}
+                className="text-purple-600 hover:text-purple-800 transition-colors"
+                title="Clear influencer age filter"
+              >
+                <IoClose size={16} />
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <MiniDropdown
+              id="creator-min"
+              value={filters.creator_age?.min || 18}
+              options={AGE_OPTIONS.filter(opt => opt.value < (filters.creator_age?.max || 65))}
+              onChange={(value) => handleCreatorAgeChange('min', value)}
+              placeholder="Min"
+            />
+            <MiniDropdown
+              id="creator-max"
+              value={filters.creator_age?.max || 65}
+              options={AGE_OPTIONS.filter(opt => opt.value > (filters.creator_age?.min || 18))}
+              onChange={(value) => handleCreatorAgeChange('max', value)}
+              placeholder="Max"
+            />
+          </div>
+        </div>
+
+      </div>
+    </FilterComponent>
   );
 };
 

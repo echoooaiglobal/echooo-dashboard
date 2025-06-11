@@ -10,6 +10,7 @@ interface LookalikeAIProps {
   onFilterChange: (updates: Partial<InfluencerSearchFilter>) => void;
   isOpen: boolean;
   onToggle: () => void;
+  onCloseFilter: () => void;
 }
 
 interface UserhandleResult {
@@ -33,7 +34,8 @@ const LookalikeAI: React.FC<LookalikeAIProps> = ({
   filters, 
   onFilterChange, 
   isOpen, 
-  onToggle 
+  onToggle,
+  onCloseFilter 
 }) => {
   // Separate state for each search field
   const [creatorQuery, setCreatorQuery] = useState('');
@@ -65,7 +67,6 @@ const LookalikeAI: React.FC<LookalikeAIProps> = ({
   
   const creatorDropdownRef = useRef<HTMLDivElement>(null);
   const audienceDropdownRef = useRef<HTMLDivElement>(null);
-  const wrapperRef = useRef<HTMLDivElement>(null);
 
   // Initialize with existing filters
   useEffect(() => {
@@ -77,22 +78,7 @@ const LookalikeAI: React.FC<LookalikeAIProps> = ({
     }
   }, [filters.creator_lookalikes, filters.audience_lookalikes]);
 
-  // Handle clicks outside dropdown
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (creatorDropdownRef.current && !creatorDropdownRef.current.contains(event.target as Node)) {
-        setShowCreatorDropdown(false);
-        setCreatorQuery('');
-      }
-      if (audienceDropdownRef.current && !audienceDropdownRef.current.contains(event.target as Node)) {
-        setShowAudienceDropdown(false);
-        setAudienceQuery('');
-      }
-    };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   // Search userhandles function
   const searchUserhandles = useCallback(async (
@@ -236,291 +222,290 @@ const LookalikeAI: React.FC<LookalikeAIProps> = ({
   const selectedCount = (filters.creator_lookalikes ? 1 : 0) + (filters.audience_lookalikes ? 1 : 0);
 
   return (
-    <div ref={wrapperRef}>
-      <FilterComponent
-        hasActiveFilters={!!hasActiveFilters}
-        icon={
-          <div className="flex items-center">
-            <IoDuplicateOutline size={16} />
-            <FaRobot size={10} className="ml-1" />
-          </div>
-        }
-        title="Lookalikes AI"
-        isOpen={isOpen}
-        onToggle={onToggle}
-        className="border border-gray-200 rounded-md"
-        selectedCount= {selectedCount}
-      >
-        {/* Empty content to prevent default padding */}
-        <div className="hidden"></div>
-        
-        {/* Dropdown positioned to the left */}
-        <div className="absolute right-0 top-0 bg-white border border-gray-200 rounded-lg shadow-lg z-50 w-[520px] overflow-visible">
-          <div className="p-4">
-            
-            {/* Header */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <div className="flex items-center">
-                  <IoDuplicateOutline size={16} className="text-blue-600" />
-                  <FaRobot size={10} className="ml-1 text-blue-600" />
-                </div>
-                <h3 className="text-sm font-semibold text-gray-800">Lookalikes AI</h3>
-              </div>
-              <button
-                onClick={onToggle}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-                title="Close"
-              >
-                <IoClose size={16} />
-              </button>
-            </div>
-
-            {/* Side by side layout like interests filter */}
-            <div className="flex gap-4">
-              
-              {/* Left side - Influencer (Creator Lookalikes) */}
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-3 h-3 bg-pink-500 rounded-full"></div>
-                  <h4 className="text-sm font-medium text-gray-700">Influencer</h4>
-                </div>
-                
-                <div className="relative" ref={creatorDropdownRef}>
-                  <input
-                    type="text"
-                    placeholder="Search creator interests..."
-                    value={creatorQuery}
-                    onChange={handleCreatorSearchChange}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-pink-300 focus:border-pink-400 transition-colors"
-                  />
-                  {isLoadingCreator && (
-                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-pink-600"></div>
-                    </div>
-                  )}
-
-                  {/* Creator Error Message */}
-                  {creatorError && (
-                    <div className="mt-1 text-xs text-red-600 px-2 py-1 bg-red-50 rounded border border-red-200">
-                      {creatorError}
-                    </div>
-                  )}
-
-                  {/* Creator Search Results */}
-                  {showCreatorDropdown && creatorResults.length > 0 && (
-                    <div className="absolute z-[100] w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
-                      {creatorResults.slice(0, 8).map((result) => (
-                        <button
-                          key={result.user_id}
-                          type="button"
-                          className="w-full px-3 py-2 text-left hover:bg-pink-50 transition-colors"
-                          onClick={() => handleSelectCreatorLookalike(result.username)}
-                        >
-                          <div className="flex items-center gap-2">
-                            {result.picture && (
-                              <img
-                                src={result.picture}
-                                alt={result.username}
-                                className="w-6 h-6 rounded-full object-cover"
-                              />
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1">
-                                <span className="text-sm font-medium text-gray-900">
-                                  @{result.username}
-                                </span>
-                                {result.is_verified && (
-                                  <div className="w-3 h-3 bg-pink-500 rounded-full flex items-center justify-center">
-                                    <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
-                                  </div>
-                                )}
-                              </div>
-                              {result.fullname && (
-                                <div className="text-xs text-gray-500 truncate">
-                                  {result.fullname}
-                                </div>
-                              )}
-                              {result.followers && (
-                                <div className="text-xs text-gray-400">
-                                  {parseInt(result.followers).toLocaleString()} followers
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* No Creator Results */}
-                  {showCreatorDropdown && creatorResults.length === 0 && creatorQuery.length >= 2 && !isLoadingCreator && (
-                    <div className="absolute z-[100] w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg">
-                      <div className="px-3 py-4 text-center text-sm text-gray-500">
-                        No creators found for "@{creatorQuery}"
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Empty state or selected creator */}
-                <div className="mt-4 h-32 flex flex-col items-center justify-center text-center">
-                  {selectedCreatorLookalike ? (
-                    <div className="bg-pink-50 border border-pink-200 rounded-lg p-3 w-full">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 bg-pink-500 rounded-full"></div>
-                          <span className="text-sm text-pink-800 font-medium">
-                            @{selectedCreatorLookalike}
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={handleRemoveCreatorLookalike}
-                          className="text-pink-600 hover:text-pink-800 transition-colors"
-                          title="Remove creator lookalike"
-                        >
-                          <IoClose size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div>
-                      <div className="w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                        <IoSearch className="w-5 h-5 text-pink-600" />
-                      </div>
-                      <div className="text-sm font-medium text-gray-600 mb-1">Search creator interests</div>
-                      <div className="text-xs text-gray-500">Type to find interests</div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Center divider */}
-              <div className="w-px bg-gray-200"></div>
-
-              {/* Right side - Audience */}
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                  <h4 className="text-sm font-medium text-gray-700">Audience</h4>
-                </div>
-                
-                <div className="relative" ref={audienceDropdownRef}>
-                  <input
-                    type="text"
-                    placeholder="Search audience interests..."
-                    value={audienceQuery}
-                    onChange={handleAudienceSearchChange}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-300 focus:border-blue-400 transition-colors"
-                  />
-                  {isLoadingAudience && (
-                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                    </div>
-                  )}
-
-                  {/* Audience Error Message */}
-                  {audienceError && (
-                    <div className="mt-1 text-xs text-red-600 px-2 py-1 bg-red-50 rounded border border-red-200">
-                      {audienceError}
-                    </div>
-                  )}
-
-                  {/* Audience Search Results */}
-                  {showAudienceDropdown && audienceResults.length > 0 && (
-                    <div className="absolute z-[100] w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
-                      {audienceResults.slice(0, 8).map((result) => (
-                        <button
-                          key={result.user_id}
-                          type="button"
-                          className="w-full px-3 py-2 text-left hover:bg-blue-50 transition-colors"
-                          onClick={() => handleSelectAudienceLookalike(result.username)}
-                        >
-                          <div className="flex items-center gap-2">
-                            {result.picture && (
-                              <img
-                                src={result.picture}
-                                alt={result.username}
-                                className="w-6 h-6 rounded-full object-cover"
-                              />
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1">
-                                <span className="text-sm font-medium text-gray-900">
-                                  @{result.username}
-                                </span>
-                                {result.is_verified && (
-                                  <div className="w-3 h-3 bg-blue-500 rounded-full flex items-center justify-center">
-                                    <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
-                                  </div>
-                                )}
-                              </div>
-                              {result.fullname && (
-                                <div className="text-xs text-gray-500 truncate">
-                                  {result.fullname}
-                                </div>
-                              )}
-                              {result.followers && (
-                                <div className="text-xs text-gray-400">
-                                  {parseInt(result.followers).toLocaleString()} followers
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* No Audience Results */}
-                  {showAudienceDropdown && audienceResults.length === 0 && audienceQuery.length >= 2 && !isLoadingAudience && (
-                    <div className="absolute z-[100] w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg">
-                      <div className="px-3 py-4 text-center text-sm text-gray-500">
-                        No creators found for "@{audienceQuery}"
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Empty state or selected audience */}
-                <div className="mt-4 h-32 flex flex-col items-center justify-center text-center">
-                  {selectedAudienceLookalike ? (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 w-full">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                          <span className="text-sm text-blue-800 font-medium">
-                            @{selectedAudienceLookalike}
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={handleRemoveAudienceLookalike}
-                          className="text-blue-600 hover:text-blue-800 transition-colors"
-                          title="Remove audience lookalike"
-                        >
-                          <IoClose size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div>
-                      <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                        <IoSearch className="w-5 h-5 text-blue-600" />
-                      </div>
-                      <div className="text-sm font-medium text-gray-600 mb-1">Search audience interests</div>
-                      <div className="text-xs text-gray-500">Add interests with percentages</div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-          </div>
+    <FilterComponent
+      hasActiveFilters={!!hasActiveFilters}
+      icon={
+        <div className="flex items-center">
+          <IoDuplicateOutline size={16} />
+          <FaRobot size={10} className="ml-1" />
         </div>
-      </FilterComponent>
-    </div>
+      }
+      title="Lookalikes AI"
+      isOpen={isOpen}
+      onClose={onCloseFilter}
+      onToggle={onToggle}
+      className="border border-gray-200 rounded-md"
+      selectedCount= {selectedCount}
+    >
+      {/* Empty content to prevent default padding */}
+      <div className="hidden"></div>
+      
+      {/* Dropdown positioned to the left */}
+      <div className="absolute right-0 top-0 bg-white border border-gray-200 rounded-lg shadow-lg z-50 w-[520px] overflow-visible">
+        <div className="p-4">
+          
+          {/* Header */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center">
+                <IoDuplicateOutline size={16} className="text-blue-600" />
+                <FaRobot size={10} className="ml-1 text-blue-600" />
+              </div>
+              <h3 className="text-sm font-semibold text-gray-800">Lookalikes AI</h3>
+            </div>
+            <button
+              onClick={onToggle}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+              title="Close"
+            >
+              <IoClose size={16} />
+            </button>
+          </div>
+
+          {/* Side by side layout like interests filter */}
+          <div className="flex gap-4">
+            
+            {/* Left side - Influencer (Creator Lookalikes) */}
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-3 h-3 bg-pink-500 rounded-full"></div>
+                <h4 className="text-sm font-medium text-gray-700">Influencer</h4>
+              </div>
+              
+              <div className="relative" ref={creatorDropdownRef}>
+                <input
+                  type="text"
+                  placeholder="Search creator interests..."
+                  value={creatorQuery}
+                  onChange={handleCreatorSearchChange}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-pink-300 focus:border-pink-400 transition-colors"
+                />
+                {isLoadingCreator && (
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-pink-600"></div>
+                  </div>
+                )}
+
+                {/* Creator Error Message */}
+                {creatorError && (
+                  <div className="mt-1 text-xs text-red-600 px-2 py-1 bg-red-50 rounded border border-red-200">
+                    {creatorError}
+                  </div>
+                )}
+
+                {/* Creator Search Results */}
+                {showCreatorDropdown && creatorResults.length > 0 && (
+                  <div className="absolute z-[100] w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                    {creatorResults.slice(0, 8).map((result) => (
+                      <button
+                        key={result.user_id}
+                        type="button"
+                        className="w-full px-3 py-2 text-left hover:bg-pink-50 transition-colors"
+                        onClick={() => handleSelectCreatorLookalike(result.username)}
+                      >
+                        <div className="flex items-center gap-2">
+                          {result.picture && (
+                            <img
+                              src={result.picture}
+                              alt={result.username}
+                              className="w-6 h-6 rounded-full object-cover"
+                            />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1">
+                              <span className="text-sm font-medium text-gray-900">
+                                @{result.username}
+                              </span>
+                              {result.is_verified && (
+                                <div className="w-3 h-3 bg-pink-500 rounded-full flex items-center justify-center">
+                                  <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
+                                </div>
+                              )}
+                            </div>
+                            {result.fullname && (
+                              <div className="text-xs text-gray-500 truncate">
+                                {result.fullname}
+                              </div>
+                            )}
+                            {result.followers && (
+                              <div className="text-xs text-gray-400">
+                                {parseInt(result.followers).toLocaleString()} followers
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* No Creator Results */}
+                {showCreatorDropdown && creatorResults.length === 0 && creatorQuery.length >= 2 && !isLoadingCreator && (
+                  <div className="absolute z-[100] w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg">
+                    <div className="px-3 py-4 text-center text-sm text-gray-500">
+                      No creators found for "@{creatorQuery}"
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Empty state or selected creator */}
+              <div className="mt-4 h-32 flex flex-col items-center justify-center text-center">
+                {selectedCreatorLookalike ? (
+                  <div className="bg-pink-50 border border-pink-200 rounded-lg p-3 w-full">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-pink-500 rounded-full"></div>
+                        <span className="text-sm text-pink-800 font-medium">
+                          @{selectedCreatorLookalike}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRemoveCreatorLookalike}
+                        className="text-pink-600 hover:text-pink-800 transition-colors"
+                        title="Remove creator lookalike"
+                      >
+                        <IoClose size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                      <IoSearch className="w-5 h-5 text-pink-600" />
+                    </div>
+                    <div className="text-sm font-medium text-gray-600 mb-1">Search creator interests</div>
+                    <div className="text-xs text-gray-500">Type to find interests</div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Center divider */}
+            <div className="w-px bg-gray-200"></div>
+
+            {/* Right side - Audience */}
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                <h4 className="text-sm font-medium text-gray-700">Audience</h4>
+              </div>
+              
+              <div className="relative" ref={audienceDropdownRef}>
+                <input
+                  type="text"
+                  placeholder="Search audience interests..."
+                  value={audienceQuery}
+                  onChange={handleAudienceSearchChange}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-300 focus:border-blue-400 transition-colors"
+                />
+                {isLoadingAudience && (
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  </div>
+                )}
+
+                {/* Audience Error Message */}
+                {audienceError && (
+                  <div className="mt-1 text-xs text-red-600 px-2 py-1 bg-red-50 rounded border border-red-200">
+                    {audienceError}
+                  </div>
+                )}
+
+                {/* Audience Search Results */}
+                {showAudienceDropdown && audienceResults.length > 0 && (
+                  <div className="absolute z-[100] w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                    {audienceResults.slice(0, 8).map((result) => (
+                      <button
+                        key={result.user_id}
+                        type="button"
+                        className="w-full px-3 py-2 text-left hover:bg-blue-50 transition-colors"
+                        onClick={() => handleSelectAudienceLookalike(result.username)}
+                      >
+                        <div className="flex items-center gap-2">
+                          {result.picture && (
+                            <img
+                              src={result.picture}
+                              alt={result.username}
+                              className="w-6 h-6 rounded-full object-cover"
+                            />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1">
+                              <span className="text-sm font-medium text-gray-900">
+                                @{result.username}
+                              </span>
+                              {result.is_verified && (
+                                <div className="w-3 h-3 bg-blue-500 rounded-full flex items-center justify-center">
+                                  <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
+                                </div>
+                              )}
+                            </div>
+                            {result.fullname && (
+                              <div className="text-xs text-gray-500 truncate">
+                                {result.fullname}
+                              </div>
+                            )}
+                            {result.followers && (
+                              <div className="text-xs text-gray-400">
+                                {parseInt(result.followers).toLocaleString()} followers
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* No Audience Results */}
+                {showAudienceDropdown && audienceResults.length === 0 && audienceQuery.length >= 2 && !isLoadingAudience && (
+                  <div className="absolute z-[100] w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg">
+                    <div className="px-3 py-4 text-center text-sm text-gray-500">
+                      No creators found for "@{audienceQuery}"
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Empty state or selected audience */}
+              <div className="mt-4 h-32 flex flex-col items-center justify-center text-center">
+                {selectedAudienceLookalike ? (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 w-full">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                        <span className="text-sm text-blue-800 font-medium">
+                          @{selectedAudienceLookalike}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRemoveAudienceLookalike}
+                        className="text-blue-600 hover:text-blue-800 transition-colors"
+                        title="Remove audience lookalike"
+                      >
+                        <IoClose size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                      <IoSearch className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div className="text-sm font-medium text-gray-600 mb-1">Search audience interests</div>
+                    <div className="text-xs text-gray-500">Add interests with percentages</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </FilterComponent>
   );
 };
 

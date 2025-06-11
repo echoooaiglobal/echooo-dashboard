@@ -1,5 +1,5 @@
 // src/components/dashboard/campaign-funnel/discover/discover-influencers/filters/Performance/Followers.tsx
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { IoPersonAddOutline, IoChevronDown, IoClose } from 'react-icons/io5';
 import FilterComponent from '../FilterComponent';
 import { InfluencerSearchFilter } from '@/lib/creator-discovery-types';
@@ -9,6 +9,7 @@ interface FollowersFilterProps {
   onFilterChange: (updates: Partial<InfluencerSearchFilter>) => void;
   isOpen: boolean;
   onToggle: () => void;
+  onCloseFilter: () => void;
 }
 
 // Predefined follower count options
@@ -40,23 +41,11 @@ const Followers: React.FC<FollowersFilterProps> = ({
   filters,
   onFilterChange,
   isOpen,
-  onToggle
+  onToggle,
+  onCloseFilter
 }) => {
   // Dropdown states
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  // Handle clicks outside dropdowns
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setOpenDropdown(null);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   // Close dropdowns when filter closes
   useEffect(() => {
@@ -184,61 +173,60 @@ const Followers: React.FC<FollowersFilterProps> = ({
     (filters.follower_count?.min !== undefined || filters.follower_count?.max !== undefined);
   
   return (
-    <div ref={dropdownRef}>
-      <FilterComponent
-        hasActiveFilters={hasActiveFilters}
-        icon={<IoPersonAddOutline size={18} />}
-        title="Followers"
-        isOpen={isOpen}
-        onToggle={onToggle}
-        className="border border-gray-200 rounded-md"
-      >
-        <div className="p-4 space-y-4 w-full">
-          
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-              <h3 className="text-sm font-semibold text-gray-800">Follower Count</h3>
-            </div>
-            {hasFilter && (
-              <button
-                onClick={clearFilter}
-                className="text-blue-600 hover:text-blue-800 transition-colors"
-                title="Clear follower filter"
-              >
-                <IoClose size={16} />
-              </button>
-            )}
+    <FilterComponent
+      hasActiveFilters={hasActiveFilters}
+      icon={<IoPersonAddOutline size={18} />}
+      title="Followers"
+      isOpen={isOpen}
+      onClose={onCloseFilter}
+      onToggle={onToggle}
+      className="border border-gray-200 rounded-md"
+    >
+      <div className="p-4 space-y-4 w-full">
+        
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+            <h3 className="text-sm font-semibold text-gray-800">Follower Count</h3>
           </div>
-
-          {/* Min/Max Dropdowns */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">Minimum</label>
-              <MiniDropdown
-                id="follower-min"
-                value={filters?.follower_count?.min || 1000}
-                options={getMinOptions()}
-                onChange={(value) => handleFollowerChange('min', value)}
-                placeholder="Min"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">Maximum</label>
-              <MiniDropdown
-                id="follower-max"
-                value={filters?.follower_count?.max || 1000000}
-                options={getMaxOptions()}
-                onChange={(value) => handleFollowerChange('max', value)}
-                placeholder="Max"
-              />
-            </div>
-          </div>
-
+          {hasFilter && (
+            <button
+              onClick={clearFilter}
+              className="text-blue-600 hover:text-blue-800 transition-colors"
+              title="Clear follower filter"
+            >
+              <IoClose size={16} />
+            </button>
+          )}
         </div>
-      </FilterComponent>
-    </div>
+
+        {/* Min/Max Dropdowns */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">Minimum</label>
+            <MiniDropdown
+              id="follower-min"
+              value={filters?.follower_count?.min || 1000}
+              options={getMinOptions()}
+              onChange={(value) => handleFollowerChange('min', value)}
+              placeholder="Min"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">Maximum</label>
+            <MiniDropdown
+              id="follower-max"
+              value={filters?.follower_count?.max || 1000000}
+              options={getMaxOptions()}
+              onChange={(value) => handleFollowerChange('max', value)}
+              placeholder="Max"
+            />
+          </div>
+        </div>
+
+      </div>
+    </FilterComponent>
   );
 };
 

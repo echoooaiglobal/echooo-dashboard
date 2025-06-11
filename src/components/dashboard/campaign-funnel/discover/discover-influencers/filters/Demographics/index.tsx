@@ -6,7 +6,6 @@ import Gender from './Gender';
 import Language from './Language';
 import Age from './Age';
 import AudienceType from './AudienceType';
-import Ethnicity from './Ethnicity';
 import { InfluencerSearchFilter } from '@/lib/creator-discovery-types';
 import { CreatorLocationSelection } from '@/lib/types';
 
@@ -17,6 +16,7 @@ type DemographicsFiltersProps = {
   openFilterId: string | null;
   toggleFilterDropdown: (filterId: string) => void;
   isFilterOpen: (filterId: string) => boolean;
+  onCloseFilter: () => void;
 };
 
 const DemographicsFilters: React.FC<DemographicsFiltersProps> = ({
@@ -25,7 +25,8 @@ const DemographicsFilters: React.FC<DemographicsFiltersProps> = ({
   filterButtonStyle,
   openFilterId,
   toggleFilterDropdown,
-  isFilterOpen
+  isFilterOpen,
+  onCloseFilter
 }) => {
   // Local state for location selections (for UI display)
   const [selectedLocations, setSelectedLocations] = useState<CreatorLocationSelection[]>([]);
@@ -71,6 +72,7 @@ const DemographicsFilters: React.FC<DemographicsFiltersProps> = ({
           onToggle={() => toggleFilterDropdown('location')}
           searchParams={searchParams}
           onFilterChange={onFilterChange}
+          onCloseFilter={onCloseFilter}
         />
         
         <Gender 
@@ -78,6 +80,7 @@ const DemographicsFilters: React.FC<DemographicsFiltersProps> = ({
           onFilterChange={onFilterChange}
           isOpen={isFilterOpen('gender')}
           onToggle={() => toggleFilterDropdown('gender')}
+          onCloseFilter={onCloseFilter}
         />
         
         <Language
@@ -85,6 +88,7 @@ const DemographicsFilters: React.FC<DemographicsFiltersProps> = ({
           onFilterChange={onFilterChange}
           isOpen={isFilterOpen('language')}
           onToggle={() => toggleFilterDropdown('language')}
+          onCloseFilter={onCloseFilter}
         />
         
         <Age
@@ -92,6 +96,7 @@ const DemographicsFilters: React.FC<DemographicsFiltersProps> = ({
           onFilterChange={onFilterChange}
           isOpen={isFilterOpen('age')}
           onToggle={() => toggleFilterDropdown('age')}
+          onCloseFilter={onCloseFilter}
         />
         
         <AudienceType
@@ -99,6 +104,7 @@ const DemographicsFilters: React.FC<DemographicsFiltersProps> = ({
           onFilterChange={onFilterChange}
           isOpen={isFilterOpen('audienceType')}
           onToggle={() => toggleFilterDropdown('audienceType')}
+          onCloseFilter={onCloseFilter}
         />
       </div>
     </div>
