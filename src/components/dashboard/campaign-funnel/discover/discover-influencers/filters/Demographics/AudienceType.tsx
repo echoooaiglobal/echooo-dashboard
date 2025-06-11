@@ -3,12 +3,14 @@ import React from 'react';
 import { IoPeopleOutline } from 'react-icons/io5';
 import FilterComponent from '../FilterComponent';
 import { InfluencerSearchFilter, AudienceSource } from '@/lib/creator-discovery-types';
+import { useFilterClickOutside } from '@/hooks/useClickOutside';
 
 type AudienceTypeProps = {
   filters: InfluencerSearchFilter;
   onFilterChange: (updates: Partial<InfluencerSearchFilter>) => void;
   isOpen: boolean;
   onToggle: () => void;
+  onCloseFilter: () => void;
 };
 
 // Display label → Value to pass in audience_source
@@ -24,6 +26,7 @@ const AudienceType: React.FC<AudienceTypeProps> = ({
   onFilterChange,
   isOpen,
   onToggle,
+  onCloseFilter  
 }) => {
   const handleChange = (value: AudienceSource) => {
     onFilterChange({
@@ -39,6 +42,7 @@ const AudienceType: React.FC<AudienceTypeProps> = ({
       icon={<IoPeopleOutline size={18} />}
       title="Audience Type"
       isOpen={isOpen}
+      onClose={onCloseFilter}
       onToggle={onToggle}
       className="border border-gray-200 rounded-md"
     >

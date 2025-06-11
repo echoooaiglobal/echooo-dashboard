@@ -9,6 +9,7 @@ interface ContactsProps {
   onFilterChange: (updates: Partial<InfluencerSearchFilter>) => void;
   isOpen: boolean;
   onToggle: () => void;
+  onCloseFilter: () => void;
 }
 
 // All available contact types based on the API specification
@@ -34,7 +35,8 @@ const Contacts: React.FC<ContactsProps> = ({
   filters,
   onFilterChange,
   isOpen,
-  onToggle
+  onToggle,
+  onCloseFilter 
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedContacts, setSelectedContacts] = useState<SpecificContactDetail[]>(
@@ -191,6 +193,7 @@ const Contacts: React.FC<ContactsProps> = ({
       icon={<IoMailOutline size={18} />}
       title="Contacts"
       isOpen={isOpen}
+      onClose={onCloseFilter}
       onToggle={onToggle}
       className=''
       selectedCount={selectedContacts.length}

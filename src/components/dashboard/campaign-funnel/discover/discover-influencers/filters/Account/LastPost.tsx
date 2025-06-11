@@ -8,6 +8,7 @@ interface LastPostProps {
   onFilterChange: (updates: Partial<InfluencerSearchFilter>) => void;
   isOpen: boolean;
   onToggle: () => void;
+  onCloseFilter: () => void;
 } 
 
 const LastPost: React.FC<LastPostProps> = ({
@@ -15,6 +16,7 @@ const LastPost: React.FC<LastPostProps> = ({
   onFilterChange,
   isOpen,
   onToggle,
+  onCloseFilter 
 }) => {
   const [selectedDatetime, setSelectedDatetime] = useState<string>('');
 
@@ -110,6 +112,7 @@ const LastPost: React.FC<LastPostProps> = ({
       icon={<IoCalendarOutline size={18} />}
       title="Last Post"
       isOpen={isOpen}
+      onClose={onCloseFilter}
       onToggle={onToggle}
       className=""
     >

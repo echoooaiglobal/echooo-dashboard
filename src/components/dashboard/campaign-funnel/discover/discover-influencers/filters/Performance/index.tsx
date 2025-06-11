@@ -14,6 +14,7 @@ type PerformanceFiltersProps = {
   openFilterId: string | null;
   toggleFilterDropdown: (filterId: string) => void;
   isFilterOpen: (filterId: string) => boolean;
+  onCloseFilter: () => void;
 };
 
 const PerformanceFilters: React.FC<PerformanceFiltersProps> = ({
@@ -22,7 +23,8 @@ const PerformanceFilters: React.FC<PerformanceFiltersProps> = ({
   filterButtonStyle,
   openFilterId,
   toggleFilterDropdown,
-  isFilterOpen
+  isFilterOpen,
+  onCloseFilter
 }) => {
 
   // Enhanced filter change handler with logging
@@ -42,18 +44,21 @@ const PerformanceFilters: React.FC<PerformanceFiltersProps> = ({
           onFilterChange={onFilterChange}
           isOpen={isFilterOpen('followers')}
           onToggle={() => toggleFilterDropdown('followers')}
+          onCloseFilter={onCloseFilter}
         />
         <Trending
           filters={searchParams}
           onFilterChange={onFilterChange}
           isOpen={isFilterOpen('trending')}
           onToggle={() => toggleFilterDropdown('trending')}
+          onCloseFilter={onCloseFilter}
         />
         <Engagements
           filters={searchParams}
           onFilterChange={onFilterChange}
           isOpen={isFilterOpen('engagements')}
           onToggle={() => toggleFilterDropdown('engagements')}
+          onCloseFilter={onCloseFilter}
         />
       </div>
       <div className="grid grid-cols-3 gap-4 mb-4">
@@ -62,6 +67,7 @@ const PerformanceFilters: React.FC<PerformanceFiltersProps> = ({
           onFilterChange={onFilterChange}
           isOpen={isFilterOpen('reelsPlays')}
           onToggle={() => toggleFilterDropdown('reelsPlays')}
+          onCloseFilter={onCloseFilter}
         />
       </div>
     </div>

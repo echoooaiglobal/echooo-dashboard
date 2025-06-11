@@ -1,6 +1,7 @@
 // src/components/dashboard/campaign-funnel/discover/discover-influencers/filters/FilterComponent.tsx
 import React from 'react';
 import { IoChevronDownOutline } from 'react-icons/io5';
+import { useClickOutside } from '@/hooks/useClickOutside';
 
 interface FilterComponentProps {
   icon: React.ReactNode;
@@ -8,6 +9,7 @@ interface FilterComponentProps {
   children?: React.ReactNode;
   isOpen?: boolean;
   onToggle: () => void;
+  onClose?: () => void; // ADD: Optional close handler
   className: string;
   hasActiveFilters?: boolean;
   isLoading?: boolean;
@@ -20,16 +22,27 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
   children,
   isOpen = false,
   onToggle,
+  onClose, // ADD: Destructure onClose
   className,
   hasActiveFilters = false,
   isLoading = false,
   selectedCount = 0
 }) => {
+  // ADD: Click outside handling
+  const filterRef = useClickOutside<HTMLDivElement>(
+    () => {
+      if (onClose) {
+        onClose();
+      }
+    },
+    isOpen // Only listen when dropdown is open
+  );
+
   // Determine if filter is active
   const isActive = hasActiveFilters;
 
   return (
-    <div className="relative">
+    <div className="relative" ref={filterRef}> {/* ADD: Apply ref here */}
       <button
         onClick={onToggle}
         disabled={isLoading}

@@ -9,9 +9,16 @@ interface BioPhraseProps {
   onFilterChange: (updates: Partial<InfluencerSearchFilter>) => void;
   isOpen: boolean;
   onToggle: () => void;
+  onCloseFilter: () => void;
 }
 
-const BioPhrase: React.FC<BioPhraseProps> = ({ filters, onFilterChange, isOpen, onToggle }) => {
+const BioPhrase: React.FC<BioPhraseProps> = ({ 
+  filters, 
+  onFilterChange, 
+  isOpen, 
+  onToggle,
+  onCloseFilter 
+}) => {
   const [inputValue, setInputValue] = useState('');
   const [suggestedPhrases, setSuggestedPhrases] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -75,29 +82,6 @@ const BioPhrase: React.FC<BioPhraseProps> = ({ filters, onFilterChange, isOpen, 
       setShowSuggestions(false);
     }
   }, [inputValue]);
-
-  // Handle click outside to close suggestions only (not the main dropdown)
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      // Only handle suggestions dropdown, not the main dropdown
-      if (suggestionsRef.current && !suggestionsRef.current.contains(event.target as Node)) {
-        setShowSuggestions(false);
-      }
-      // Handle tooltip separately
-      if (tooltipRef.current && !tooltipRef.current.contains(event.target as Node)) {
-        setShowTooltip(false);
-      }
-    };
-
-    // Only add listeners when suggestions or tooltip are shown
-    if (showSuggestions || showTooltip) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showSuggestions, showTooltip]);
 
   // Close suggestions and tooltip when main dropdown closes
   useEffect(() => {
@@ -172,6 +156,7 @@ const BioPhrase: React.FC<BioPhraseProps> = ({ filters, onFilterChange, isOpen, 
       icon={<MessageSquare size={16} />} 
       title="Bio Phrase"
       isOpen={isOpen}
+      onClose={onCloseFilter}
       onToggle={onToggle}
       className=""
       hasActiveFilters={!!filters.bio_phrase}

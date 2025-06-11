@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { IoLocationOutline, IoClose, IoWarningOutline, IoCheckmarkCircleOutline } from 'react-icons/io5';
 import FilterComponent from '../FilterComponent';
 import { Location, LocationSearchResponse, CreatorLocationSelection } from '@/lib/types';
 import { InfluencerSearchFilter, AudienceLocationsFilter } from '@/lib/creator-discovery-types';
+import { useFilterClickOutside } from '@/hooks/useClickOutside';
 
 interface LocationFilterProps {
   selectedLocations: CreatorLocationSelection[];
@@ -13,6 +14,7 @@ interface LocationFilterProps {
   onToggle: () => void;
   searchParams: InfluencerSearchFilter;
   onFilterChange: (updates: Partial<InfluencerSearchFilter>) => void;
+  onCloseFilter: () => void;
 }
 
 export default function LocationFilter({
@@ -21,7 +23,8 @@ export default function LocationFilter({
   isOpen,
   onToggle,
   searchParams,
-  onFilterChange
+  onFilterChange,
+  onCloseFilter
 }: LocationFilterProps) {
   // Creator locations state
   const [creatorQuery, setCreatorQuery] = useState('');
@@ -39,8 +42,7 @@ export default function LocationFilter({
 
   // Common state
   const [allFetchedLocations, setAllFetchedLocations] = useState<Location[]>([]);
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  const filterComponentRef = useRef<HTMLDivElement>(null);
+
 
   // Initialize from searchParams
   useEffect(() => {
@@ -237,13 +239,13 @@ export default function LocationFilter({
   const totalSelectedCount = selectedCreatorLocations.length + selectedAudienceLocations.length;
   const hasActiveFilters = totalSelectedCount > 0 || creatorQuery.length > 0 || audienceQuery.length > 0;
   return (
-    <div ref={wrapperRef} className="relative z-50">
-      <div ref={filterComponentRef}>
+    <div className="relative z-50">
         <FilterComponent 
           hasActiveFilters={hasActiveFilters}
           icon={<IoLocationOutline size={18} />} 
           title="Location"
           isOpen={isOpen}
+          onClose={onCloseFilter}
           onToggle={onToggle}
           className="border border-gray-200 rounded-md"
           selectedCount={totalSelectedCount}
@@ -498,7 +500,6 @@ export default function LocationFilter({
             </div>
           </div>
         </FilterComponent>
-      </div>
     </div>
   );
 }

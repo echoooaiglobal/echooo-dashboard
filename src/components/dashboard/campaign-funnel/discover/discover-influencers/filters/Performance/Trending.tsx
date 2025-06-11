@@ -9,6 +9,7 @@ interface TrendingFilterProps {
   onFilterChange: (updates: Partial<InfluencerSearchFilter>) => void;
   isOpen: boolean;
   onToggle: () => void;
+  onCloseFilter: () => void;
 }
 
 // Month options for the dropdown - with clear option as heading
@@ -26,11 +27,11 @@ const Trending: React.FC<TrendingFilterProps> = ({
   filters,
   onFilterChange,
   isOpen,
-  onToggle
+  onToggle,
+  onCloseFilter
 }) => {
   // Dropdown states
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
   
   // Local state for smooth slider (percentage in steps of 5: 5, 10, 15, ..., 100)
   const [localSliderValue, setLocalSliderValue] = useState<number>(
@@ -54,17 +55,7 @@ const Trending: React.FC<TrendingFilterProps> = ({
     }
   }, [filters?.follower_growth?.percentage_value, isSliding]);
 
-  // Handle clicks outside dropdowns
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setOpenDropdown(null);
-      }
-    };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   // Close dropdowns when filter closes
   useEffect(() => {
@@ -255,136 +246,135 @@ const Trending: React.FC<TrendingFilterProps> = ({
   const hasActiveFilters = hasFilter || localSliderValue > 5;
   
   return (
-    <div ref={dropdownRef}>
-      <FilterComponent
-        hasActiveFilters={hasActiveFilters}
-        icon={<IoTrendingUpOutline size={18} />}
-        title="Trending"
-        isOpen={isOpen}
-        onToggle={onToggle}
-        className="border border-gray-200 rounded-md"
-        // selectedCount={selectedCount}
-      >
-        <div className="p-4 space-y-4 w-full">
-          
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <h3 className="text-sm font-semibold text-gray-800">Follower Growth</h3>
-            </div>
-            {hasFilter && (
-              <button
-                onClick={clearFilter}
-                className="text-green-600 hover:text-green-800 transition-colors"
-                title="Clear trending filter"
-              >
-                <IoClose size={16} />
-              </button>
-            )}
+    <FilterComponent
+      hasActiveFilters={hasActiveFilters}
+      icon={<IoTrendingUpOutline size={18} />}
+      title="Trending"
+      isOpen={isOpen}
+      onClose={onCloseFilter}
+      onToggle={onToggle}
+      className="border border-gray-200 rounded-md"
+      // selectedCount={selectedCount}
+    >
+      <div className="p-4 space-y-4 w-full">
+        
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+            <h3 className="text-sm font-semibold text-gray-800">Follower Growth</h3>
           </div>
+          {hasFilter && (
+            <button
+              onClick={clearFilter}
+              className="text-green-600 hover:text-green-800 transition-colors"
+              title="Clear trending filter"
+            >
+              <IoClose size={16} />
+            </button>
+          )}
+        </div>
 
-          {/* Time Period Dropdown */}
-          <div className="space-y-3">
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">Growth Period</label>
-              <MiniDropdown
-                id="growth-period"
-                value={filters?.follower_growth?.interval || 0}
-                options={MONTH_OPTIONS}
-                onChange={handleIntervalChange}
-                placeholder="Select period"
-              />
-            </div>
+        {/* Time Period Dropdown */}
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">Growth Period</label>
+            <MiniDropdown
+              id="growth-period"
+              value={filters?.follower_growth?.interval || 0}
+              options={MONTH_OPTIONS}
+              onChange={handleIntervalChange}
+              placeholder="Select period"
+            />
           </div>
+        </div>
 
-          {/* Only show percentage slider and divider if interval is selected */}
-          {hasIntervalSelected && (
-            <>
-              {/* Divider */}
-              <div className="border-t border-gray-200"></div>
+        {/* Only show percentage slider and divider if interval is selected */}
+        {hasIntervalSelected && (
+          <>
+            {/* Divider */}
+            <div className="border-t border-gray-200"></div>
 
-              {/* Percentage Slider */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between text-xs text-gray-600">
-                  <span>Growth Rate</span>
-                  <span className="font-medium text-green-600">
-                    {'>'}{localSliderValue}%
-                  </span>
-                </div>
+            {/* Percentage Slider */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between text-xs text-gray-600">
+                <span>Growth Rate</span>
+                <span className="font-medium text-green-600">
+                  {'>'}{localSliderValue}%
+                </span>
+              </div>
 
-                {/* Smooth Custom Slider */}
-                <div className="relative px-1">
-                  <div className="relative">
-                    {/* Slider track background */}
-                    <div className="w-full h-2 bg-gray-200 rounded-lg relative overflow-hidden">
-                      {/* Progress fill */}
-                      <div 
-                        className="h-full bg-gradient-to-r from-green-400 to-green-500 rounded-lg transition-all duration-100 ease-out"
-                        style={{
-                          width: `${((percentageToStep(localSliderValue) - 1) / 19) * 100}%`
-                        }}
-                      ></div>
-                    </div>
-                    
-                    {/* Actual slider input (steps 1-20, representing 5%-100%) */}
-                    <input
-                      type="range"
-                      min="1"
-                      max="20"
-                      step="1"
-                      value={percentageToStep(localSliderValue)}
-                      onInput={(e) => handleSliderInput(stepToPercentage(parseInt((e.target as HTMLInputElement).value)))}
-                      onMouseUp={handleSliderMouseUp}
-                      onTouchEnd={handleSliderMouseUp}
-                      className="absolute inset-0 w-full h-2 opacity-0 cursor-pointer"
-                    />
-                    
-                    {/* Custom thumb */}
+              {/* Smooth Custom Slider */}
+              <div className="relative px-1">
+                <div className="relative">
+                  {/* Slider track background */}
+                  <div className="w-full h-2 bg-gray-200 rounded-lg relative overflow-hidden">
+                    {/* Progress fill */}
                     <div 
-                      className={`absolute top-1/2 -translate-y-1/2 w-5 h-5 bg-green-500 border-2 border-white rounded-full shadow-lg pointer-events-none transition-all duration-100 ease-out ${
-                        isSliding ? 'scale-110 shadow-xl' : 'hover:scale-110'
-                      }`}
+                      className="h-full bg-gradient-to-r from-green-400 to-green-500 rounded-lg transition-all duration-100 ease-out"
                       style={{
-                        left: `calc(${((percentageToStep(localSliderValue) - 1) / 19) * 100}% - 10px)`
+                        width: `${((percentageToStep(localSliderValue) - 1) / 19) * 100}%`
                       }}
                     ></div>
                   </div>
-                </div>
-
-                {/* Slider markers */}
-                <div className="flex justify-between text-xs text-gray-400 px-1">
-                  <span>5%</span>
-                  <span>25%</span>
-                  <span>50%</span>
-                  <span>75%</span>
-                  <span>100%</span>
-                </div>
-
-                {/* Quick preset buttons */}
-                <div className="grid grid-cols-4 gap-1">
-                  {[10, 20, 30, 40, 50, 60, 70, 80].map((preset) => (
-                    <button
-                      key={preset}
-                      type="button"
-                      onClick={() => handlePresetClick(preset)}
-                      className={`px-2 py-1 text-xs rounded-md transition-all duration-200 ${
-                        localSliderValue === preset
-                          ? 'bg-green-100 text-green-700 border border-green-300 font-medium scale-105'
-                          : 'text-gray-600 hover:bg-gray-100 border border-gray-200 hover:scale-105'
-                      }`}
-                    >
-                      {preset}%
-                    </button>
-                  ))}
+                  
+                  {/* Actual slider input (steps 1-20, representing 5%-100%) */}
+                  <input
+                    type="range"
+                    min="1"
+                    max="20"
+                    step="1"
+                    value={percentageToStep(localSliderValue)}
+                    onInput={(e) => handleSliderInput(stepToPercentage(parseInt((e.target as HTMLInputElement).value)))}
+                    onMouseUp={handleSliderMouseUp}
+                    onTouchEnd={handleSliderMouseUp}
+                    className="absolute inset-0 w-full h-2 opacity-0 cursor-pointer"
+                  />
+                  
+                  {/* Custom thumb */}
+                  <div 
+                    className={`absolute top-1/2 -translate-y-1/2 w-5 h-5 bg-green-500 border-2 border-white rounded-full shadow-lg pointer-events-none transition-all duration-100 ease-out ${
+                      isSliding ? 'scale-110 shadow-xl' : 'hover:scale-110'
+                    }`}
+                    style={{
+                      left: `calc(${((percentageToStep(localSliderValue) - 1) / 19) * 100}% - 10px)`
+                    }}
+                  ></div>
                 </div>
               </div>
-            </>
-          )}
 
-        </div>
-      </FilterComponent>
-    </div>
+              {/* Slider markers */}
+              <div className="flex justify-between text-xs text-gray-400 px-1">
+                <span>5%</span>
+                <span>25%</span>
+                <span>50%</span>
+                <span>75%</span>
+                <span>100%</span>
+              </div>
+
+              {/* Quick preset buttons */}
+              <div className="grid grid-cols-4 gap-1">
+                {[10, 20, 30, 40, 50, 60, 70, 80].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => handlePresetClick(preset)}
+                    className={`px-2 py-1 text-xs rounded-md transition-all duration-200 ${
+                      localSliderValue === preset
+                        ? 'bg-green-100 text-green-700 border border-green-300 font-medium scale-105'
+                        : 'text-gray-600 hover:bg-gray-100 border border-gray-200 hover:scale-105'
+                    }`}
+                  >
+                    {preset}%
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+      </div>
+    </FilterComponent>
   );
 };
 

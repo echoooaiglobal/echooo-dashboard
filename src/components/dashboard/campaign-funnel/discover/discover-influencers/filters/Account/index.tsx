@@ -13,6 +13,7 @@ type AccountFiltersProps = {
   openFilterId: string | null;
   toggleFilterDropdown: (filterId: string) => void;
   isFilterOpen: (filterId: string) => boolean;
+  onCloseFilter: () => void;
 };
 
 // Toggle Switch Component
@@ -114,6 +115,7 @@ const AccountFilters: React.FC<AccountFiltersProps> = ({
   openFilterId,
   toggleFilterDropdown,
   isFilterOpen,
+  onCloseFilter
 }) => {
   const handleToggleChange = (filterKey: keyof InfluencerSearchFilter, value: boolean) => {
     // Create update object with only the specific filter being changed
@@ -139,6 +141,7 @@ const AccountFilters: React.FC<AccountFiltersProps> = ({
             onFilterChange={onFilterChange}
             isOpen={isFilterOpen('lastPost')}
             onToggle={() => toggleFilterDropdown('lastPost')}
+            onCloseFilter={onCloseFilter}
           />
           
           <AccountType
@@ -146,6 +149,7 @@ const AccountFilters: React.FC<AccountFiltersProps> = ({
             onFilterChange={onFilterChange}
             isOpen={isFilterOpen('accountType')}
             onToggle={() => toggleFilterDropdown('accountType')}
+            onCloseFilter={onCloseFilter}
           />
           
           <Contacts
@@ -153,6 +157,7 @@ const AccountFilters: React.FC<AccountFiltersProps> = ({
             onFilterChange={onFilterChange}
             isOpen={isFilterOpen('contacts')}
             onToggle={() => toggleFilterDropdown('contacts')}
+            onCloseFilter={onCloseFilter}
           />
         </div>
       </div>

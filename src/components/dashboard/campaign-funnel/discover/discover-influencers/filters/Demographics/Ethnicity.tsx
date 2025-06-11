@@ -3,6 +3,7 @@ import React from 'react';
 import { IoEarthOutline } from 'react-icons/io5';
 import FilterComponent from '../FilterComponent';
 import { InfluencerSearchFilter } from '@/lib/creator-discovery-types';
+import { useFilterClickOutside } from '@/hooks/useClickOutside';
 
 interface EthnicityFilterProps {
   filters: InfluencerSearchFilter;

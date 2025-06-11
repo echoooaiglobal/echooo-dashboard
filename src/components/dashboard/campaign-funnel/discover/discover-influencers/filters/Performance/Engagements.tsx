@@ -9,6 +9,7 @@ interface EngagementsFilterProps {
   onFilterChange: (updates: Partial<InfluencerSearchFilter>) => void;
   isOpen: boolean;
   onToggle: () => void;
+  onCloseFilter: () => void;
 }
 
 // Predefined engagement count options
@@ -49,11 +50,11 @@ const Engagements: React.FC<EngagementsFilterProps> = ({
   filters,
   onFilterChange,
   isOpen,
-  onToggle
+  onToggle,
+  onCloseFilter
 }) => {
   // Dropdown states
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
   
   // Local state for smooth slider
   const [localSliderValue, setLocalSliderValue] = useState<string>(
@@ -77,18 +78,6 @@ const Engagements: React.FC<EngagementsFilterProps> = ({
       setLocalSliderValue(filters.engagement_rate.percentage_value);
     }
   }, [filters?.engagement_rate?.percentage_value, isSliding]);
-
-  // Handle clicks outside dropdowns
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setOpenDropdown(null);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   // Close dropdowns when filter closes
   useEffect(() => {
@@ -272,160 +261,159 @@ const Engagements: React.FC<EngagementsFilterProps> = ({
   const hasActiveFilters = hasTotalEngagements || hasEngagementRate;
   
   return (
-    <div ref={dropdownRef}>
-      <FilterComponent
-        hasActiveFilters={hasActiveFilters}
-        icon={<IoHeartOutline size={18} />}
-        title="Engagements"
-        isOpen={isOpen}
-        onToggle={onToggle}
-        className="border border-gray-200 rounded-md"
-        selectedCount={selectedCount}
-      >
-        <div className="p-4 space-y-4 w-full">
-          
-          {/* Total Engagements Section */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                <h4 className="text-sm font-semibold text-gray-800">Total Engagements</h4>
-              </div>
-              {hasTotalEngagements && (
-                <button
-                  onClick={clearTotalEngagements}
-                  className="text-purple-600 hover:text-purple-800 transition-colors"
-                  title="Clear total engagements filter"
-                >
-                  <IoClose size={16} />
-                </button>
-              )}
+    <FilterComponent
+      hasActiveFilters={hasActiveFilters}
+      icon={<IoHeartOutline size={18} />}
+      title="Engagements"
+      isOpen={isOpen}
+      onClose={onCloseFilter}
+      onToggle={onToggle}
+      className="border border-gray-200 rounded-md"
+      selectedCount={selectedCount}
+    >
+      <div className="p-4 space-y-4 w-full">
+        
+        {/* Total Engagements Section */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+              <h4 className="text-sm font-semibold text-gray-800">Total Engagements</h4>
             </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs text-gray-600 mb-1">Minimum</label>
-                <MiniDropdown
-                  id="engagements-min"
-                  value={filters?.total_engagements?.min || 100}
-                  options={getMinOptions()}
-                  onChange={(value) => handleTotalEngagementsChange('min', value as number)}
-                  placeholder="Min"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-600 mb-1">Maximum</label>
-                <MiniDropdown
-                  id="engagements-max"
-                  value={filters?.total_engagements?.max || 100000}
-                  options={getMaxOptions()}
-                  onChange={(value) => handleTotalEngagementsChange('max', value as number)}
-                  placeholder="Max"
-                />
-              </div>
-            </div>
+            {hasTotalEngagements && (
+              <button
+                onClick={clearTotalEngagements}
+                className="text-purple-600 hover:text-purple-800 transition-colors"
+                title="Clear total engagements filter"
+              >
+                <IoClose size={16} />
+              </button>
+            )}
           </div>
 
-          {/* Divider */}
-          <div className="border-t border-gray-200"></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Minimum</label>
+              <MiniDropdown
+                id="engagements-min"
+                value={filters?.total_engagements?.min || 100}
+                options={getMinOptions()}
+                onChange={(value) => handleTotalEngagementsChange('min', value as number)}
+                placeholder="Min"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Maximum</label>
+              <MiniDropdown
+                id="engagements-max"
+                value={filters?.total_engagements?.max || 100000}
+                options={getMaxOptions()}
+                onChange={(value) => handleTotalEngagementsChange('max', value as number)}
+                placeholder="Max"
+              />
+            </div>
+          </div>
+        </div>
 
-          {/* Engagement Rate Section */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-pink-500 rounded-full"></div>
-                <h4 className="text-sm font-semibold text-gray-800">Engagement Rate</h4>
-              </div>
-              {hasEngagementRate && (
-                <button
-                  onClick={clearEngagementRate}
-                  className="text-pink-600 hover:text-pink-800 transition-colors"
-                  title="Clear engagement rate filter"
-                >
-                  <IoClose size={16} />
-                </button>
-              )}
+        {/* Divider */}
+        <div className="border-t border-gray-200"></div>
+
+        {/* Engagement Rate Section */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-pink-500 rounded-full"></div>
+              <h4 className="text-sm font-semibold text-gray-800">Engagement Rate</h4>
+            </div>
+            {hasEngagementRate && (
+              <button
+                onClick={clearEngagementRate}
+                className="text-pink-600 hover:text-pink-800 transition-colors"
+                title="Clear engagement rate filter"
+              >
+                <IoClose size={16} />
+              </button>
+            )}
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between text-xs text-gray-600">
+              <span>Minimum Rate</span>
+              <span className="font-medium text-pink-600">
+                {localSliderValue}%
+              </span>
             </div>
 
-            <div className="space-y-4">
-              <div className="flex items-center justify-between text-xs text-gray-600">
-                <span>Minimum Rate</span>
-                <span className="font-medium text-pink-600">
-                  {localSliderValue}%
-                </span>
-              </div>
-
-              {/* Smooth Custom Slider */}
-              <div className="relative px-1">
-                <div className="relative">
-                  {/* Slider track background */}
-                  <div className="w-full h-2 bg-gray-200 rounded-lg relative overflow-hidden">
-                    {/* Progress fill */}
-                    <div 
-                      className="h-full bg-gradient-to-r from-pink-400 to-pink-500 rounded-lg transition-all duration-100 ease-out"
-                      style={{
-                        width: `${((parseInt(localSliderValue) - 1) / 99) * 100}%`
-                      }}
-                    ></div>
-                  </div>
-                  
-                  {/* Actual slider input */}
-                  <input
-                    type="range"
-                    min="1"
-                    max="100"
-                    step="1"
-                    value={localSliderValue}
-                    onInput={(e) => handleSliderInput((e.target as HTMLInputElement).value)}
-                    onMouseUp={handleSliderMouseUp}
-                    onTouchEnd={handleSliderMouseUp}
-                    className="absolute inset-0 w-full h-2 opacity-0 cursor-pointer"
-                  />
-                  
-                  {/* Custom thumb */}
+            {/* Smooth Custom Slider */}
+            <div className="relative px-1">
+              <div className="relative">
+                {/* Slider track background */}
+                <div className="w-full h-2 bg-gray-200 rounded-lg relative overflow-hidden">
+                  {/* Progress fill */}
                   <div 
-                    className={`absolute top-1/2 -translate-y-1/2 w-5 h-5 bg-pink-500 border-2 border-white rounded-full shadow-lg pointer-events-none transition-all duration-100 ease-out ${
-                      isSliding ? 'scale-110 shadow-xl' : 'hover:scale-110'
-                    }`}
+                    className="h-full bg-gradient-to-r from-pink-400 to-pink-500 rounded-lg transition-all duration-100 ease-out"
                     style={{
-                      left: `calc(${((parseInt(localSliderValue) - 1) / 99) * 100}% - 10px)`
+                      width: `${((parseInt(localSliderValue) - 1) / 99) * 100}%`
                     }}
                   ></div>
                 </div>
-              </div>
-
-              {/* Slider markers */}
-              <div className="flex justify-between text-xs text-gray-400 px-1">
-                <span>1%</span>
-                <span>25%</span>
-                <span>50%</span>
-                <span>75%</span>
-                <span>100%</span>
-              </div>
-
-              {/* Quick preset buttons */}
-              <div className="flex gap-1">
-                {[5, 10, 15, 20, 25].map((preset) => (
-                  <button
-                    key={preset}
-                    type="button"
-                    onClick={() => handlePresetClick(preset.toString())}
-                    className={`px-2 py-1 text-xs rounded-md transition-all duration-200 ${
-                      localSliderValue === preset.toString()
-                        ? 'bg-pink-100 text-pink-700 border border-pink-300 font-medium scale-105'
-                        : 'text-gray-600 hover:bg-gray-100 border border-gray-200 hover:scale-105'
-                    }`}
-                  >
-                    {preset}%
-                  </button>
-                ))}
+                
+                {/* Actual slider input */}
+                <input
+                  type="range"
+                  min="1"
+                  max="100"
+                  step="1"
+                  value={localSliderValue}
+                  onInput={(e) => handleSliderInput((e.target as HTMLInputElement).value)}
+                  onMouseUp={handleSliderMouseUp}
+                  onTouchEnd={handleSliderMouseUp}
+                  className="absolute inset-0 w-full h-2 opacity-0 cursor-pointer"
+                />
+                
+                {/* Custom thumb */}
+                <div 
+                  className={`absolute top-1/2 -translate-y-1/2 w-5 h-5 bg-pink-500 border-2 border-white rounded-full shadow-lg pointer-events-none transition-all duration-100 ease-out ${
+                    isSliding ? 'scale-110 shadow-xl' : 'hover:scale-110'
+                  }`}
+                  style={{
+                    left: `calc(${((parseInt(localSliderValue) - 1) / 99) * 100}% - 10px)`
+                  }}
+                ></div>
               </div>
             </div>
-          </div>
 
+            {/* Slider markers */}
+            <div className="flex justify-between text-xs text-gray-400 px-1">
+              <span>1%</span>
+              <span>25%</span>
+              <span>50%</span>
+              <span>75%</span>
+              <span>100%</span>
+            </div>
+
+            {/* Quick preset buttons */}
+            <div className="flex gap-1">
+              {[5, 10, 15, 20, 25].map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => handlePresetClick(preset.toString())}
+                  className={`px-2 py-1 text-xs rounded-md transition-all duration-200 ${
+                    localSliderValue === preset.toString()
+                      ? 'bg-pink-100 text-pink-700 border border-pink-300 font-medium scale-105'
+                      : 'text-gray-600 hover:bg-gray-100 border border-gray-200 hover:scale-105'
+                  }`}
+                >
+                  {preset}%
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
-      </FilterComponent>
-    </div>
+
+      </div>
+    </FilterComponent>
   );
 };
 

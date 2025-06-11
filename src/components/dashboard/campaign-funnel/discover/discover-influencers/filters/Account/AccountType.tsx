@@ -10,6 +10,7 @@ interface AccountTypeProps {
   onFilterChange: (updates: Partial<InfluencerSearchFilter>) => void;
   isOpen: boolean;
   onToggle: () => void;
+  onCloseFilter: () => void;
 }
 
 const AccountType: React.FC<AccountTypeProps> = ({
@@ -17,6 +18,7 @@ const AccountType: React.FC<AccountTypeProps> = ({
   onFilterChange,
   isOpen,
   onToggle,
+  onCloseFilter 
 }) => {
   const accountTypeOptions: AccountType[] = ['PERSONAL', 'BUSINESS', 'CREATOR'];
   const [selectedTypes, setSelectedTypes] = useState<AccountType[]>(
@@ -35,18 +37,6 @@ const AccountType: React.FC<AccountTypeProps> = ({
       setSelectedTypes(current);
     }
   }, [filters.creator_account_type]);
-
-  // Handle clicks outside tooltip
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (tooltipRef.current && !tooltipRef.current.contains(event.target as Node)) {
-        setShowTooltip(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   const handleTypeToggle = (type: AccountType) => {
     const updatedTypes = selectedTypes.includes(type)
@@ -77,6 +67,7 @@ const AccountType: React.FC<AccountTypeProps> = ({
       icon={<IoPersonCircleOutline size={18} />}
       title="Account Type"
       isOpen={isOpen}
+      onClose={onCloseFilter}
       onToggle={onToggle}
       className=''
       selectedCount={selectedTypes.length}

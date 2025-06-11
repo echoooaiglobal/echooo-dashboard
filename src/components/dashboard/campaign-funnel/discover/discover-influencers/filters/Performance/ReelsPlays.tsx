@@ -9,17 +9,18 @@ interface ReelsPlaysProps {
   onFilterChange: (updates: Partial<InfluencerSearchFilter>) => void;
   isOpen: boolean;
   onToggle: () => void;
+  onCloseFilter: () => void;
 }
 
 const ReelsPlays: React.FC<ReelsPlaysProps> = ({
   filters,
   onFilterChange,
   isOpen,
-  onToggle
+  onToggle,
+  onCloseFilter
 }) => {
   // Dropdown states
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Predefined reel views options
   const REEL_VIEWS_OPTIONS = [
@@ -39,18 +40,6 @@ const ReelsPlays: React.FC<ReelsPlaysProps> = ({
     { value: 5000000, label: '5M' },
     { value: 10000000, label: '10M' }
   ];
-
-  // Handle clicks outside dropdowns
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setOpenDropdown(null);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   // Close dropdowns when filter closes
   useEffect(() => {
@@ -273,90 +262,89 @@ const ReelsPlays: React.FC<ReelsPlaysProps> = ({
   const hasActiveFilters = Object.keys(filters?.instagram_options || {}).length > 0;
 
   return (
-    <div ref={dropdownRef}>
-      <FilterComponent
-        hasActiveFilters={hasActiveFilters}
-        icon={<IoPlayOutline size={18} />}
-        title="Reels Plays"
-        isOpen={isOpen}
-        onToggle={onToggle}
-        className="border border-gray-200 rounded-md"
-        selectedCount={0}
-      >
-        <div className="p-4 space-y-4 w-full">
-          
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-              <h3 className="text-sm font-semibold text-gray-800">Average Reel Views</h3>
-            </div>
-            {hasFilter && (
-              <button
-                onClick={clearFilter}
-                className="text-purple-600 hover:text-purple-800 transition-colors"
-                title="Clear reels plays filter"
-              >
-                <IoClose size={16} />
-              </button>
-            )}
+    <FilterComponent
+      hasActiveFilters={hasActiveFilters}
+      icon={<IoPlayOutline size={18} />}
+      title="Reels Plays"
+      isOpen={isOpen}
+      onClose={onCloseFilter}
+      onToggle={onToggle}
+      className="border border-gray-200 rounded-md"
+      selectedCount={0}
+    >
+      <div className="p-4 space-y-4 w-full">
+        
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+            <h3 className="text-sm font-semibold text-gray-800">Average Reel Views</h3>
           </div>
-
-          {/* Select Fields */}
-          <div className="grid grid-cols-2 gap-3">
-            {/* Min Field */}
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">Minimum</label>
-              <MiniDropdown
-                id="min-views"
-                value={currentReelViews?.min}
-                options={getMinOptions()}
-                onChange={(value) => handleReelViewsChange('min', value)}
-                placeholder="Select minimum"
-              />
-            </div>
-
-            {/* Max Field */}
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">Maximum</label>
-              <MiniDropdown
-                id="max-views"
-                value={currentReelViews?.max}
-                options={getMaxOptions()}
-                onChange={(value) => handleReelViewsChange('max', value)}
-                placeholder="Select maximum"
-              />
-            </div>
-          </div>
-
-          {/* Divider */}
-          {/* <div className="border-t border-gray-200"></div> */}
-
-          {/* Quick Select Presets */}
-          {/* <div className="space-y-3">
-            <div className="flex items-center justify-between text-xs text-gray-600">
-              <span>Quick Select Ranges</span>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-2">
-              {presetRanges.map((range, index) => (
-                <button
-                  key={index}
-                  onClick={() => handlePresetSelect(range.min, range.max)}
-                  className={`px-3 py-2 text-xs rounded-md border transition-all duration-200 ${
-                    isPresetSelected(range.min, range.max)
-                      ? 'bg-purple-100 border-purple-300 text-purple-700 font-medium'
-                      : 'bg-white border-gray-200 text-gray-700 hover:bg-purple-50 hover:border-purple-200'
-                  }`}
-                >
-                  {range.label}
-                </button>
-              ))}
-            </div>
-          </div> */}
+          {hasFilter && (
+            <button
+              onClick={clearFilter}
+              className="text-purple-600 hover:text-purple-800 transition-colors"
+              title="Clear reels plays filter"
+            >
+              <IoClose size={16} />
+            </button>
+          )}
         </div>
-      </FilterComponent>
-    </div>
+
+        {/* Select Fields */}
+        <div className="grid grid-cols-2 gap-3">
+          {/* Min Field */}
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">Minimum</label>
+            <MiniDropdown
+              id="min-views"
+              value={currentReelViews?.min}
+              options={getMinOptions()}
+              onChange={(value) => handleReelViewsChange('min', value)}
+              placeholder="Select minimum"
+            />
+          </div>
+
+          {/* Max Field */}
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">Maximum</label>
+            <MiniDropdown
+              id="max-views"
+              value={currentReelViews?.max}
+              options={getMaxOptions()}
+              onChange={(value) => handleReelViewsChange('max', value)}
+              placeholder="Select maximum"
+            />
+          </div>
+        </div>
+
+        {/* Divider */}
+        {/* <div className="border-t border-gray-200"></div> */}
+
+        {/* Quick Select Presets */}
+        {/* <div className="space-y-3">
+          <div className="flex items-center justify-between text-xs text-gray-600">
+            <span>Quick Select Ranges</span>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-2">
+            {presetRanges.map((range, index) => (
+              <button
+                key={index}
+                onClick={() => handlePresetSelect(range.min, range.max)}
+                className={`px-3 py-2 text-xs rounded-md border transition-all duration-200 ${
+                  isPresetSelected(range.min, range.max)
+                    ? 'bg-purple-100 border-purple-300 text-purple-700 font-medium'
+                    : 'bg-white border-gray-200 text-gray-700 hover:bg-purple-50 hover:border-purple-200'
+                }`}
+              >
+                {range.label}
+              </button>
+            ))}
+          </div>
+        </div> */}
+      </div>
+    </FilterComponent>
   );
 };
 

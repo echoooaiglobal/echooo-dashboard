@@ -9,6 +9,7 @@ interface InterestsProps {
   onFilterChange: (updates: Partial<InfluencerSearchFilter>) => void;
   isOpen: boolean;
   onToggle: () => void;
+  onCloseFilter: () => void;
 }
 
 interface ProcessedInterest {
@@ -36,6 +37,7 @@ const Interests: React.FC<InterestsProps> = ({
   onFilterChange,
   isOpen,
   onToggle,
+  onCloseFilter 
 }) => {
   // States for creator interests (left column)
   const [creatorSearchQuery, setCreatorSearchQuery] = useState('');
@@ -314,6 +316,7 @@ const Interests: React.FC<InterestsProps> = ({
           icon={<IoHeartOutline size={18} />}
           title="Interests"
           isOpen={isOpen}
+          onClose={onCloseFilter}
           onToggle={onToggle}
           className="border border-gray-200 rounded-md"
           selectedCount={totalSelectedCount}

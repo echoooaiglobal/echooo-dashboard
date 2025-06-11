@@ -9,9 +9,16 @@ interface GenderFilterProps {
   onFilterChange: (updates: Partial<InfluencerSearchFilter>) => void;
   isOpen: boolean;
   onToggle: () => void;
+  onCloseFilter: () => void;
 }
 
-const Gender: React.FC<GenderFilterProps> = ({ filters, onFilterChange, isOpen, onToggle }) => {
+const Gender: React.FC<GenderFilterProps> = ({ 
+  filters, 
+  onFilterChange, 
+  isOpen, 
+  onToggle,
+  onCloseFilter 
+}) => {
   // Creator gender options
   const creatorGenderOptions: { value: CreatorGenderType | 'ANY'; label: string }[] = [
     { value: 'ANY', label: 'Any' },
@@ -71,6 +78,7 @@ const Gender: React.FC<GenderFilterProps> = ({ filters, onFilterChange, isOpen, 
   // Calculate active state for FilterComponent (simplified)
   const hasActiveFilters = selectedCreatorGender !== 'ANY' || selectedAudienceGender !== 'ANY';
 
+
   return (
     <div className="relative z-40">
       <FilterComponent
@@ -78,6 +86,7 @@ const Gender: React.FC<GenderFilterProps> = ({ filters, onFilterChange, isOpen, 
         icon={<IoPersonOutline size={18} />}
         title="Gender"
         isOpen={isOpen}
+        onClose={onCloseFilter}
         onToggle={onToggle}
         className="border border-gray-200 rounded-md"
         selectedCount={0} // No count

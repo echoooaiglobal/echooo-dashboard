@@ -18,6 +18,7 @@ type ContentFiltersProps = {
   openFilterId: string | null;
   toggleFilterDropdown: (filterId: string) => void;
   isFilterOpen: (filterId: string) => boolean;
+  onCloseFilter: () => void;
 };
 
 const ContentFilters: React.FC<ContentFiltersProps> = ({
@@ -26,7 +27,8 @@ const ContentFilters: React.FC<ContentFiltersProps> = ({
   filterButtonStyle,
   openFilterId,
   toggleFilterDropdown,
-  isFilterOpen
+  isFilterOpen,
+  onCloseFilter
 }) => {
 
   return (
@@ -38,6 +40,7 @@ const ContentFilters: React.FC<ContentFiltersProps> = ({
           onFilterChange={onFilterChange}
           isOpen={isFilterOpen('bioPhrase')}
           onToggle={() => toggleFilterDropdown('bioPhrase')}
+          onCloseFilter={onCloseFilter}
         />
         
         <TopicsAI
@@ -45,6 +48,7 @@ const ContentFilters: React.FC<ContentFiltersProps> = ({
           onFilterChange={onFilterChange}
           isOpen={isFilterOpen('topicsAI')}
           onToggle={() => toggleFilterDropdown('topicsAI')}
+          onCloseFilter={onCloseFilter}
         />
         
         <LookalikeAI
@@ -52,6 +56,7 @@ const ContentFilters: React.FC<ContentFiltersProps> = ({
           onFilterChange={onFilterChange}
           isOpen={isFilterOpen('lookalikeAI')}
           onToggle={() => toggleFilterDropdown('lookalikeAI')}
+          onCloseFilter={onCloseFilter}
         />
 
         <Hashtags
@@ -59,6 +64,7 @@ const ContentFilters: React.FC<ContentFiltersProps> = ({
           onFilterChange={onFilterChange}
           isOpen={isFilterOpen('hashtags')}
           onToggle={() => toggleFilterDropdown('hashtags')}
+          onCloseFilter={onCloseFilter}
         />
         
         <Interests
@@ -66,6 +72,7 @@ const ContentFilters: React.FC<ContentFiltersProps> = ({
           onFilterChange={onFilterChange}
           isOpen={isFilterOpen('interests')}
           onToggle={() => toggleFilterDropdown('interests')}
+          onCloseFilter={onCloseFilter}
         />
         
         <Mentions
@@ -73,6 +80,7 @@ const ContentFilters: React.FC<ContentFiltersProps> = ({
           onFilterChange={onFilterChange}
           isOpen={isFilterOpen('mentions')}
           onToggle={() => toggleFilterDropdown('mentions')}
+          onCloseFilter={onCloseFilter}
         />
         
         
@@ -85,12 +93,14 @@ const ContentFilters: React.FC<ContentFiltersProps> = ({
           onFilterChange={onFilterChange}
           isOpen={isFilterOpen('captionKeyword')}
           onToggle={() => toggleFilterDropdown('captionKeyword')}
+          onCloseFilter={onCloseFilter}
         />
         <Partnerships
           filters={searchParams}
           onFilterChange={onFilterChange}
           isOpen={isFilterOpen('partnerships1')}
           onToggle={() => toggleFilterDropdown('partnerships1')}
+          onCloseFilter={onCloseFilter}
         />
       </div>
     </div>

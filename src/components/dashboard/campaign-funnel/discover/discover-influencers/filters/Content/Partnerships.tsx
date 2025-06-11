@@ -9,6 +9,7 @@ interface PartnershipsProps {
   onFilterChange: (updates: Partial<InfluencerSearchFilter>) => void;
   isOpen: boolean;
   onToggle: () => void;
+  onCloseFilter: () => void;
 }
 
 interface ProcessedBrand {
@@ -29,7 +30,8 @@ const Partnerships: React.FC<PartnershipsProps> = ({
   filters,
   onFilterChange,
   isOpen,
-  onToggle
+  onToggle,
+  onCloseFilter 
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBrands, setSelectedBrands] = useState<string[]>(
@@ -57,22 +59,7 @@ const Partnerships: React.FC<PartnershipsProps> = ({
     }
   }, [filters.brand_sponsors]);
 
-  // Handle clicks outside dropdown and tooltip
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        onToggle(); // Close when clicking outside
-      }
-      if (tooltipRef.current && !tooltipRef.current.contains(event.target as Node)) {
-        setShowTooltip(false);
-      }
-    };
 
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isOpen, onToggle]);
 
   // Fetch all brands once when component opens
   const fetchAllBrands = useCallback(async () => {
@@ -81,8 +68,6 @@ const Partnerships: React.FC<PartnershipsProps> = ({
     
     try {
       const url = '/api/v0/discover/brands';
-
-      console.log('🏢 Fetching all brands once:', url);
 
       const response = await fetch(url);
       
@@ -174,6 +159,7 @@ const Partnerships: React.FC<PartnershipsProps> = ({
       icon={<IoBusinessOutline size={18} />}
       title="Partnerships"
       isOpen={isOpen}
+      onClose={onCloseFilter}
       onToggle={onToggle}
       className=""
       selectedCount={selectedBrands.length}

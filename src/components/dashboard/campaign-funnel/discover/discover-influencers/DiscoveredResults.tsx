@@ -7,6 +7,7 @@ import { DiscoveredCreatorsResults, Influencer } from '@/types/insights-iq';
 import { SortField, SortOrder } from '@/lib/creator-discovery-types';
 import ProfileInsightsModal from './ProfileInsightsModal';
 import { formatNumber } from '@/utils/format';
+
 interface DiscoverResultsProps {
   influencers: DiscoverInfluencer[];
   discoveredCreatorsResults: DiscoveredCreatorsResults | null;
@@ -231,6 +232,7 @@ const DiscoverResults: React.FC<DiscoverResultsProps> = ({
 
   const pageNumbers = generatePageNumbers();
 
+  // FIXED: Show loading when there are no results OR when loading new results
   if (isLoading && (!discoveredCreatorsResults?.influencers || discoveredCreatorsResults.influencers.length === 0)) {
     return (
       <div className="bg-white rounded-lg shadow p-6">
@@ -253,8 +255,17 @@ const DiscoverResults: React.FC<DiscoverResultsProps> = ({
 
   return (
     <>
-      <div className="bg-white rounded-lg shadow w-full">
-        <div className="w-full">
+      <div className="bg-white rounded-lg shadow w-full relative">
+        <div className={`w-full ${isLoading ? 'opacity-50' : ''}`}>
+          {/* ADDED: Loading overlay when fetching new results - positioned over table only */}
+          {isLoading && (
+            <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center z-20 rounded-lg">
+              <div className="flex flex-col items-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-purple-500 mb-2"></div>
+                <p className="text-sm text-gray-600">Loading new results...</p>
+              </div>
+            </div>
+          )}
           <div className="w-full min-w-full table-fixed">
             <table className="min-w-full divide-y divide-gray-200 text-xs">
               <thead className="bg-gray-50">
@@ -427,8 +438,8 @@ const DiscoverResults: React.FC<DiscoverResultsProps> = ({
                         ) : (
                           <button 
                             onClick={() => onAddToList(influencer)}
-                            disabled={isAdding[influencer.username]}
-                            className="inline-flex items-center justify-center px-2 py-1 bg-purple-100 text-purple-600 rounded-md hover:bg-purple-200 transition-colors text-xs"
+                            disabled={isAdding[influencer.username] || isLoading}
+                            className="inline-flex items-center justify-center px-2 py-1 bg-purple-100 text-purple-600 rounded-md hover:bg-purple-200 transition-colors text-xs disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             {isAdding[influencer.username] ? (
                               <div className="flex items-center">
@@ -452,14 +463,14 @@ const DiscoverResults: React.FC<DiscoverResultsProps> = ({
           </div>
         </div>
 
-        {/* Dynamic Pagination */}
-        <div className="px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between border-t border-gray-200">
+        {/* Dynamic Pagination - Disable during loading */}
+        <div className={`px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between border-t border-gray-200 ${isLoading ? 'opacity-50 pointer-events-none' : ''}`}>
           <div className="flex items-center mb-4 sm:mb-0">
             <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
               {/* Previous button */}
               <button 
                 onClick={() => handlePageChange(calculatedCurrentPage - 1)}
-                disabled={!hasPreviousPage}
+                disabled={!hasPreviousPage || isLoading}
                 className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <span className="sr-only">Previous</span>
@@ -478,7 +489,8 @@ const DiscoverResults: React.FC<DiscoverResultsProps> = ({
                   ) : (
                     <button
                       onClick={() => handlePageChange(pageNum as number)}
-                      className={`relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium ${
+                      disabled={isLoading}
+                      className={`relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium disabled:cursor-not-allowed ${
                         pageNum === calculatedCurrentPage
                           ? 'z-10 bg-purple-50 border-purple-500 text-purple-600'
                           : 'bg-white text-gray-700 hover:bg-gray-50'
@@ -493,7 +505,7 @@ const DiscoverResults: React.FC<DiscoverResultsProps> = ({
               {/* Next button */}
               <button 
                 onClick={() => handlePageChange(calculatedCurrentPage + 1)}
-                disabled={!hasNextPage}
+                disabled={!hasNextPage || isLoading}
                 className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <span className="sr-only">Next</span>
@@ -515,7 +527,8 @@ const DiscoverResults: React.FC<DiscoverResultsProps> = ({
                   e.stopPropagation();
                   setShowPageSizeDropdown(!showPageSizeDropdown);
                 }}
-                className="bg-white border border-gray-300 rounded-md shadow-sm px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none flex items-center"
+                disabled={isLoading}
+                className="bg-white border border-gray-300 rounded-md shadow-sm px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Show {actualPageSize >= metadata.total_results ? 'All' : actualPageSize}
                 <svg className={`-mr-1 ml-1 h-5 w-5 transform transition-transform ${showPageSizeDropdown ? 'rotate-180' : ''}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
@@ -524,7 +537,7 @@ const DiscoverResults: React.FC<DiscoverResultsProps> = ({
               </button>
               
               {/* Dropdown Menu - Opens UPWARD */}
-              {showPageSizeDropdown && (
+              {showPageSizeDropdown && !isLoading && (
                 <div className="absolute right-0 bottom-full mb-1 w-32 bg-white border border-gray-300 rounded-md shadow-lg z-50">
                   <div className="py-1">
                     {pageSizeOptions.map((option, index) => {

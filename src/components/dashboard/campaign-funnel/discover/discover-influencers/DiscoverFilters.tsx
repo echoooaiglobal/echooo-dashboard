@@ -4,7 +4,7 @@ import { BsInstagram } from 'react-icons/bs';
 import { IoChevronDown, IoChevronUp, IoClose, IoFilterOutline } from 'react-icons/io5';
 import { InfluencerSearchFilter } from '@/lib/creator-discovery-types';
 import { Platform } from '@/types/platform';
-
+import { useClickOutside } from '@/hooks/useClickOutside';
 // Import utility functions
 import { 
   getActiveFilters, 
@@ -55,8 +55,6 @@ export default function DiscoverFilters({
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(
     new Set(['performance', 'content', 'account'])
   );
-  
-  const filtersRef = useRef<HTMLDivElement>(null);
 
   // Platform dropdown states
   const [isPlatformDropdownOpen, setIsPlatformDropdownOpen] = useState(false);
@@ -65,60 +63,13 @@ export default function DiscoverFilters({
   // Define popular platforms that should appear first
   const POPULAR_PLATFORMS = ['instagram', 'tiktok', 'youtube', 'twitter', 'facebook'];
 
-  // Close dropdown when clicking outside - Enhanced to handle all dropdowns
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      
-      // Check if click is completely outside the filters container
-      if (filtersRef.current && !filtersRef.current.contains(target)) {
-        setOpenFilterId(null);
-        setIsPlatformDropdownOpen(false);
-        return;
-      }
-      
-      // If click is inside the container, check if it's inside an open filter dropdown
-      if (filtersRef.current && filtersRef.current.contains(target) && openFilterId) {
-        // Find the closest filter component wrapper
-        const filterWrapper = target.closest('[data-filter-component]') as HTMLElement;
-        
-        if (filterWrapper) {
-          const filterId = filterWrapper.getAttribute('data-filter-id');
-          
-          // If clicking inside a different filter or outside any filter, close the current one
-          if (filterId !== openFilterId) {
-            setOpenFilterId(null);
-          }
-        } else {
-          // Clicking inside the main container but not in any filter component
-          // Check if it's not a section header or other interactive elements
-          const isInteractiveElement = target.closest('button, input, select, [role="button"]');
-          const isSectionHeader = target.closest('[data-section-header]');
-          
-          if (!isInteractiveElement && !isSectionHeader) {
-            setOpenFilterId(null);
-          }
-        }
-      }
-      
-      // Handle platform dropdown separately
-      if (isPlatformDropdownOpen) {
-        const platformDropdown = target.closest('[data-platform-dropdown]');
-        if (!platformDropdown) {
-          setIsPlatformDropdownOpen(false);
-        }
-      }
-    };
+  // Professional click outside handling - one hook per dropdown
+  const platformDropdownRef = useClickOutside<HTMLDivElement>(
+    () => setIsPlatformDropdownOpen(false),
+    isPlatformDropdownOpen
+  );
 
-    // Always listen for clicks
-    document.addEventListener('mousedown', handleClickOutside);
-    
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [openFilterId, isPlatformDropdownOpen]); 
-
-  // Also add this new useEffect for ESC key handling:
+  // ESC key handling (this is still good practice)
   useEffect(() => {
     const handleEscKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -128,10 +79,7 @@ export default function DiscoverFilters({
     };
 
     document.addEventListener('keydown', handleEscKey);
-    
-    return () => {
-      document.removeEventListener('keydown', handleEscKey);
-    };
+    return () => document.removeEventListener('keydown', handleEscKey);
   }, []);
 
   // Handle filter changes by updating pending filters
@@ -412,10 +360,7 @@ export default function DiscoverFilters({
   };
 
   return (
-    <div
-      className="p-6 bg-white rounded-xl shadow-lg border border-gray-100"
-      ref={filtersRef}
-    >
+    <div className="p-6 bg-white rounded-xl shadow-lg border border-gray-100">
       <div className="space-y-6">
         {/* Header with Platform selector */}
         <div className="flex justify-between items-start gap-4">
@@ -429,7 +374,7 @@ export default function DiscoverFilters({
           </div>
           
           {/* Platform selector dropdown */}
-          <div className="relative flex-shrink-0">
+          <div className="relative flex-shrink-0" ref={platformDropdownRef}>
             {isLoadingPlatforms ? (
               <div className="flex items-center space-x-2 bg-gray-100 px-4 py-2 rounded-lg text-gray-500">
                 <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-gray-400"></div>
@@ -603,6 +548,7 @@ export default function DiscoverFilters({
                   openFilterId={openFilterId}
                   toggleFilterDropdown={toggleFilterDropdown}
                   isFilterOpen={isFilterOpen}
+                  onCloseFilter={() => setOpenFilterId(null)}
                 />
               </div>
             )}
@@ -625,6 +571,7 @@ export default function DiscoverFilters({
                   openFilterId={openFilterId}
                   toggleFilterDropdown={toggleFilterDropdown}
                   isFilterOpen={isFilterOpen}
+                  onCloseFilter={() => setOpenFilterId(null)}
                 />
               </div>
             )}
@@ -647,6 +594,7 @@ export default function DiscoverFilters({
                   openFilterId={openFilterId}
                   toggleFilterDropdown={toggleFilterDropdown}
                   isFilterOpen={isFilterOpen}
+                  onCloseFilter={() => setOpenFilterId(null)}
                 />
               </div>
             )}
@@ -669,6 +617,7 @@ export default function DiscoverFilters({
                   openFilterId={openFilterId}
                   toggleFilterDropdown={toggleFilterDropdown}
                   isFilterOpen={isFilterOpen}
+                  onCloseFilter={() => setOpenFilterId(null)}
                 />
               </div>
             )}
