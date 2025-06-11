@@ -423,17 +423,6 @@ const Engagements: React.FC<EngagementsFilterProps> = ({
             </div>
           </div>
 
-          {/* Empty State */}
-          {!hasTotalEngagements && !hasEngagementRate && (
-            <div className="text-center py-6">
-              <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                <IoHeartOutline className="w-4 h-4 text-gray-600" />
-              </div>
-              <div className="text-sm text-gray-600 font-medium">No engagement filters applied</div>
-              <div className="text-xs text-gray-400 mt-1">Set ranges and rates above</div>
-            </div>
-          )}
-
         </div>
       </FilterComponent>
     </div>

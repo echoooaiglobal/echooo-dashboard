@@ -2,12 +2,74 @@
 import { NextResponse } from 'next/server';
 import { InfluencerSearchFilter } from '@/lib/creator-discovery-types';
 
-export const dynamic = 'force-dynamic';
+// Remove force-dynamic to allow caching
+// export const dynamic = 'force-dynamic'; // Remove this line
+
+// In-memory cache with TTL
+interface CacheEntry {
+  data: any;
+  timestamp: number;
+  ttl: number;
+}
+
+const cache = new Map<string, CacheEntry>();
+const CACHE_TTL = 36000 * 1000; // 10 hours in milliseconds
+
+/**
+ * Creates a cache key from search filters
+ */
+function createCacheKey(filters: InfluencerSearchFilter): string {
+  // Sort object keys to ensure consistent cache keys for same filters
+  const sortedFilters = Object.keys(filters)
+    .sort()
+    .reduce((result, key) => {
+      result[key as keyof InfluencerSearchFilter] = filters[key as keyof InfluencerSearchFilter];
+      return result;
+    }, {} as any);
+  
+  return Buffer.from(JSON.stringify(sortedFilters)).toString('base64');
+}
+
+/**
+ * Retrieves data from cache if valid
+ */
+function getCachedData(cacheKey: string): any | null {
+  const entry = cache.get(cacheKey);
+  
+  if (!entry) return null;
+  
+  const now = Date.now();
+  if (now - entry.timestamp > entry.ttl) {
+    cache.delete(cacheKey);
+    return null;
+  }
+  
+  return entry.data;
+}
+
+/**
+ * Stores data in cache
+ */
+function setCachedData(cacheKey: string, data: any): void {
+  cache.set(cacheKey, {
+    data,
+    timestamp: Date.now(),
+    ttl: CACHE_TTL
+  });
+  
+  // Cleanup old entries periodically
+  if (cache.size > 100) {
+    const now = Date.now();
+    for (const [key, entry] of cache.entries()) {
+      if (now - entry.timestamp > entry.ttl) {
+        cache.delete(key);
+      }
+    }
+  }
+}
 
 /**
  * Formats a number into a readable string format
- * @param num - The number to format
- * @returns Formatted string (e.g., "1.2M", "15.3K", "500")
  */
 function formatNumber(num: number): string {
   if (!num) return "0";
@@ -18,9 +80,6 @@ function formatNumber(num: number): string {
 
 /**
  * Creates a Base64 encoded Basic Authentication header
- * @param username - Client ID for authentication
- * @param password - Client Secret for authentication
- * @returns Base64 encoded authentication string
  */
 function createBasicAuthHeader(username: string, password: string): string {
   const credentials = `${username}:${password}`;
@@ -29,14 +88,23 @@ function createBasicAuthHeader(username: string, password: string): string {
 
 /**
  * POST /api/v0/discover/search
- * Searches for influencers based on provided filters
+ * Searches for influencers based on provided filters with caching
  */
 export async function POST(request: Request) {
   console.log('✅ API Route Hit: /api/v0/discover/search');
 
   try {
     const filters: InfluencerSearchFilter = await request.json();
-    // console.log('filters00001: ', filters)
+    const cacheKey = createCacheKey(filters);
+    
+    // Check cache first
+    const cachedResult = getCachedData(cacheKey);
+    if (cachedResult) {
+      console.log('🎯 Cache hit - returning cached data');
+      return NextResponse.json(cachedResult);
+    }
+    
+    console.log('💿 Cache miss - fetching from external API');
     
     // Environment variables
     const apiUrl = process.env.INSIGHTIQ_BASE_URL;
@@ -61,8 +129,8 @@ export async function POST(request: Request) {
     // Create dynamic Basic Auth header
     const basicAuth = createBasicAuthHeader(clientId, clientSecret);
 
-    // Increased timeout to 30 seconds for better reliability
-    const TIMEOUT_DURATION = 30000; // 30 seconds instead of 10
+    // Timeout configuration
+    const TIMEOUT_DURATION = 30000;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_DURATION);
 
@@ -75,9 +143,10 @@ export async function POST(request: Request) {
           'Content-Type': 'application/json',
           'Authorization': `Basic ${basicAuth}`
         },
-        next: { revalidate: 36000 },
         body: JSON.stringify(filters),
-        signal: controller.signal
+        signal: controller.signal,
+        // For POST requests, you might want to disable Next.js fetch cache
+        cache: 'no-store'
       });
 
       clearTimeout(timeoutId);
@@ -109,8 +178,8 @@ export async function POST(request: Request) {
         username: item.platform_username,
         name: item.full_name,
         profileImage: item.image_url,
-        followers: formatNumber(item.follower_count),
-        engagements: formatNumber(item?.engagements),
+        followers: item.follower_count,
+        engagements: item?.engagements,
         engagementRate: item.engagement_rate,
         isVerified: item.is_verified || false,
         age_group: item.age_group,
@@ -134,12 +203,19 @@ export async function POST(request: Request) {
         }
       })) || [];
 
-      return NextResponse.json({
+      const result = {
         success: true,
         influencers,
         metadata: data.metadata,
-        total: influencers.length
-      });
+        total: influencers.length,
+        cached: false,
+        cacheKey: cacheKey.substring(0, 16) + '...' // For debugging
+      };
+
+      // Cache the successful result
+      setCachedData(cacheKey, { ...result, cached: true });
+      
+      return NextResponse.json(result);
 
     } catch (fetchError: any) {
       clearTimeout(timeoutId);

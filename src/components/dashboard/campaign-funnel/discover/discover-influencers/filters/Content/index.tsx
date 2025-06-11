@@ -79,7 +79,7 @@ const ContentFilters: React.FC<ContentFiltersProps> = ({
       </div>
       
       {/* Partnerships row - 2 items side by side */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <CaptionKeyword
           filters={searchParams}
           onFilterChange={onFilterChange}

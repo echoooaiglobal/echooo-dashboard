@@ -364,7 +364,6 @@ export default function LocationFilter({
                       <IoLocationOutline className="w-3 h-3 text-purple-600" />
                     </div>
                     <div className="text-xs text-gray-600 font-medium">Search creator locations</div>
-                    <div className="text-xs text-gray-400">Type to find locations</div>
                   </div>
                 )}
               </div>
@@ -482,25 +481,6 @@ export default function LocationFilter({
                       </div>
                     ))}
                   </div>
-                    
-                    {/* Percentage Total Validation */}
-                    <div className={`flex items-center justify-between mt-1 p-1.5 rounded text-xs ${
-                      audienceTotalPercentage === 100 
-                        ? 'bg-green-50 text-green-700 border border-green-200' 
-                        : 'bg-orange-50 text-orange-700 border border-orange-200'
-                    }`}>
-                      <span className="flex items-center gap-1">
-                        {audienceTotalPercentage === 100 ? (
-                          <IoCheckmarkCircleOutline size={12} />
-                        ) : (
-                          <IoWarningOutline size={12} />
-                        )}
-                        Total: {audienceTotalPercentage}%
-                      </span>
-                      {audienceTotalPercentage !== 100 && (
-                        <span>Need: {100 - audienceTotalPercentage}%</span>
-                      )}
-                    </div>
                   </div>
                 )}
 
@@ -511,7 +491,7 @@ export default function LocationFilter({
                       <IoLocationOutline className="w-3 h-3 text-blue-600" />
                     </div>
                     <div className="text-xs text-gray-600 font-medium">Search audience locations</div>
-                    <div className="text-xs text-gray-400">Must total 100%</div>
+                  
                   </div>
                 )}
               </div>
