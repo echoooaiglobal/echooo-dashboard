@@ -72,55 +72,59 @@ const CampaignFunnelSection: React.FC<CampaignFunnelSectionProps> = ({
   return (
     <div className="w-full overflow-hidden bg-white rounded-xl shadow-md mb-4">
       {/* Tab Navigation */}
-      <div className="flex items-center justify-between overflow-x-auto px-1 py-1 border-b border-gray-100 bg-gray-50">
+      <div className="flex items-center justify-between bg-gray-50 border-b border-gray-200 py-4">
         <button
-          className={`px-6 py-3 text-sm font-medium rounded-lg transition-colors ${
+          className={`flex-1 px-6 py-3 text-sm font-semibold rounded-lg transition-all duration-300 transform hover:scale-105 mx-2 bg-white shadow-md border-2 hover:shadow-lg ${
             activeTab === 'discover'
-              ? 'bg-purple-100 text-purple-700'
-              : 'text-gray-600 hover:bg-gray-100'
+              ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white border-purple-300 hover:from-purple-600 hover:to-purple-700'
+              : 'text-gray-700 border-gray-200 hover:border-gray-300 hover:text-gray-900'
           }`}
           onClick={() => handleTabChange('discover')}
         >
           Discover
         </button>
+        
         <button
-          className={`px-6 py-3 text-sm font-medium rounded-lg transition-colors ${
+          className={`flex-1 px-6 py-3 text-sm font-semibold rounded-lg transition-all duration-300 transform hover:scale-105 mx-2 bg-white shadow-md border-2 hover:shadow-lg ${
             activeTab === 'outreach'
-              ? 'bg-purple-100 text-purple-700'
-              : 'text-gray-600 hover:bg-gray-100'
+              ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white border-purple-300 hover:from-purple-600 hover:to-purple-700'
+              : 'text-gray-700 border-gray-200 hover:border-gray-300 hover:text-gray-900'
           }`}
           onClick={() => handleTabChange('outreach')}
           disabled={isNewCampaign}
         >
           Outreach
         </button>
+        
         <button
-          className={`px-6 py-3 text-sm font-medium rounded-lg transition-colors ${
+          className={`flex-1 px-6 py-3 text-sm font-semibold rounded-lg transition-all duration-300 transform hover:scale-105 mx-2 bg-white shadow-md border-2 hover:shadow-lg ${
             activeTab === 'management'
-              ? 'bg-purple-100 text-purple-700'
-              : 'text-gray-600 hover:bg-gray-100'
+              ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white border-purple-300 hover:from-purple-600 hover:to-purple-700'
+              : 'text-gray-700 border-gray-200 hover:border-gray-300 hover:text-gray-900'
           }`}
           onClick={() => handleTabChange('management')}
           disabled={isNewCampaign}
         >
           Campaign Management
         </button>
+        
         <button
-          className={`px-6 py-3 text-sm font-medium rounded-lg transition-colors ${
+          className={`flex-1 px-6 py-3 text-sm font-semibold rounded-lg transition-all duration-300 transform hover:scale-105 mx-2 bg-white shadow-md border-2 hover:shadow-lg ${
             activeTab === 'result'
-              ? 'bg-purple-100 text-purple-700'
-              : 'text-gray-600 hover:bg-gray-100'
+              ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white border-purple-300 hover:from-purple-600 hover:to-purple-700'
+              : 'text-gray-700 border-gray-200 hover:border-gray-300 hover:text-gray-900'
           }`}
           onClick={() => handleTabChange('result')}
           disabled={isNewCampaign}
         >
           Result
         </button>
+        
         <button
-          className={`px-6 py-3 text-sm font-medium rounded-lg transition-colors ${
+          className={`flex-1 px-6 py-3 text-sm font-semibold rounded-lg transition-all duration-300 transform hover:scale-105 mx-2 bg-white shadow-md border-2 hover:shadow-lg ${
             activeTab === 'payments'
-              ? 'bg-purple-100 text-purple-700'
-              : 'text-gray-600 hover:bg-gray-100'
+              ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white border-purple-300 hover:from-purple-600 hover:to-purple-700'
+              : 'text-gray-700 border-gray-200 hover:border-gray-300 hover:text-gray-900'
           }`}
           onClick={() => handleTabChange('payments')}
           disabled={isNewCampaign}
