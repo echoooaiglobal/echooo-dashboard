@@ -13,7 +13,7 @@ export async function searchProfiles(keyword: string): Promise<InstagramSearchRe
     }
 
     const encodedKeyword = encodeURIComponent(keyword.trim());
-    const response = await fetch(`/api/instagram/search?keyword=${encodedKeyword}&proxyImage=true`, {
+    const response = await fetch(`/api/v0/instagram/search?keyword=${encodedKeyword}&proxyImage=true`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -46,7 +46,7 @@ export async function getProfileDetails(userId: string): Promise<InstagramProfil
     }
 
     const encodedUserId = encodeURIComponent(userId.trim());
-    const response = await fetch(`/api/instagram/profile?userId=${encodedUserId}&includePosts=true&proxyImage=true`, {
+    const response = await fetch(`/api/v0/instagram/profile?userId=${encodedUserId}&includePosts=true&proxyImage=true`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -79,7 +79,7 @@ export async function getPostDetails(shortcode: string): Promise<any> {
     }
 
     const encodedShortcode = encodeURIComponent(shortcode.trim());
-    const response = await fetch(`/api/instagram/post?shortcode=${encodedShortcode}`, {
+    const response = await fetch(`/api/v0/instagram/post?shortcode=${encodedShortcode}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
