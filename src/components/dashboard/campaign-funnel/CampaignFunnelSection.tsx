@@ -105,7 +105,7 @@ const CampaignFunnelSection: React.FC<CampaignFunnelSectionProps> = ({
           onClick={() => handleTabChange('management')}
           disabled={isNewCampaign}
         >
-          Campaign Management
+          Campaign
         </button>
         
         <button
