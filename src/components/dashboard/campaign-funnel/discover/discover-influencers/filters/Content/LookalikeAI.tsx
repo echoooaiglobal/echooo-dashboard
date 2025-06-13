@@ -112,7 +112,7 @@ const LookalikeAI: React.FC<LookalikeAIProps> = ({
       console.log(`🎯 Searching ${type} lookalikes:`, url);
 
       const response = await fetch(url);
-      
+      console.log(`📡 Response for ${type} lookalikes:`, response);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
