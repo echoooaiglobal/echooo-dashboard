@@ -1,4 +1,4 @@
-// src/components/dashboard/campaign-funnel/payments/PaymentsTab.tsx
+// src/components/dashboard/profile-analytics/InfluencerProfileReport.tsx
 'use client';
 
 import { useState } from 'react';
