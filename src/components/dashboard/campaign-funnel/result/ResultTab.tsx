@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import ScheduledResults from './ScheduledResults';
 import PublishedResults from './PublishedResults';
+import { Campaign } from '@/services/campaign/campaign.service';
 
 type TabType = 'scheduled' | 'published';
 
@@ -11,8 +12,13 @@ const TABS = {
   SCHEDULED: 'scheduled' as const,
   PUBLISHED: 'published' as const,
 } satisfies Record<string, TabType>;
+interface ResultTabProps {
+  campaignData?: Campaign | null;
+}
 
-const ResultTab: React.FC = () => {
+const ResultTab: React.FC<ResultTabProps> = ({ 
+  campaignData = null,
+}) => {
   const [activeTab, setActiveTab] = useState<TabType>(TABS.PUBLISHED);
 
   return (
@@ -55,7 +61,9 @@ const ResultTab: React.FC = () => {
         <ScheduledResults onTabChange={setActiveTab} />
       ) : (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <PublishedResults />
+          <PublishedResults 
+            campaignData={campaignData}
+          />
         </div>
       )}
     </div>

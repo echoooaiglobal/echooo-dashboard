@@ -57,7 +57,9 @@ const CampaignFunnelSection: React.FC<CampaignFunnelSectionProps> = ({
       case 'management':
         return <ManagementTab/>;
       case 'result':
-        return <ResultTab/>;
+        return <ResultTab
+          campaignData={campaignData}
+        />;
       case 'payments':
         return <PaymentsTab/>;
       default:

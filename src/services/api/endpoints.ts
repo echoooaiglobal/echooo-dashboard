@@ -88,4 +88,16 @@ export const ENDPOINTS = {
     BY_MODEL: (model: string) => `/statuses/model/${model}`,
     DETAIL: (id: string) => `/statuses/${id}`,
   },
+
+
+  // Video Results
+  RESULTS: {
+    LIST: '/results',
+    CREATE: '/results',
+    DETAIL: (id: string) => `/results/${id}`,
+    UPDATE: (id: string) => `/results/${id}`,
+    DELETE: (id: string) => `/results/${id}`,
+    BY_CAMPAIGN: (campaignId: string) => `/results/campaign/${campaignId}`,
+    UPDATE_ALL_BY_CAMPAIGN: (campaignId: string) => `/results/campaign/${campaignId}/update-all`,
+  },
 };

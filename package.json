@@ -14,6 +14,7 @@
     "@react-pdf/renderer": "^4.3.0",
     "axios": "^1.8.4",
     "chart.js": "^4.4.9",
+    "ensembledata": "^0.1.6",
     "framer-motion": "^12.9.2",
     "jspdf": "^3.0.1",
     "jspdf-autotable": "^5.0.2",
