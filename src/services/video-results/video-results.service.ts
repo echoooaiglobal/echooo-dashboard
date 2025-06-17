@@ -202,15 +202,26 @@ export async function updateVideoResult(
 }
 
 /**
- * Update all video results for a campaign (batch update)
+ * Batch update request interface
  */
-export async function updateAllVideoResults(campaignId: string): Promise<VideoResult[]> {
+interface BatchUpdateRequest {
+  result_id: string;
+  update_data: UpdateVideoResultRequest;
+}
+
+/**
+ * Update all video results for a campaign with prepared data (client-side)
+ */
+export async function updateAllVideoResultsWithData(
+  campaignId: string,
+  updatesData: BatchUpdateRequest[]
+): Promise<VideoResult[]> {
   try {
-    console.log(`🚀 Video Results Service: Updating all video results for campaign ${campaignId}`);
+    console.log(`🚀 Video Results Service: Batch updating ${updatesData.length} videos for campaign ${campaignId}`);
     
     if (typeof window === 'undefined') {
       console.error('❌ Video Results Service: Not in browser environment');
-      throw new Error('updateAllVideoResults can only be called from browser');
+      throw new Error('updateAllVideoResultsWithData can only be called from browser');
     }
     
     const token = localStorage.getItem('accessToken');
@@ -222,8 +233,14 @@ export async function updateAllVideoResults(campaignId: string): Promise<VideoRe
     
     const endpoint = `/api/v0/posts/campaign/${campaignId}/update-all`;
     console.log(`📞 Video Results Service: Making API call to ${endpoint}`);
+    console.log(`📊 Video Results Service: Sending ${updatesData.length} updates`);
     
-    const response = await nextjsApiClient.post<GetVideoResultsResponse>(endpoint, {});
+    // Send the batch update request
+    const requestBody = {
+      updates: updatesData
+    };
+    
+    const response = await nextjsApiClient.put<GetVideoResultsResponse>(endpoint, requestBody);
     
     console.log('📦 Video Results Service: Raw API response:', {
       hasError: !!response.error,
@@ -242,11 +259,11 @@ export async function updateAllVideoResults(campaignId: string): Promise<VideoRe
       throw new Error(response.data?.error || 'Failed to update all video results');
     }
     
-    console.log(`✅ Video Results Service: Successfully updated ${response.data.results.length} video results`);
+    // console.log(`✅ Video Results Service: Successfully batch updated ${response.data.results.length} video results`);
     
     return response.data.results;
   } catch (error) {
-    console.error('💥 Video Results Service: Error in updateAllVideoResults:', error);
+    console.error('💥 Video Results Service: Error in updateAllVideoResultsWithData:', error);
     
     if (error instanceof Error) {
       console.error('💥 Error details:', {

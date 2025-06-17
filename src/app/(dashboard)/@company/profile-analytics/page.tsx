@@ -7,11 +7,7 @@ import InfluencerProfileReport from '@/components/dashboard/profile-analytics/In
 function ProfileAnalytics() {
 
   return (
-    <div className="mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold text-gray-800">User Report</h1>
-      </div>
-    </div>
+    <InfluencerProfileReport />
   );
 }
 
@@ -21,7 +17,6 @@ export default function Campaigns() {
   return (
     <ProtectedRoute>
       <ProfileAnalytics />
-      <InfluencerProfileReport />
     </ProtectedRoute>
   );
 }

@@ -3,8 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import AddVideoModal from './AddVideoModal';
-import AnalyticsView from './AnalyticsView';
-import { getVideoResults, updateVideoResult, updateAllVideoResults } from '@/services/video-results';
+import { getVideoResults, updateVideoResult, updateAllVideoResultsWithData } from '@/services/video-results';
 import { getInstagramPostDetails, mapToBackendFormat } from '@/services/ensembledata/user-detailed-info';
 import { VideoResult } from '@/types/user-detailed-info';
 import { Campaign } from '@/services/campaign/campaign.service';
@@ -12,12 +11,12 @@ import { formatNumber } from '@/utils/format';
 
 interface PublishedResultsProps {
   campaignData?: Campaign | null;
+  onShowAnalytics?: () => void;
 }
 
-const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData }) => {
+const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData, onShowAnalytics }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddVideoModal, setShowAddVideoModal] = useState(false);
-  const [showAnalyticsView, setShowAnalyticsView] = useState(false);
   const [selectedVideos, setSelectedVideos] = useState<Set<string>>(new Set());
   const [videoResults, setVideoResults] = useState<VideoResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -29,7 +28,7 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData }) => 
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(10);
   const [showPageSizeDropdown, setShowPageSizeDropdown] = useState(false);
 
   // Image proxy utility function
@@ -48,11 +47,6 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData }) => 
     
     return originalUrl;
   };
-
-  // If analytics view is active, show that component
-  if (showAnalyticsView) {
-    return <AnalyticsView onBack={() => setShowAnalyticsView(false)} />;
-  }
 
   // Fetch video results on component mount
   useEffect(() => {
@@ -144,8 +138,74 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData }) => 
     setIsUpdatingAll(true);
     try {
       console.log('🔄 Updating all videos for campaign:', campaignData.id);
+      console.log('📊 Total videos to update:', videoResults.length);
       
-      const updatedResults = await updateAllVideoResults(campaignData.id);
+      // Prepare updates data with result IDs
+      const updatesData = [];
+      
+      for (let i = 0; i < videoResults.length; i++) {
+        const video = videoResults[i];
+        console.log(`🔄 Processing ${i + 1}/${videoResults.length}: ${video.influencer_username}`);
+        
+        try {
+          // Extract the original URL from the post_result_obj or use post_id
+          let postInput: { url?: string; code?: string } = {};
+          
+          if (video.post_result_obj && video.post_result_obj.data && video.post_result_obj.data.shortcode) {
+            postInput.code = video.post_result_obj.data.shortcode;
+          } else {
+            postInput.code = video.post_id;
+          }
+          
+          // Fetch fresh Instagram data
+          const freshInstagramData = await getInstagramPostDetails(postInput);
+
+          if (!freshInstagramData.success) {
+            console.warn(`⚠️ Failed to fetch fresh data for ${video.influencer_username}: ${freshInstagramData.message}`);
+            continue; // Skip this video
+          }
+
+          // Map to backend format
+          const backendData = mapToBackendFormat(freshInstagramData, video.campaign_id);
+          
+          // Add to updates array with result_id
+          updatesData.push({
+            result_id: video.id,
+            update_data: {
+              user_ig_id: backendData.user_ig_id,
+              full_name: backendData.full_name,
+              influencer_username: backendData.influencer_username,
+              profile_pic_url: backendData.profile_pic_url,
+              post_id: backendData.post_id,
+              title: backendData.title,
+              views_count: backendData.view_counts,
+              plays_count: backendData.play_counts,
+              likes_count: backendData.comment_counts,
+              comments_count: backendData.comment_counts,
+              media_preview: backendData.media_preview,
+              duration: backendData.duration,
+              thumbnail: backendData.thumbnail,
+              post_created_at: backendData.post_created_at,
+              post_result_obj: backendData.post_result_obj
+            }
+          });
+          
+          console.log(`✅ Prepared update data for ${video.influencer_username}`);
+          
+        } catch (error) {
+          console.error(`💥 Error preparing update for ${video.influencer_username}:`, error);
+          // Continue with other videos
+        }
+      }
+      
+      console.log(`📦 Prepared ${updatesData.length} updates out of ${videoResults.length} videos`);
+      
+      if (updatesData.length === 0) {
+        throw new Error('No videos could be prepared for update');
+      }
+      
+      // Call the updated service with the prepared data
+      const updatedResults = await updateAllVideoResultsWithData(campaignData.id, updatesData);
       setVideoResults(updatedResults);
       
       console.log('✅ All videos updated successfully:', updatedResults.length);
@@ -221,8 +281,12 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData }) => 
       thumbnailUrl = video.media_preview;
     }
     
-    // Apply image proxy
-    thumbnailUrl = getProxiedImageUrl(thumbnailUrl);
+    // Apply image proxy for Instagram/Facebook URLs
+    if (thumbnailUrl && !thumbnailUrl.startsWith('/api/') && !thumbnailUrl.startsWith('/user/')) {
+      if (thumbnailUrl.includes('instagram.com') || thumbnailUrl.includes('fbcdn.net') || thumbnailUrl.includes('cdninstagram.com')) {
+        thumbnailUrl = `/api/v0/instagram/image-proxy?url=${encodeURIComponent(thumbnailUrl)}`;
+      }
+    }
     
     // Get video URL
     const videoUrl = postData.video_url || null;
@@ -373,7 +437,7 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData }) => 
           </button>
           
           <button 
-            onClick={() => setShowAnalyticsView(true)}
+            onClick={onShowAnalytics}
             className="flex items-center px-8 py-3 bg-gradient-to-r from-pink-100 to-rose-100 text-pink-600 rounded-full hover:from-pink-200 hover:to-rose-200 transition-all duration-200 text-sm font-medium min-w-[150px]"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -561,7 +625,7 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData }) => 
                         <td className="px-2 py-4 whitespace-nowrap">
                           <div className="w-5 h-5 bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 rounded flex items-center justify-center">
                             <svg className="w-3 h-3 text-white" viewBox="0 0 24 24" fill="currentColor">
-                              <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                              <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.40z"/>
                             </svg>
                           </div>
                         </td>
@@ -720,7 +784,7 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData }) => 
               <div className="flex items-center space-x-3">
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 flex items-center justify-center flex-shrink-0">
                   <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.40s-.644-1.44-1.439-1.44z"/>
+                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.40s-.644-1.44-1.439-1.40z"/>
                   </svg>
                 </div>
                 <div className="min-w-0 flex-1">

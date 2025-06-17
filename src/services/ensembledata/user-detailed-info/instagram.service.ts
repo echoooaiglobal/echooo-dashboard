@@ -1,4 +1,4 @@
-// src/services/3rdparty/user-detailed-info/instagram.service.ts
+// src/services/ensembledata/user-detailed-info/instagram.service.ts
 
 import { 
   ProcessedInstagramData,
