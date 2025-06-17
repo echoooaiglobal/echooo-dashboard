@@ -246,7 +246,7 @@ export default function EnhancedNavbar() {
             </div>
             
             {/* Desktop navigation */}
-            <div className="hidden md:ml-6 md:flex md:space-x-8">
+            {/* <div className="hidden md:ml-6 md:flex md:space-x-8">
               {navItems.map((item) => (
                 <Link
                   key={item.name}
@@ -260,7 +260,7 @@ export default function EnhancedNavbar() {
                   {item.name}
                 </Link>
               ))}
-            </div>
+            </div> */}
           </div>
 
           {/* Right navigation */}

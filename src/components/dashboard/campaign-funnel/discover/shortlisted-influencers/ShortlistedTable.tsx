@@ -287,7 +287,8 @@ const ShortlistedTable: React.FC<ShortlistedTableProps> = ({
   }, [showPageSizeDropdown]);
 
   return (
-    <div className="w-8/12 bg-white rounded-lg shadow overflow-hidden flex flex-col">
+    // <div className="w-8/12 bg-white rounded-lg shadow overflow-hidden flex flex-col">
+    <div className="w-12/12 bg-white rounded-lg shadow overflow-hidden flex flex-col">
       <div className="flex-grow overflow-hidden">
         <div className="max-h-[735px] overflow-y-auto">
           <table className="min-w-full divide-y divide-gray-200 text-xs">
