@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import ScheduledResults from './ScheduledResults';
 import PublishedResults from './PublishedResults';
+import AnalyticsView from './AnalyticsView';
 import { Campaign } from '@/services/campaign/campaign.service';
 
 type TabType = 'scheduled' | 'published';
@@ -12,6 +13,7 @@ const TABS = {
   SCHEDULED: 'scheduled' as const,
   PUBLISHED: 'published' as const,
 } satisfies Record<string, TabType>;
+
 interface ResultTabProps {
   campaignData?: Campaign | null;
 }
@@ -20,6 +22,12 @@ const ResultTab: React.FC<ResultTabProps> = ({
   campaignData = null,
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>(TABS.PUBLISHED);
+  const [showAnalyticsView, setShowAnalyticsView] = useState(false);
+
+  // If analytics view is active, show that component
+  if (showAnalyticsView) {
+    return <AnalyticsView onBack={() => setShowAnalyticsView(false)} campaignData={campaignData} />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -63,6 +71,7 @@ const ResultTab: React.FC<ResultTabProps> = ({
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <PublishedResults 
             campaignData={campaignData}
+            onShowAnalytics={() => setShowAnalyticsView(true)}
           />
         </div>
       )}

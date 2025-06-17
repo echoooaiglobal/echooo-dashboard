@@ -129,39 +129,59 @@ export async function updateVideoResultServer(
   }
 }
 
+interface BatchUpdateRequest {
+  result_id: string;
+  update_data: UpdateVideoResultRequest;
+}
+
 /**
- * Update all video results for campaign in FastAPI backend (server-side)
+ * Update all video results for campaign with data (server-side)
  */
-export async function updateAllVideoResultsServer(
+export async function updateAllVideoResultsWithDataServer(
   campaignId: string,
+  updatesData: BatchUpdateRequest[],
   authToken?: string
 ): Promise<GetVideoResultsResponse> {
   try {
-    console.log(`Server: Updating all video results for campaign ${campaignId}`);
+    console.log(`Server: Batch updating ${updatesData.length} video results for campaign ${campaignId}`);
     
     const endpoint = ENDPOINTS.RESULTS.UPDATE_ALL_BY_CAMPAIGN(campaignId);
     
-    const response = await serverApiClient.post<GetVideoResultsResponse>(
+    // Prepare the request body in the format your FastAPI backend expects
+    const requestBody = {
+      updates: updatesData
+    };
+    
+    console.log('Server: Request body structure:', {
+      updatesCount: updatesData.length,
+      sampleUpdate: updatesData[0] ? {
+        result_id: updatesData[0].result_id,
+        hasUpdateData: !!updatesData[0].update_data,
+        updateDataKeys: Object.keys(updatesData[0].update_data || {})
+      } : null
+    });
+    
+    const response = await serverApiClient.put<GetVideoResultsResponse>(
       endpoint,
-      {},
+      requestBody, // ← Now sending actual batch update data
       {},
       authToken
     );
     
     if (response.error) {
-      console.error('Server: FastAPI Error updating all video results:', response.error);
+      console.error('Server: FastAPI Error batch updating video results:', response.error);
       throw new Error(response.error.message);
     }
     
     if (!response.data) {
-      console.warn('Server: No updated video results data received from FastAPI');
-      throw new Error('No updated video results data received');
+      console.warn('Server: No batch updated video results data received from FastAPI');
+      throw new Error('No batch updated video results data received');
     }
     
-    console.log(`Server: All video results updated successfully: ${response.data.results?.length || 0} items`);
+    console.log(`Server: Batch update successful: ${response.data.results?.length || 0} items updated`);
     return response.data;
   } catch (error) {
-    console.error(`Server: Error updating all video results for campaign ${campaignId}:`, error);
+    console.error(`Server: Error batch updating video results for campaign ${campaignId}:`, error);
     throw error;
   }
 }
