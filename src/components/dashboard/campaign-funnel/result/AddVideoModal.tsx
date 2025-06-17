@@ -526,26 +526,6 @@ const AddVideoModal: React.FC<AddVideoModalProps> = ({ campaignId, onClose, onSu
             </div>
           </form>
         </div>
-
-        {/* Info Note */}
-        <div className="px-6 pb-6">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex items-start space-x-3">
-              <svg className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <div className="text-sm text-blue-700">
-                <p className="font-medium mb-2">How it works:</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  <p>• Enter Instagram URL or post code</p>
-                  <p>• We fetch post data automatically</p>
-                  <p>• Review and edit details</p>
-                  <p>• Save to add to your campaign</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );
