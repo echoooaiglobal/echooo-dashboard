@@ -30,17 +30,17 @@ const MessageSent = () => {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden relative">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden relative h-[600px] flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-100">
-        <h3 className="text-lg font-semibold text-gray-900">{selectedFilter} (430)</h3>
+      <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-100 flex-shrink-0">
+        <h3 className="text-base font-semibold text-gray-900">{selectedFilter} (430)</h3>
         <div className="flex items-center">
           <button 
             onClick={toggleDropdown}
-            className="flex items-center hover:bg-gray-50 p-1 rounded"
+            className="flex items-center hover:bg-gray-50 p-1 rounded transition-colors"
           >
             <svg 
-              className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`}
+              className={`w-3.5 h-3.5 text-gray-400 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`}
               fill="none" 
               stroke="currentColor" 
               viewBox="0 0 24 24"
@@ -53,63 +53,60 @@ const MessageSent = () => {
 
       {/* Dropdown Menu */}
       {isDropdownOpen && (
-        <div className="absolute top-16 right-4 z-50 bg-white rounded-lg shadow-lg border border-gray-200 p-4 min-w-[200px]">
-          <div className="flex items-center justify-between mb-4">
-            <h4 className="text-sm font-medium text-gray-700">Sort by</h4>
+        <div className="absolute top-12 right-3 z-50 bg-white rounded-lg shadow-lg border border-gray-200 p-3 min-w-[180px]">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-xs font-medium text-gray-700">Sort by</h4>
             <button 
               onClick={() => setIsDropdownOpen(false)}
-              className="text-gray-400 hover:text-gray-600 p-1"
+              className="text-gray-400 hover:text-gray-600 p-0.5"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
           
-          <div className="space-y-3">
-            {/* Message Sent Option */}
-            <label className="flex items-center justify-between cursor-pointer bg-purple-50 p-2 rounded-lg border border-purple-200">
-              <span className="text-sm text-gray-700">Message Sent</span>
+          <div className="space-y-2">
+            <label className="flex items-center justify-between cursor-pointer bg-purple-50 p-1.5 rounded-md border border-purple-200">
+              <span className="text-xs text-gray-700">Message Sent</span>
               <input
                 type="radio"
                 name="filter"
                 value="Message Sent"
                 checked={selectedFilter === 'Message Sent'}
                 onChange={(e) => handleFilterChange(e.target.value)}
-                className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                className="w-3 h-3 text-blue-600 border-gray-300 focus:ring-blue-500"
               />
             </label>
 
-            {/* In Conversation Option */}
-            <label className="flex items-center justify-between cursor-pointer bg-purple-50 p-2 rounded-lg border border-purple-200">
-              <span className="text-sm text-purple-700 font-medium">In Conversation</span>
+            <label className="flex items-center justify-between cursor-pointer bg-purple-50 p-1.5 rounded-md border border-purple-200">
+              <span className="text-xs text-purple-700 font-medium">In Conversation</span>
               <input
                 type="radio"
                 name="filter"
                 value="In Conversation"
                 checked={selectedFilter === 'In Conversation'}
                 onChange={(e) => handleFilterChange(e.target.value)}
-                className="w-4 h-4 text-purple-600 border-purple-300 focus:ring-purple-500"
+                className="w-3 h-3 text-purple-600 border-purple-300 focus:ring-purple-500"
               />
             </label>
 
-            {/* Not Responding Option */}
-            <label className="flex items-center justify-between cursor-pointer bg-purple-50 p-2 rounded-lg border border-purple-200">
-              <span className="text-sm text-gray-700">Not Responding</span>
+            <label className="flex items-center justify-between cursor-pointer bg-purple-50 p-1.5 rounded-md border border-purple-200">
+              <span className="text-xs text-gray-700">Not Responding</span>
               <input
                 type="radio"
                 name="filter"
                 value="Not Responding"
                 checked={selectedFilter === 'Not Responding'}
                 onChange={(e) => handleFilterChange(e.target.value)}
-                className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                className="w-3 h-3 text-blue-600 border-gray-300 focus:ring-blue-500"
               />
             </label>
           </div>
         </div>
       )}
 
-      {/* Overlay to close dropdown when clicking outside */}
+      {/* Overlay to close dropdown */}
       {isDropdownOpen && (
         <div 
           className="fixed inset-0 z-40" 
@@ -118,16 +115,16 @@ const MessageSent = () => {
       )}
 
       {/* Search Bar */}
-      <div className="p-4 border-b border-gray-100">
+      <div className="px-3 py-2 border-b border-gray-100 flex-shrink-0">
         <div className="relative">
           <input
             type="text"
             placeholder="Search Influencer"
-            className="w-full pl-4 pr-10 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full pl-3 pr-8 py-1.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent"
           />
-          <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+          <div className="absolute inset-y-0 right-0 flex items-center pr-2">
             <svg 
-              className="w-4 h-4 text-gray-400" 
+              className="w-3.5 h-3.5 text-gray-400" 
               fill="none" 
               stroke="currentColor" 
               viewBox="0 0 24 24"
@@ -139,30 +136,30 @@ const MessageSent = () => {
       </div>
 
       {/* Contact List */}
-      <div className="max-h-[500px] overflow-y-auto p-4">
-        <div className="space-y-3">
+      <div className="flex-1 overflow-y-auto p-3">
+        <div className="space-y-2">
           {contacts.map((contact, i) => (
             <div
               key={i}
-              className="flex items-center justify-between p-3 hover:bg-gray-50 transition-colors duration-150 border border-gray-200 rounded-lg"
+              className="flex items-center justify-between p-2 hover:bg-gray-50 transition-colors duration-150 border border-gray-200 rounded-md"
             >
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-2.5">
                 <div className="relative">
                   <img
                     src={contact.avatar}
                     alt="avatar"
-                    className="rounded-full w-10 h-10 object-cover"
+                    className="rounded-full w-8 h-8 object-cover"
                   />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-900">{contact.name}</p>
-                  <p className="text-xs text-gray-500">{contact.handle}</p>
+                  <p className="text-xs font-medium text-gray-900">{contact.name}</p>
+                  <p className="text-[10px] text-gray-500">{contact.handle}</p>
                 </div>
               </div>
               <div className="flex items-center">
-                <div className="w-6 h-6 bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 rounded-md flex items-center justify-center">
+                <div className="w-5 h-5 bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 rounded flex items-center justify-center">
                   <svg 
-                    className="w-4 h-4 text-white" 
+                    className="w-3 h-3 text-white" 
                     viewBox="0 0 24 24" 
                     fill="currentColor"
                   >
