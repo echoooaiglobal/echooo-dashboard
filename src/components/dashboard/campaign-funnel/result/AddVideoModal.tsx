@@ -452,16 +452,6 @@ const AddVideoModal: React.FC<AddVideoModalProps> = ({ campaignId, onClose, onSu
                     </p>
                   )}
                 </div>
-
-                {/* Example URLs */}
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">Example formats:</h4>
-                  <div className="space-y-1 text-sm text-gray-600">
-                    <p>• Full URL: https://www.instagram.com/p/CjDN1tzMIjR/</p>
-                    <p>• Short URL: https://instagr.am/p/CjDN1tzMIjR/</p>
-                    <p>• Post code only: CjDN1tzMIjR</p>
-                  </div>
-                </div>
               </div>
             )}
 
