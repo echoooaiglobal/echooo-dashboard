@@ -247,7 +247,7 @@ const DiscoverResults: React.FC<DiscoverResultsProps> = ({
     return (
       <div className="bg-white rounded-lg shadow p-6">
         <div className="text-center py-12 text-gray-500">
-          No influencers found. Try adjusting your filters.
+          Try adjusting your filters.
         </div>
       </div>
     );

@@ -259,13 +259,13 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
   }, [fetchPlatforms]);
 
   // Initial load of influencers when component mounts or platform changes
-  useEffect(() => {
-    // Only fetch if we're on the discovered tab, have a selected platform, and it's not a new campaign
-    if (activeFilter === 'discovered' && campaignData && !isNewCampaign && selectedPlatform) {
-      console.log('🚀 Initial influencer fetch triggered for platform:', selectedPlatform.name);
-      fetchInfluencers(searchParams);
-    }
-  }, [activeFilter, campaignData, isNewCampaign, selectedPlatform, fetchInfluencers]);
+  // useEffect(() => {
+  //   // Only fetch if we're on the discovered tab, have a selected platform, and it's not a new campaign
+  //   if (activeFilter === 'discovered' && campaignData && !isNewCampaign && selectedPlatform) {
+  //     console.log('🚀 Initial influencer fetch triggered for platform:', selectedPlatform.name);
+  //     fetchInfluencers(searchParams);
+  //   }
+  // }, [activeFilter, campaignData, isNewCampaign, selectedPlatform, fetchInfluencers]);
 
   // Fetch campaign list members when campaign data is available
   useEffect(() => {
