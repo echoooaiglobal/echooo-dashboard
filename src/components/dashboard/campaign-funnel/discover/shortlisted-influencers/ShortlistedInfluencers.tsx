@@ -775,9 +775,9 @@ const ShortlistedInfluencers: React.FC<ShortlistedInfluencersProps> = ({
         />
         
         {/* Analytics Component - Simplified without export button */}
-        <ShortlistedAnalytics 
+        {/* <ShortlistedAnalytics 
           members={members} 
-        />
+        /> */}
       </div>
 
       {/* Outreach Message Form - Only show when action is 'open-form' */}
