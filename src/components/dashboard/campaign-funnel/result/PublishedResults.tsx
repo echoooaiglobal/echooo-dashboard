@@ -645,7 +645,7 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData, onSho
                               <div className="flex items-center space-x-2">
                                 <p className="text-xs text-gray-500 truncate">@{video.influencer_username}</p>
                                 <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                                <p className="text-xs text-green-600 font-medium">Published</p>
+                                {/* <p className="text-xs text-green-600 font-medium">Published</p> */}
                               </div>
                             </div>
                           </div>

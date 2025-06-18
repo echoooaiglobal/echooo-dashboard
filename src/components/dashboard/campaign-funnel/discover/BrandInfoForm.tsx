@@ -281,19 +281,10 @@ const BrandInfoForm: React.FC<BrandInfoFormProps> = ({ onComplete }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Handle next step
-  const handleNext = () => {
-    if (!validateCurrentStep()) {
-      return;
-    }
-    
-    if (currentStep < 5) {
-      setCurrentStep((prev => (prev + 1) as FormStep));
-    }
-  };
-
   // Validate the current step
-  const validateCurrentStep = () => {
+  const validateCurrentStep = (): boolean => {
+    setError(null); // Clear any existing errors first
+    
     switch (currentStep) {
       case 1:
         if (!formData.brandName.trim()) {
@@ -314,13 +305,13 @@ const BrandInfoForm: React.FC<BrandInfoFormProps> = ({ onComplete }) => {
         }
         break;
       case 4:
-        if (!formData.campaignBudget) {
-          setError('Please enter your campaign budget');
+        if (!formData.campaignBudget || formData.campaignBudget <= 0) {
+          setError('Please enter a valid budget amount greater than 0');
           return false;
         }
         
         const budget = formData.campaignBudget;
-        if (isNaN(budget) || budget <= 0) {
+        if (isNaN(budget)) {
           setError('Please enter a valid budget amount');
           return false;
         }
@@ -332,8 +323,22 @@ const BrandInfoForm: React.FC<BrandInfoFormProps> = ({ onComplete }) => {
         }
         break;
     }
-    setError(null);
     return true;
+  };
+
+  // Handle next step
+  const handleNext = (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
+    
+    if (!validateCurrentStep()) {
+      return;
+    }
+    
+    if (currentStep < 5) {
+      setCurrentStep((prev => (prev + 1) as FormStep));
+    }
   };
 
   // Handle form submission
@@ -383,6 +388,18 @@ const BrandInfoForm: React.FC<BrandInfoFormProps> = ({ onComplete }) => {
     }
   };
 
+  // Handle key press events for form navigation
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (currentStep < 5) {
+        handleNext();
+      } else {
+        handleSubmit(e);
+      }
+    }
+  };
+
   // Determine if we're in a loading state
   const isLoading = categoriesApi.isLoading || campaignApi.isLoading || brandsApi.isLoading || isSubmitting;
 
@@ -403,7 +420,7 @@ const BrandInfoForm: React.FC<BrandInfoFormProps> = ({ onComplete }) => {
     switch (currentStep) {
       case 1:
         return (
-          <>
+          <form onSubmit={handleNext} onKeyPress={handleKeyPress}>
             <div className="relative" ref={brandDropdownRef}>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
@@ -415,6 +432,7 @@ const BrandInfoForm: React.FC<BrandInfoFormProps> = ({ onComplete }) => {
                   onFocus={() => setShowBrandDropdown(true)}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-purple-500"
                   disabled={isLoading}
+                  required
                 />
               </div>
               
@@ -455,19 +473,18 @@ const BrandInfoForm: React.FC<BrandInfoFormProps> = ({ onComplete }) => {
             </div>
             
             <button
-              type="button"
-              onClick={handleNext}
+              type="submit"
               className="w-full mt-8 px-6 py-3 bg-purple-500 text-white rounded-full font-medium hover:bg-purple-600 transition-colors disabled:bg-purple-300"
               disabled={isLoading}
             >
               {isLoading ? 'Loading...' : 'Next'}
             </button>
-          </>
+          </form>
         );
         
       case 2:
         return (
-          <>
+          <form onSubmit={handleNext} onKeyPress={handleKeyPress}>
             <div className="relative" ref={categoryDropdownRef}>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
@@ -479,6 +496,7 @@ const BrandInfoForm: React.FC<BrandInfoFormProps> = ({ onComplete }) => {
                   onFocus={() => setShowCategoryDropdown(true)}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-purple-500"
                   disabled={isLoading}
+                  required
                 />
               </div>
               
@@ -499,19 +517,18 @@ const BrandInfoForm: React.FC<BrandInfoFormProps> = ({ onComplete }) => {
             </div>
             
             <button
-              type="button"
-              onClick={handleNext}
+              type="submit"
               className="w-full mt-8 px-6 py-3 bg-purple-500 text-white rounded-full font-medium hover:bg-purple-600 transition-colors disabled:bg-purple-300"
               disabled={isLoading}
             >
               {isLoading ? 'Loading...' : 'Next'}
             </button>
-          </>
+          </form>
         );
         
       case 3:
         return (
-          <>
+          <form onSubmit={handleNext} onKeyPress={handleKeyPress}>
             <div className="grid grid-cols-2 gap-4">
               {/* Min Age Dropdown */}
               <div className="relative" ref={ageMinDropdownRef}>
@@ -585,19 +602,18 @@ const BrandInfoForm: React.FC<BrandInfoFormProps> = ({ onComplete }) => {
             )}
             
             <button
-              type="button"
-              onClick={handleNext}
+              type="submit"
               className="w-full mt-8 px-6 py-3 bg-purple-500 text-white rounded-full font-medium hover:bg-purple-600 transition-colors disabled:bg-purple-300"
               disabled={isLoading}
             >
               {isLoading ? 'Loading...' : 'Next'}
             </button>
-          </>
+          </form>
         );
         
       case 4:
         return (
-          <>
+          <form onSubmit={handleNext} onKeyPress={handleKeyPress}>
             <div>
               <label htmlFor="campaignBudget" className="block text-sm font-medium text-gray-700 mb-1">
                 Campaign Budget
@@ -628,7 +644,7 @@ const BrandInfoForm: React.FC<BrandInfoFormProps> = ({ onComplete }) => {
                     type="number"
                     name="campaignBudget"
                     placeholder="Enter amount"
-                    min="0"
+                    min="0.01"
                     step="0.01"
                     value={formData.campaignBudget === 0 ? '' : formData.campaignBudget}
                     onChange={handleBudgetChange}
@@ -640,19 +656,18 @@ const BrandInfoForm: React.FC<BrandInfoFormProps> = ({ onComplete }) => {
               </div>
             </div>
             <button
-              type="button"
-              onClick={handleNext}
+              type="submit"
               className="w-full mt-8 px-6 py-3 bg-purple-500 text-white rounded-full font-medium hover:bg-purple-600 transition-colors disabled:bg-purple-300"
               disabled={isLoading}
             >
               {isLoading ? 'Loading...' : 'Next'}
             </button>
-          </>
+          </form>
         );
         
       case 5:
         return (
-          <>
+          <form onSubmit={handleSubmit} onKeyPress={handleKeyPress}>
             <input
               type="text"
               name="campaignName"
@@ -675,7 +690,7 @@ const BrandInfoForm: React.FC<BrandInfoFormProps> = ({ onComplete }) => {
                 </div>
               ) : isLoading ? 'Processing...' : 'Complete'}
             </button>
-          </>
+          </form>
         );
         
       default:
@@ -718,7 +733,7 @@ const BrandInfoForm: React.FC<BrandInfoFormProps> = ({ onComplete }) => {
   return (
     <div className="max-w-md mx-auto bg-white rounded-xl shadow-lg py-12 px-6">
       <h2 className="text-2xl font-bold text-gray-700 text-center mb-12">
-        Tell Us Little About Your Brand
+        Tell Us Little About Your Campaign
       </h2>
 
       {renderCompanyWarning()}
@@ -729,9 +744,9 @@ const BrandInfoForm: React.FC<BrandInfoFormProps> = ({ onComplete }) => {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="max-w-sm mx-auto">
+      <div className="max-w-sm mx-auto">
         {renderFormStep()}
-      </form>
+      </div>
 
       {renderProgressDots()}
     </div>
