@@ -1076,7 +1076,7 @@ const InfluencerProfileReport: React.FC = () => {
           </button>
         ))}
       </div>
-
+ 
       {/* Content */}
       <div className="min-h-screen">
         {activeSection === 'overview' && <OverviewSection />}
