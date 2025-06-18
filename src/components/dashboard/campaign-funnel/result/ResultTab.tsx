@@ -23,6 +23,12 @@ const ResultTab: React.FC<ResultTabProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>(TABS.PUBLISHED);
   const [showAnalyticsView, setShowAnalyticsView] = useState(false);
+  const [publishedVideoCount, setPublishedVideoCount] = useState(0);
+
+  // Handle video count updates from PublishedResults
+  const handleVideoCountChange = (count: number) => {
+    setPublishedVideoCount(count);
+  };
 
   // If analytics view is active, show that component
   if (showAnalyticsView) {
@@ -58,7 +64,7 @@ const ResultTab: React.FC<ResultTabProps> = ({
                   : 'bg-gradient-to-r from-pink-100 to-rose-100 text-pink-600 hover:from-pink-200 hover:to-rose-200'
               }`}
             >
-              Published (450)
+              Published ({publishedVideoCount})
             </button>
           </div>
         </div>
@@ -72,6 +78,7 @@ const ResultTab: React.FC<ResultTabProps> = ({
           <PublishedResults 
             campaignData={campaignData}
             onShowAnalytics={() => setShowAnalyticsView(true)}
+            onVideoCountChange={handleVideoCountChange}
           />
         </div>
       )}

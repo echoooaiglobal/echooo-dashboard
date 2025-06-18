@@ -16,6 +16,7 @@ interface AnalyticsData {
   totalViews: number;
   totalFollowers: number;
   totalPosts: number;
+  totalInfluencers: number;
   averageEngagementRate: number;
   topPerformers: Array<{
     name: string;
@@ -23,6 +24,25 @@ interface AnalyticsData {
     avatar: string;
     clicks: number;
     isVerified: boolean;
+    totalPosts: number;
+    totalLikes: number;
+    totalComments: number;
+    avgEngagementRate: number;
+    totalEngagement: number;
+  }>;
+  topPosts: Array<{
+    id: string;
+    influencerName: string;
+    username: string;
+    avatar: string;
+    thumbnail: string;
+    likes: number;
+    comments: number;
+    views: number;
+    engagementRate: number;
+    isVerified: boolean;
+    postId: string;
+    totalEngagement: number;
   }>;
 }
 
@@ -41,8 +61,10 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
     totalViews: 0,
     totalFollowers: 0,
     totalPosts: 0,
+    totalInfluencers: 0,
     averageEngagementRate: 0,
-    topPerformers: []
+    topPerformers: [],
+    topPosts: []
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
@@ -73,7 +95,8 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
       followers: 0,
       engagementRate: 0,
       avatarUrl: getProxiedImageUrl(video.profile_pic_url || ''),
-      isVerified: false
+      isVerified: false,
+      thumbnailUrl: getProxiedImageUrl(video.thumbnail || video.media_preview || '')
     };
 
     const likes = postData.edge_media_preview_like?.count || 
@@ -99,6 +122,20 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
     } else if (video.profile_pic_url) {
       avatarUrl = video.profile_pic_url;
     }
+
+    // Get thumbnail URL
+    let thumbnailUrl = '/user/profile-placeholder.png';
+    if (postData.display_resources && postData.display_resources.length > 0) {
+      thumbnailUrl = postData.display_resources[postData.display_resources.length - 1].src;
+    } else if (postData.thumbnail_src) {
+      thumbnailUrl = postData.thumbnail_src;
+    } else if (postData.display_url) {
+      thumbnailUrl = postData.display_url;
+    } else if (video.thumbnail) {
+      thumbnailUrl = video.thumbnail;
+    } else if (video.media_preview) {
+      thumbnailUrl = video.media_preview;
+    }
     
     return {
       likes,
@@ -107,11 +144,13 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
       followers,
       engagementRate,
       avatarUrl: getProxiedImageUrl(avatarUrl),
-      isVerified: postData.owner?.is_verified || false
+      isVerified: postData.owner?.is_verified || false,
+      thumbnailUrl: getProxiedImageUrl(thumbnailUrl)
     };
   };
 
   const formatNumber = (num: number): string => {
+    if( num === null || num === undefined || isNaN(num)) return '0';
     if (num >= 1000000) {
       return (num / 1000000).toFixed(1) + 'M';
     }
@@ -195,6 +234,16 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
         const results = await getVideoResults(campaignData.id);
         setVideoResults(results);
 
+        // Group videos by influencer to ensure unique counting
+        const influencerGroups = new Map<string, VideoResult[]>();
+        results.forEach(video => {
+          const key = video.influencer_username.toLowerCase();
+          if (!influencerGroups.has(key)) {
+            influencerGroups.set(key, []);
+          }
+          influencerGroups.get(key)!.push(video);
+        });
+
         let totalLikes = 0;
         let totalComments = 0;
         let totalViews = 0;
@@ -202,42 +251,139 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
         let totalEngagementRates = 0;
         let validEngagementCount = 0;
 
-        const performerData: Array<{
+        // Arrays to store data for sorting
+        const influencerPerformanceData: Array<{
           name: string;
           username: string;
           avatar: string;
           clicks: number;
           isVerified: boolean;
+          totalPosts: number;
+          totalLikes: number;
+          totalComments: number;
+          avgEngagementRate: number;
+          totalEngagement: number;
         }> = [];
 
-        results.forEach(video => {
-          const postData = getPostData(video);
-          
-          totalLikes += postData.likes;
-          totalComments += postData.comments;
-          totalViews += postData.views;
-          totalFollowers += postData.followers;
-          
-          if (postData.engagementRate > 0) {
-            totalEngagementRates += postData.engagementRate;
-            validEngagementCount++;
-          }
+        const allPostsData: Array<{
+          id: string;
+          influencerName: string;
+          username: string;
+          avatar: string;
+          thumbnail: string;
+          likes: number;
+          comments: number;
+          views: number;
+          engagementRate: number;
+          isVerified: boolean;
+          postId: string;
+          totalEngagement: number;
+        }> = [];
 
-          const simulatedClicks = Math.round((postData.likes + postData.comments) * 0.8);
-          performerData.push({
-            name: video.full_name || video.influencer_username,
-            username: video.influencer_username,
-            avatar: postData.avatarUrl,
-            clicks: simulatedClicks,
-            isVerified: postData.isVerified
+        // Process each unique influencer
+        influencerGroups.forEach((videos, username) => {
+          let influencerTotalLikes = 0;
+          let influencerTotalComments = 0;
+          let influencerTotalViews = 0;
+          let influencerEngagementRates = 0;
+          let influencerValidEngagements = 0;
+          let influencerFollowers = 0;
+          let influencerAvatar = '';
+          let influencerName = '';
+          let isVerified = false;
+
+          // Process each video from this influencer
+          videos.forEach(video => {
+            const postDataDetail = getPostData(video);
+            
+            // Accumulate totals for overall stats
+            totalLikes += postDataDetail.likes;
+            totalComments += postDataDetail.comments;
+            totalViews += postDataDetail.views;
+            
+            // Accumulate influencer-specific totals
+            influencerTotalLikes += postDataDetail.likes;
+            influencerTotalComments += postDataDetail.comments;
+            influencerTotalViews += postDataDetail.views;
+            
+            if (postDataDetail.engagementRate > 0) {
+              totalEngagementRates += postDataDetail.engagementRate;
+              validEngagementCount++;
+              influencerEngagementRates += postDataDetail.engagementRate;
+              influencerValidEngagements++;
+            }
+
+            // Use the highest follower count from this influencer's posts
+            if (postDataDetail.followers > influencerFollowers) {
+              influencerFollowers = postDataDetail.followers;
+            }
+
+            // Get influencer details from the first video (or update if better data found)
+            if (!influencerName || video.full_name) {
+              influencerName = video.full_name || video.influencer_username;
+              influencerAvatar = postDataDetail.avatarUrl;
+              isVerified = postDataDetail.isVerified;
+            }
+
+            // Add each post to the posts array for top posts ranking
+            const totalEngagement = postDataDetail.likes + postDataDetail.comments;
+            allPostsData.push({
+              id: video.id,
+              influencerName: video.full_name || video.influencer_username,
+              username: video.influencer_username,
+              avatar: postDataDetail.avatarUrl,
+              thumbnail: postDataDetail.thumbnailUrl,
+              likes: postDataDetail.likes,
+              comments: postDataDetail.comments,
+              views: postDataDetail.views,
+              engagementRate: postDataDetail.engagementRate,
+              isVerified: postDataDetail.isVerified,
+              postId: video.post_result_obj?.data?.shortcode || video.post_id,
+              totalEngagement
+            });
+          });
+
+          // Update total followers (take max, not sum, since it's the same person)
+          totalFollowers = Math.max(totalFollowers, influencerFollowers);
+
+          // Calculate average engagement rate for this influencer
+          const avgEngagementRate = influencerValidEngagements > 0 
+            ? influencerEngagementRates / influencerValidEngagements 
+            : 0;
+
+          // Calculate total engagement for this influencer
+          const influencerTotalEngagement = influencerTotalLikes + influencerTotalComments;
+          
+          // Calculate estimated clicks for this influencer
+          const influencerClicks = Math.round(influencerTotalEngagement * 0.8);
+
+          // Add to influencer performance data
+          influencerPerformanceData.push({
+            name: influencerName,
+            username: username,
+            avatar: influencerAvatar,
+            clicks: influencerClicks,
+            isVerified,
+            totalPosts: videos.length,
+            totalLikes: influencerTotalLikes,
+            totalComments: influencerTotalComments,
+            avgEngagementRate,
+            totalEngagement: influencerTotalEngagement
           });
         });
 
-        const topPerformers = performerData
-          .sort((a, b) => b.clicks - a.clicks)
+        // Sort and get top performing influencers (by total engagement)
+        const topPerformers = influencerPerformanceData
+          .sort((a, b) => b.totalEngagement - a.totalEngagement)
+          .slice(0, 5);
+
+        // Sort and get top performing posts (by individual post engagement)
+        const topPosts = allPostsData
+          .sort((a, b) => b.totalEngagement - a.totalEngagement)
           .slice(0, 5);
 
         const totalPosts = results.length;
+        const totalInfluencers = influencerGroups.size; // This is now the correct unique count
         const averageEngagementRate = validEngagementCount > 0 ? totalEngagementRates / validEngagementCount : 0;
         
         const totalClicks = Math.round((totalLikes + totalComments) * 0.7);
@@ -253,8 +399,10 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
           totalViews,
           totalFollowers,
           totalPosts,
+          totalInfluencers,
           averageEngagementRate,
-          topPerformers
+          topPerformers,
+          topPosts
         });
 
       } catch (error) {
@@ -379,7 +527,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
               </>
             )}
           </button>
-
+{/* 
           <button
             onClick={handlePrintExport}
             className="flex items-center px-6 py-2 bg-gradient-to-r from-blue-100 to-blue-200 text-blue-700 rounded-full hover:from-blue-200 hover:to-blue-300 transition-all duration-200 font-medium shadow-sm"
@@ -388,7 +536,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
             </svg>
             Print
-          </button>
+          </button> */}
         </div>
       </div>
 
@@ -417,7 +565,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                 </div>
                 <div className="text-right ml-8">
                   <p className="text-sm text-gray-500">Total Influencers</p>
-                  <p className="text-2xl font-bold text-pink-600">{analyticsData.totalPosts}</p>
+                  <p className="text-2xl font-bold text-pink-600">{analyticsData.totalInfluencers}</p>
                 </div>
               </div>
             </div>
@@ -551,7 +699,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
           </div>
 
           {/* Top Performing Influencers Section */}
-          <div className="mb-0">
+          <div className="mb-8">
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-semibold text-gray-800">Top Performing Influencers</h3>
@@ -587,9 +735,14 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                         </svg>
                       </div>
                       
-                      <div className="text-center">
-                        <span className="text-xl font-bold text-gray-900">{formatNumber(influencer.clicks)}</span>
-                        <p className="text-xs text-gray-500">Estimated Clicks</p>
+                      <div className="text-center space-y-1">
+                        <div>
+                          <span className="text-xl font-bold text-gray-900">{formatNumber(influencer?.totalEngagement)}</span>
+                          <p className="text-xs text-gray-500">Total Engagement</p>
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          <p>{influencer.totalPosts} posts • {influencer.avgEngagementRate.toFixed(1)}% avg eng</p>
+                        </div>
                       </div>
                     </div>
                   ))
@@ -601,10 +754,74 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
               </div>
             </div>
           </div>
+
+          {/* Top Performing Posts Section */}
+          <div className="mb-0">
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-gray-800">Top Performing Posts</h3>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
+                {analyticsData.topPosts.length > 0 ? (
+                  analyticsData.topPosts.map((post, index) => (
+                    <div key={post.id} className="text-center">
+                      <div className="relative mb-4">
+                        <img
+                          src={post.thumbnail}
+                          alt={`${post.username} post`}
+                          className="w-16 h-16 rounded-lg mx-auto border-2 border-gray-200 shadow-sm object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = '/user/profile-placeholder.png';
+                          }}
+                        />
+                        {/* Instagram indicator */}
+                        <div className="absolute top-1 right-1 w-4 h-4 bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 rounded-full flex items-center justify-center shadow-sm">
+                          <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.40s-.644-1.44-1.439-1.40z"/>
+                          </svg>
+                        </div>
+                      </div>
+                      <h4 className="font-medium text-gray-900 mb-1 truncate">{post.influencerName}</h4>
+                      <div className="flex items-center justify-center space-x-1 mb-3">
+                        <p className="text-sm text-gray-500 truncate">@{post.username}</p>
+                        {post.isVerified && (
+                          <svg className="w-4 h-4 text-blue-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                      </div>
+                      
+                      <div className="mb-3">
+                        <svg className="w-full h-8" viewBox="0 0 100 20">
+                          <path d={`M 0 ${15 - (index * 2)} Q 25 ${10 - index} 50 ${12 - index} T 100 ${8 - index}`} stroke="#10b981" strokeWidth="2" fill="none"/>
+                        </svg>
+                      </div>
+                      
+                      <div className="text-center space-y-1">
+                        <div>
+                          <span className="text-xl font-bold text-gray-900">{formatNumber(post.totalEngagement)}</span>
+                          <p className="text-xs text-gray-500">Total Engagement</p>
+                        </div>
+                        <div className="text-xs text-gray-400 space-y-0.5">
+                          <p>{formatNumber(post.likes)} likes • {formatNumber(post.comments)} comments</p>
+                          {post.views > 0 && <p>{formatNumber(post.views)} views</p>}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="col-span-full text-center py-8">
+                    <p className="text-gray-500">No post data available</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   );
 };
 
-export default AnalyticsView; 
+export default AnalyticsView;

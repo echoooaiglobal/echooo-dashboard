@@ -12,9 +12,14 @@ import { formatNumber } from '@/utils/format';
 interface PublishedResultsProps {
   campaignData?: Campaign | null;
   onShowAnalytics?: () => void;
+  onVideoCountChange?: (count: number) => void;
 }
 
-const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData, onShowAnalytics }) => {
+const PublishedResults: React.FC<PublishedResultsProps> = ({ 
+  campaignData, 
+  onShowAnalytics, 
+  onVideoCountChange 
+}) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddVideoModal, setShowAddVideoModal] = useState(false);
   const [selectedVideos, setSelectedVideos] = useState<Set<string>>(new Set());
@@ -35,12 +40,10 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData, onSho
   const getProxiedImageUrl = (originalUrl: string): string => {
     if (!originalUrl) return '/user/profile-placeholder.png';
     
-    // If already proxied or is a local image, return as is
     if (originalUrl.startsWith('/api/') || originalUrl.startsWith('/user/') || originalUrl.startsWith('data:')) {
       return originalUrl;
     }
     
-    // If it's an Instagram/Facebook CDN URL, proxy it
     if (originalUrl.includes('instagram.com') || originalUrl.includes('fbcdn.net') || originalUrl.includes('cdninstagram.com')) {
       return `/api/v0/instagram/image-proxy?url=${encodeURIComponent(originalUrl)}`;
     }
@@ -92,6 +95,13 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData, onSho
     }
   };
 
+  // Update parent component with video count whenever videoResults changes
+  useEffect(() => {
+    if (onVideoCountChange) {
+      onVideoCountChange(videoResults.length);
+    }
+  }, [videoResults.length, onVideoCountChange]);
+
   // Fetch video results on component mount
   useEffect(() => {
     if (campaignData?.id) {
@@ -127,7 +137,6 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData, onSho
       console.log('✅ Fetched video results:', results.length);
     } catch (error) {
       console.error('💥 Error fetching video results:', error);
-      // You might want to show a toast notification here
     } finally {
       setIsLoading(false);
     }
@@ -138,7 +147,6 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData, onSho
     try {
       console.log('🔄 Updating single video:', videoResult.id);
       
-      // Extract the original URL from the post_result_obj or use post_id
       let postInput: { url?: string; code?: string } = {};
       
       if (videoResult.post_result_obj && videoResult.post_result_obj.data && videoResult.post_result_obj.data.shortcode) {
@@ -147,20 +155,15 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData, onSho
         postInput.code = videoResult.post_id;
       }
       
-      // Fetch fresh Instagram data
       const freshInstagramData = await getInstagramPostDetails(postInput);
 
       if (!freshInstagramData.success) {
         throw new Error(freshInstagramData.message || 'Failed to fetch updated Instagram data');
       }
 
-      // Map to backend format
       const backendData = mapToBackendFormat(freshInstagramData, videoResult.campaign_id);
-      
-      // Update the video result with new data
       const updatedResult = await updateVideoResult(videoResult.id, backendData);
 
-      // Update local state
       setVideoResults(prev => 
         prev.map(video => 
           video.id === videoResult.id ? updatedResult : video
@@ -170,7 +173,6 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData, onSho
       console.log('✅ Video updated successfully:', updatedResult.id);
     } catch (error) {
       console.error('💥 Error updating video:', error);
-      // You might want to show a toast notification here
     } finally {
       setUpdatingVideoId(null);
     }
@@ -184,7 +186,6 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData, onSho
       console.log('🔄 Updating all videos for campaign:', campaignData.id);
       console.log('📊 Total videos to update:', videoResults.length);
       
-      // Prepare updates data with result IDs
       const updatesData = [];
       
       for (let i = 0; i < videoResults.length; i++) {
@@ -192,7 +193,6 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData, onSho
         console.log(`🔄 Processing ${i + 1}/${videoResults.length}: ${video.influencer_username}`);
         
         try {
-          // Extract the original URL from the post_result_obj or use post_id
           let postInput: { url?: string; code?: string } = {};
           
           if (video.post_result_obj && video.post_result_obj.data && video.post_result_obj.data.shortcode) {
@@ -201,18 +201,15 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData, onSho
             postInput.code = video.post_id;
           }
           
-          // Fetch fresh Instagram data
           const freshInstagramData = await getInstagramPostDetails(postInput);
 
           if (!freshInstagramData.success) {
             console.warn(`⚠️ Failed to fetch fresh data for ${video.influencer_username}: ${freshInstagramData.message}`);
-            continue; // Skip this video
+            continue;
           }
 
-          // Map to backend format
           const backendData = mapToBackendFormat(freshInstagramData, video.campaign_id);
           
-          // Add to updates array with result_id
           updatesData.push({
             result_id: video.id,
             update_data: {
@@ -238,7 +235,6 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData, onSho
           
         } catch (error) {
           console.error(`💥 Error preparing update for ${video.influencer_username}:`, error);
-          // Continue with other videos
         }
       }
       
@@ -248,14 +244,12 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData, onSho
         throw new Error('No videos could be prepared for update');
       }
       
-      // Call the updated service with the prepared data
       const updatedResults = await updateAllVideoResultsWithData(campaignData.id, updatesData);
       setVideoResults(updatedResults);
       
       console.log('✅ All videos updated successfully:', updatedResults.length);
     } catch (error) {
       console.error('💥 Error updating all videos:', error);
-      // You might want to show a toast notification here
     } finally {
       setIsUpdatingAll(false);
     }
@@ -276,7 +270,6 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData, onSho
     video.full_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Extract actual post data from post_result_obj
   const getPostData = (video: VideoResult) => {
     const postData = video.post_result_obj?.data;
     if (!postData) return {
@@ -291,7 +284,6 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData, onSho
       duration: video.duration || 0
     };
 
-    // Extract metrics with multiple fallback paths
     const likes = postData.edge_media_preview_like?.count || 
                   postData.edge_liked_by?.count || 
                   video.likes_count || 0;
@@ -307,10 +299,8 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData, onSho
                   video.plays_count || 0;
     
     const followers = postData.owner?.edge_followed_by?.count || 0;
-    
     const engagementRate = followers > 0 ? (((likes + comments) / followers) * 100).toFixed(2) + '%' : '0%';
     
-    // Get thumbnail URL with proper proxying
     let thumbnailUrl = '/user/profile-placeholder.png';
     
     if (postData.display_resources && postData.display_resources.length > 0) {
@@ -325,14 +315,12 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData, onSho
       thumbnailUrl = video.media_preview;
     }
     
-    // Apply image proxy for Instagram/Facebook URLs
     if (thumbnailUrl && !thumbnailUrl.startsWith('/api/') && !thumbnailUrl.startsWith('/user/')) {
       if (thumbnailUrl.includes('instagram.com') || thumbnailUrl.includes('fbcdn.net') || thumbnailUrl.includes('cdninstagram.com')) {
         thumbnailUrl = `/api/v0/instagram/image-proxy?url=${encodeURIComponent(thumbnailUrl)}`;
       }
     }
     
-    // Get video URL
     const videoUrl = postData.video_url || null;
     
     return {
@@ -348,7 +336,6 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData, onSho
     };
   };
 
-  // Handle video playback
   const handleVideoClick = (video: VideoResult) => {
     const postData = getPostData(video);
     
@@ -356,7 +343,6 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData, onSho
       setSelectedVideoData(video);
       setVideoModalOpen(true);
     } else {
-      // If no video URL, try to open Instagram post
       const shortcode = video.post_result_obj?.data?.shortcode || video.post_id;
       if (shortcode) {
         window.open(`https://www.instagram.com/p/${shortcode}/`, '_blank');
@@ -364,7 +350,6 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData, onSho
     }
   };
 
-  // Close video modal
   const closeVideoModal = () => {
     setVideoModalOpen(false);
     setSelectedVideoData(null);
@@ -385,11 +370,10 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData, onSho
 
   const handlePageSizeChange = (newPageSize: number) => {
     setPageSize(newPageSize);
-    setCurrentPage(1); // Reset to first page
+    setCurrentPage(1);
     setShowPageSizeDropdown(false);
   };
 
-  // Generate page numbers for pagination
   const generatePageNumbers = () => {
     const pages = [];
     const maxVisiblePages = 5;
@@ -428,7 +412,6 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData, onSho
     <div className="pt-4">
       {/* Search Bar and Action Buttons */}
       <div className="flex items-center justify-between mb-6 px-4">
-        {/* Search Bar - Left Side */}
         <div className="relative flex-1 mr-6">
           <input
             type="text"
@@ -444,7 +427,6 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData, onSho
           </div>
         </div>
 
-        {/* Action Buttons - Right Side */}
         <div className="flex items-center space-x-3 flex-shrink-0">
           <button
             onClick={() => setShowAddVideoModal(true)}
@@ -487,7 +469,7 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData, onSho
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h2a2 2 0 01-2-2z" />
             </svg>
-            Analytics View
+            View Analytics
           </button>
           
           <button className="flex items-center px-6 py-3 text-gray-600 hover:bg-gray-50 rounded-full border border-gray-200 transition-colors duration-200 min-w-[60px]">
@@ -577,7 +559,6 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData, onSho
                     
                     return (
                       <tr key={video.id} className="hover:bg-gray-50">
-                        {/* Video Thumbnail and Influencer Info */}
                         <td className="px-2 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <div className="flex-shrink-0 relative">
@@ -624,7 +605,7 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData, onSho
                                   {/* Instagram indicator */}
                                   <div className="absolute top-1 left-1 w-4 h-4 bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 rounded-full flex items-center justify-center shadow-sm">
                                     <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 24 24" fill="currentColor">
-                                      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.40z"/>
+                                      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.40s-.644-1.44-1.439-1.40z"/>
                                     </svg>
                                   </div>
                                 </div>
@@ -645,7 +626,6 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData, onSho
                               <div className="flex items-center space-x-2">
                                 <p className="text-xs text-gray-500 truncate">@{video.influencer_username}</p>
                                 <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                                {/* <p className="text-xs text-green-600 font-medium">Published</p> */}
                               </div>
                             </div>
                           </div>
@@ -734,7 +714,6 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData, onSho
             <div className="px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between border-t border-gray-200">
               <div className="flex items-center mb-4 sm:mb-0">
                 <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                  {/* Previous button */}
                   <button 
                     onClick={() => handlePageChange(currentPage - 1)}
                     disabled={currentPage === 1}
@@ -746,7 +725,6 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData, onSho
                     </svg>
                   </button>
 
-                  {/* Page numbers */}
                   {pageNumbers.map((pageNum, index) => (
                     <div key={index}>
                       {pageNum === '...' ? (
@@ -768,7 +746,6 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData, onSho
                     </div>
                   ))}
 
-                  {/* Next button */}
                   <button 
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage === totalPages}
@@ -801,7 +778,6 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData, onSho
                     </svg>
                   </button>
                   
-                  {/* Dropdown Menu */}
                   {showPageSizeDropdown && (
                     <div className="absolute right-0 bottom-full mb-1 w-32 bg-white border border-gray-300 rounded-md shadow-lg z-50">
                       <div className="py-1">
@@ -829,11 +805,10 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData, onSho
         </div>
       )}
 
-      {/* Video Modal - Updated with reduced width */}
+      {/* Video Modal */}
       {videoModalOpen && selectedVideoData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.8)' }}>
           <div className="relative bg-white rounded-lg overflow-hidden shadow-2xl max-h-[90vh] w-full max-w-md flex flex-col">
-            {/* Modal Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white">
               <div className="flex items-center space-x-3">
                 <div className="relative">
@@ -845,7 +820,6 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData, onSho
                       (e.target as HTMLImageElement).src = '/user/profile-placeholder.png';
                     }}
                   />
-                  {/* Instagram badge */}
                   <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 rounded-full flex items-center justify-center">
                     <svg className="w-2 h-2 text-white" viewBox="0 0 24 24" fill="currentColor">
                       <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.40s-.644-1.44-1.439-1.40z"/>
@@ -876,7 +850,6 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData, onSho
               </button>
             </div>
 
-            {/* Video Content */}
             <div className="relative bg-black flex items-center justify-center">
               {(() => {
                 const postData = getPostData(selectedVideoData);
@@ -914,7 +887,6 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData, onSho
               })()}
             </div>
 
-            {/* Video Info */}
             <div className="p-4 border-t border-gray-200 bg-white">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 {(() => {
@@ -942,7 +914,6 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData, onSho
                 })()}
               </div>
               
-              {/* Caption */}
               {selectedVideoData.post_result_obj?.data?.edge_media_to_caption?.edges?.[0]?.node?.text && (
                 <div className="mt-4 pt-4 border-t border-gray-100">
                   <p className="text-sm text-gray-600 line-clamp-3">
@@ -963,7 +934,6 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({ campaignData, onSho
           onSubmit={(videoData) => {
             console.log('Video added:', videoData);
             setShowAddVideoModal(false);
-            // Refresh the video results
             fetchVideoResults();
           }}
         />
