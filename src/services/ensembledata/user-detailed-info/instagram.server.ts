@@ -82,7 +82,7 @@ export function processInstagramResponse(response: ThirdPartyApiResponse): Proce
     
     // Check if response has expected structure
     if (!response.data) {
-      throw new Error('Invalid response structure: missing data field');
+      throw new Error('Data is missing for the post, please check url or try anotehr.');
     }
 
     const user = extractUserInfo(response);
