@@ -4770,7 +4770,7 @@ const profileAnalysis = {
             "significant_commenters": null
         }
     },
-    "pricing": {
+    "pricing": { 
         "currency": "USD",
         "post_type": {
             "reels": {
