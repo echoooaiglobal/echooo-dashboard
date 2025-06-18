@@ -1,16 +1,14 @@
 // src/services/ensembledata/user-detailed-info/instagram.service.ts
+// Client-side service layer - handles communication with internal API
 
 import { 
   ProcessedInstagramData,
   InstagramPostInput, 
-  InstagramApiError,
-  ThirdPartyApiResponse,
-  InstagramUserInfo,
-  InstagramPostInfo
 } from '@/types/user-detailed-info';
 
 /**
  * Extract Instagram post code from URL or return the code directly
+ * This utility function can be used both client and server side
  */
 export function extractInstagramPostCode(input: string): string {
   // If it's already a code (no URL format), return as is
@@ -39,182 +37,76 @@ export function extractInstagramPostCode(input: string): string {
 }
 
 /**
- * Safely extract nested data from API response
+ * Validate Instagram post URL format
  */
-function safeExtract(obj: any, path: string, defaultValue: any = null): any {
-  try {
-    return path.split('.').reduce((current, key) => {
-      return current && current[key] !== undefined ? current[key] : defaultValue;
-    }, obj);
-  } catch {
-    return defaultValue;
-  }
+export function validateInstagramUrl(url: string): boolean {
+  const instagramPatterns = [
+    /^https?:\/\/(www\.)?instagram\.com\/p\/[a-zA-Z0-9_-]+\/?.*$/,
+    /^https?:\/\/(www\.)?instagram\.com\/reel\/[a-zA-Z0-9_-]+\/?.*$/,
+    /^https?:\/\/(www\.)?instagram\.com\/tv\/[a-zA-Z0-9_-]+\/?.*$/,
+  ];
+
+  return instagramPatterns.some(pattern => pattern.test(url));
 }
 
 /**
- * Extract user information from Instagram API response
- */
-function extractUserInfo(response: ThirdPartyApiResponse): InstagramUserInfo {
-  const owner = safeExtract(response, 'data.owner', {});
-  
-  return {
-    user_ig_id: safeExtract(owner, 'id', ''),
-    full_name: safeExtract(owner, 'full_name', ''),
-    profile_pic_url: safeExtract(owner, 'profile_pic_url', ''),
-    username: safeExtract(owner, 'username', ''),
-    followers_count: safeExtract(owner, 'edge_followed_by.count'),
-    following_count: undefined, // Not available in this response
-    posts_count: safeExtract(owner, 'edge_owner_to_timeline_media.count'),
-    is_verified: safeExtract(owner, 'is_verified', false),
-    is_private: safeExtract(owner, 'is_private', false),
-    biography: undefined, // Not available in this response
-  };
-}
-
-/**
- * Extract post information from Instagram API response
- */
-function extractPostInfo(response: ThirdPartyApiResponse): InstagramPostInfo {
-  const data = safeExtract(response, 'data', {});
-  const caption = safeExtract(data, 'edge_media_to_caption.edges.0.node.text', '');
-  
-  return {
-    post_id: safeExtract(data, 'id', ''),
-    shortcode: safeExtract(data, 'shortcode', ''),
-    caption: caption,
-    created_at: safeExtract(data, 'taken_at_timestamp') 
-      ? new Date(safeExtract(data, 'taken_at_timestamp') * 1000).toISOString()
-      : new Date().toISOString(),
-    video_url: safeExtract(data, 'video_url'),
-    view_counts: safeExtract(data, 'video_view_count', 0),
-    play_counts: safeExtract(data, 'video_play_count', 0),
-    title: safeExtract(data, 'title', caption || ''),
-    video_duration: safeExtract(data, 'video_duration'),
-    media_preview: safeExtract(data, 'media_preview', ''),
-    thumbnail_src: safeExtract(data, 'thumbnail_src', '') || safeExtract(data, 'display_url', ''),
-    display_url: safeExtract(data, 'display_url', ''),
-    comments_count: safeExtract(data, 'edge_media_to_comment.count', 0) || 
-                   safeExtract(data, 'edge_media_to_parent_comment.count', 0),
-    likes_count: safeExtract(data, 'edge_media_preview_like.count', 0),
-    media_type: safeExtract(data, 'is_video', false) ? 'video' : 'image',
-    is_video: safeExtract(data, 'is_video', false),
-    has_audio: safeExtract(data, 'has_audio', false),
-  };
-}
-
-/**
- * Process raw Instagram API response into our standardized format
- */
-export function processInstagramResponse(response: ThirdPartyApiResponse): ProcessedInstagramData {
-  try {
-    console.log('🔄 Processing Instagram API response...');
-    
-    // Check if response has expected structure
-    if (!response.data) {
-      throw new Error('Invalid response structure: missing data field');
-    }
-
-    const user = extractUserInfo(response);
-    const post = extractPostInfo(response);
-
-    // Validate required fields
-    if (!user.username || !post.post_id) {
-      throw new Error('Missing required fields in API response');
-    }
-
-    console.log('✅ Instagram response processed successfully');
-    console.log('📊 Extracted data:', { username: user.username, postId: post.post_id });
-
-    return {
-      user,
-      post,
-      success: true,
-      raw_response: response, // Store full response for debugging
-    };
-  } catch (error) {
-    console.error('💥 Error processing Instagram response:', error);
-    
-    return {
-      user: {
-        user_ig_id: '',
-        full_name: '',
-        profile_pic_url: '',
-        username: '',
-      },
-      post: {
-        post_id: '',
-        shortcode: '',
-        created_at: new Date().toISOString(),
-        comments_count: 0,
-        likes_count: 0,
-        media_type: 'image',
-        is_video: false,
-      },
-      success: false,
-      message: error instanceof Error ? error.message : 'Failed to process response',
-      raw_response: response,
-    };
-  }
-}
-
-/**
- * Get Instagram post details using 3rd party API
+ * Service layer function to get Instagram post details
+ * This calls our internal API route, not the 3rd party API directly
  */
 export async function getInstagramPostDetails(
   input: InstagramPostInput
 ): Promise<ProcessedInstagramData> {
   try {
-    console.log('🔍 Instagram Service: Starting post details fetch');
+    console.log('🔍 Instagram Service: Starting post details fetch via internal API');
     console.log('📝 Instagram Service: Input:', input);
 
-    let postCode: string;
-
-    // Extract post code from URL or use direct code
-    if (input.url) {
-      postCode = extractInstagramPostCode(input.url);
-    } else if (input.code) {
-      postCode = input.code;
-    } else {
+    // Validate input
+    if (!input.url && !input.code) {
       throw new Error('Either URL or post code must be provided');
     }
 
-    console.log('🔑 Instagram Service: Extracted post code:', postCode);
-
-    // Import the EDClient dynamically to avoid potential SSR issues
-    const { EDClient } = await import('ensembledata');
-    
-    // Initialize client with token from environment
-    const token = process.env.NEXT_PUBLIC_ENSEMBLEDATA_AUTH_TOKEN;
-    console.log('🔑 Instagram Service: Using', token)
-    if (!token) {
-      throw new Error('Instagram API token not configured');
+    // Validate URL format if provided
+    if (input.url && !validateInstagramUrl(input.url)) {
+      throw new Error('Invalid Instagram URL format');
     }
 
-    const client = new EDClient({ token });
-    console.log('🚀 Instagram Service: Calling 3rd party API...');
+    console.log('🚀 Instagram Service: Calling internal API route...');
 
-    // Call 3rd party API
-    const rawResponse = await client.instagram.postInfoAndComments({
-      code: postCode,
+    // Call our internal API route
+    const response = await fetch('/api/v0/instagram/post-details', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(input),
     });
 
-    console.log('📦 Instagram Service: Raw API response received');
-    console.log('✅ Instagram Service: API call successful');
+    console.log('📦 Instagram Service: API response received, status:', response.status);
 
-    // Process the raw response into our standardized format
-    const processedData = processInstagramResponse(rawResponse);
-    
-    if (!processedData.success) {
-      throw new Error(processedData.message || 'Failed to process Instagram data');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ 
+        message: `API request failed with status ${response.status}` 
+      }));
+      throw new Error(errorData.message || `API request failed with status ${response.status}`);
     }
 
+    const processedData: ProcessedInstagramData = await response.json();
+    
+    if (!processedData.success) {
+      throw new Error(processedData.message || 'Failed to fetch Instagram data');
+    }
+
+    console.log('✅ Instagram Service: Data fetched successfully');
+    console.log('📊 Instagram Service: User:', processedData.user.username, 'Post:', processedData.post.post_id);
+    
     return processedData;
+
   } catch (error) {
     console.error('💥 Instagram Service: Error fetching post details:', error);
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     
-    // Return error response in consistent format
+    // Return standardized error response
     return {
       user: {
         user_ig_id: '',
@@ -239,6 +131,7 @@ export async function getInstagramPostDetails(
 
 /**
  * Map processed Instagram data to backend API format
+ * This remains on the client side as it's just data transformation
  */
 export function mapToBackendFormat(
   processed: ProcessedInstagramData, 
@@ -263,19 +156,6 @@ export function mapToBackendFormat(
     duration: processed.post.video_duration || 0,
     thumbnail: processed.post.thumbnail_src || processed.post.display_url || '',
     post_created_at: processed.post.created_at,
-    post_result_obj: processed.raw_response || {}, // Full response for backend
+    post_result_obj: processed.raw_response || {},
   };
-}
-
-/**
- * Validate Instagram post URL format
- */
-export function validateInstagramUrl(url: string): boolean {
-  const instagramPatterns = [
-    /^https?:\/\/(www\.)?instagram\.com\/p\/[a-zA-Z0-9_-]+\/?.*$/,
-    /^https?:\/\/(www\.)?instagram\.com\/reel\/[a-zA-Z0-9_-]+\/?.*$/,
-    /^https?:\/\/(www\.)?instagram\.com\/tv\/[a-zA-Z0-9_-]+\/?.*$/,
-  ];
-
-  return instagramPatterns.some(pattern => pattern.test(url));
 }

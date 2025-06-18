@@ -2,7 +2,11 @@
 'use client';
 
 import { useState } from 'react';
-import { getInstagramPostDetails, validateInstagramUrl, extractInstagramPostCode, mapToBackendFormat } from '@/services/ensembledata/user-detailed-info';
+import { 
+  getInstagramPostDetails, 
+  validateInstagramUrl, 
+  mapToBackendFormat 
+} from '@/services/ensembledata/user-detailed-info/instagram.service';
 import { createVideoResult } from '@/services/video-results';
 import { ProcessedInstagramData } from '@/types/user-detailed-info';
 
@@ -92,7 +96,7 @@ const AddVideoModal: React.FC<AddVideoModalProps> = ({ campaignId, onClose, onSu
     setStep('preview');
     
     try {
-      console.log('🔍 Fetching Instagram post data...');
+      console.log('🔍 AddVideoModal: Fetching Instagram post data...');
       
       let input: { url?: string; code?: string };
       
@@ -102,6 +106,7 @@ const AddVideoModal: React.FC<AddVideoModalProps> = ({ campaignId, onClose, onSu
         input = { code: formData.url };
       }
 
+      console.log('🚀 AddVideoModal: Calling Instagram service...');
       const response = await getInstagramPostDetails(input);
       
       if (!response.success) {
@@ -118,9 +123,9 @@ const AddVideoModal: React.FC<AddVideoModalProps> = ({ campaignId, onClose, onSu
         description: response.post.caption || ''
       }));
 
-      console.log('✅ Instagram data fetched successfully');
+      console.log('✅ AddVideoModal: Instagram data fetched successfully');
     } catch (error) {
-      console.error('💥 Error fetching Instagram data:', error);
+      console.error('💥 AddVideoModal: Error fetching Instagram data:', error);
       setErrors({ url: error instanceof Error ? error.message : 'Failed to fetch post data' });
       setStep('input');
     } finally {
@@ -145,14 +150,14 @@ const AddVideoModal: React.FC<AddVideoModalProps> = ({ campaignId, onClose, onSu
     setStep('saving');
     
     try {
-      console.log('💾 Saving video result to backend...');
+      console.log('💾 AddVideoModal: Saving video result to backend...');
       
       // Map Instagram data to backend format
       const backendData = mapToBackendFormat(instagramData, campaignId);
       
       const videoResult = await createVideoResult(backendData);
 
-      console.log('✅ Video result saved successfully:', videoResult);
+      console.log('✅ AddVideoModal: Video result saved successfully:', videoResult);
       
       // Call the parent's onSubmit with the form data
       onSubmit(formData);
@@ -160,7 +165,7 @@ const AddVideoModal: React.FC<AddVideoModalProps> = ({ campaignId, onClose, onSu
       // Close modal after successful save
       onClose();
     } catch (error) {
-      console.error('💥 Error saving video result:', error);
+      console.error('💥 AddVideoModal: Error saving video result:', error);
       setErrors({ url: error instanceof Error ? error.message : 'Failed to save video data' });
       setStep('preview');
     } finally {
