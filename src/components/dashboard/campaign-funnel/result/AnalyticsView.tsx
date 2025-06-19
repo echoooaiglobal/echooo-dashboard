@@ -731,7 +731,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                   analyticsData.topPerformers.map((influencer, index) => (
                     <div key={index} className="text-center">
                       <div className="relative mb-4">
-                        <img
+                        <img 
                           src={influencer.avatar}
                           alt={influencer.name}
                           className="w-16 h-16 rounded-full mx-auto border-2 border-gray-200 shadow-sm object-cover"
