@@ -586,7 +586,7 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
                                     alt={`${video.influencer_username} video`}
                                     className="w-16 h-12 rounded-lg object-cover shadow-md ring-1 ring-gray-200 group-hover:shadow-lg transition-all duration-300"
                                     onError={(e) => {
-                                      (e.target as HTMLImageElement).src = '/dummy-image.png';
+                                      (e.target as HTMLImageElement).src = '/dummy-image.jpg';
                                     }}
                                   />
                                   
