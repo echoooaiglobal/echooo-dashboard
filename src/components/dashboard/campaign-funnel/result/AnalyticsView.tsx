@@ -793,7 +793,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                           alt={`${post.username} post`}
                           className="w-16 h-16 rounded-lg mx-auto border-2 border-gray-200 shadow-sm object-cover"
                           onError={(e) => {
-                            (e.target as HTMLImageElement).src = '/dummy-image.png';
+                            (e.target as HTMLImageElement).src = '/dummy-image.jpg';
                           }}
                         />
                         {/* Instagram indicator */}
