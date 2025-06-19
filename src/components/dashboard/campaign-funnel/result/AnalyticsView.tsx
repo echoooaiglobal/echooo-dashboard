@@ -127,7 +127,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
     }
 
     // Get thumbnail URL
-    let thumbnailUrl = '/dummy-image.png';
+    let thumbnailUrl = '/dummy-image.jpg';
     if (postData.display_resources && postData.display_resources.length > 0) {
       thumbnailUrl = postData.display_resources[postData.display_resources.length - 1].src;
     } else if (postData.thumbnail_src) {
