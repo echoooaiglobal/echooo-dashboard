@@ -80,7 +80,7 @@ export async function createVideoResult(
 export async function getVideoResults(
   campaignId: string,
   page: number = 1,
-  limit: number = 20
+  limit: number = 200
 ): Promise<VideoResult[]> {
   try {
     console.log(`🚀 Video Results Service: Fetching video results for campaign ${campaignId}`);
