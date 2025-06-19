@@ -275,7 +275,8 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
     if (!postData) return {
       likes: video.likes_count || 0,
       comments: video.comments_count || 0,
-      views: video.views_count || video.plays_count || 0,
+      views: video.views_count || 0,
+      plays: video.plays_count || 0,
       followers: 0,
       engagementRate: '0%',
       videoUrl: null,
@@ -293,15 +294,14 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
                      postData.edge_media_to_parent_comment?.count ||
                      video.comments_count || 0;
     
-    const views = postData.video_view_count || 
-                  postData.video_play_count || 
-                  video.views_count || 
-                  video.plays_count || 0;
+    // Separate video_view_count and video_play_count
+    const views = postData.video_view_count || video.views_count || 0;
+    const plays = postData.video_play_count || video.plays_count || 0;
     
     const followers = postData.owner?.edge_followed_by?.count || 0;
     const engagementRate = followers > 0 ? (((likes + comments) / followers) * 100).toFixed(2) + '%' : '0%';
     
-    let thumbnailUrl = '/user/profile-placeholder.png';
+    let thumbnailUrl = '/dummy-image.png';
     
     if (postData.display_resources && postData.display_resources.length > 0) {
       thumbnailUrl = postData.display_resources[postData.display_resources.length - 1].src;
@@ -327,6 +327,7 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
       likes,
       comments,
       views,
+      plays,
       followers,
       engagementRate,
       videoUrl,
@@ -512,31 +513,34 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
             <table className="min-w-full divide-y divide-gray-200 text-xs">
               <thead className="bg-gray-50">
                 <tr>
-                  <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/5">
+                  <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
                     <span className="truncate">Post ({totalItems})</span>
                   </th>
-                  <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/10">
+                  <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
                     <span className="truncate">Followers</span>
                   </th>
-                  <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/10">
+                  <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
                     <span className="truncate">Likes</span>
                   </th>
-                  <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/10">
+                  <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
                     <span className="truncate">Comments</span>
                   </th>
-                  <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/10">
+                  <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
                     <span className="truncate">Views</span>
                   </th>
-                  <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/10">
+                  <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
+                    <span className="truncate">Plays</span>
+                  </th>
+                  <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
                     <span className="truncate">Eng Rate</span>
                   </th>
-                  <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/10">
+                  <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
                     <span className="truncate">Post Date</span>
                   </th>
-                  <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/10">
+                  <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
                     <span className="truncate">Added Date</span>
                   </th>
-                  <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/10">
+                  <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
                     <span className="truncate">Actions</span>
                   </th>
                 </tr>
@@ -544,7 +548,7 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
               <tbody className="bg-white divide-y divide-gray-200">
                 {paginatedVideos.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="py-12 text-center">
+                    <td colSpan={10} className="py-12 text-center">
                       <svg className="h-12 w-12 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24">
                         <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                       </svg>
@@ -582,7 +586,7 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
                                     alt={`${video.influencer_username} video`}
                                     className="w-16 h-12 rounded-lg object-cover shadow-md ring-1 ring-gray-200 group-hover:shadow-lg transition-all duration-300"
                                     onError={(e) => {
-                                      (e.target as HTMLImageElement).src = '/user/profile-placeholder.png';
+                                      (e.target as HTMLImageElement).src = '/dummy-image.png';
                                     }}
                                   />
                                   
@@ -643,6 +647,9 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
                         </td>
                         <td className="px-2 py-4 whitespace-nowrap text-xs text-gray-500">
                           {postData.views > 0 ? formatNumber(postData.views) : 'N/A'}
+                        </td>
+                        <td className="px-2 py-4 whitespace-nowrap text-xs text-gray-500">
+                          {postData.plays > 0 ? formatNumber(postData.plays) : 'N/A'}
                         </td>
                         <td className="px-2 py-4 whitespace-nowrap text-xs text-gray-500">
                           {postData.engagementRate}
@@ -906,8 +913,8 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
                         <p className="text-gray-500">Views</p>
                       </div>
                       <div className="text-center">
-                        <p className="font-medium text-gray-900">{postData.engagementRate}</p>
-                        <p className="text-gray-500">Engagement Rate</p>
+                        <p className="font-medium text-gray-900">{postData.plays > 0 ? formatNumber(postData.plays) : 'N/A'}</p>
+                        <p className="text-gray-500">Plays</p>
                       </div>
                     </>
                   );

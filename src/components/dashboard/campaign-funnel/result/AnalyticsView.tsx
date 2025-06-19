@@ -14,6 +14,7 @@ interface AnalyticsData {
   totalLikes: number;
   totalComments: number;
   totalViews: number;
+  totalPlays: number;
   totalFollowers: number;
   totalPosts: number;
   totalInfluencers: number;
@@ -39,6 +40,7 @@ interface AnalyticsData {
     likes: number;
     comments: number;
     views: number;
+    plays: number;
     engagementRate: number;
     isVerified: boolean;
     postId: string;
@@ -59,6 +61,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
     totalLikes: 0,
     totalComments: 0,
     totalViews: 0,
+    totalPlays: 0,
     totalFollowers: 0,
     totalPosts: 0,
     totalInfluencers: 0,
@@ -91,7 +94,8 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
     if (!postData) return {
       likes: video.likes_count || 0,
       comments: video.comments_count || 0,
-      views: video.views_count || video.plays_count || 0,
+      views: video.views_count || 0,
+      plays: video.plays_count || 0,
       followers: 0,
       engagementRate: 0,
       avatarUrl: getProxiedImageUrl(video.profile_pic_url || ''),
@@ -108,10 +112,9 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                      postData.edge_media_to_parent_comment?.count ||
                      video.comments_count || 0;
     
-    const views = postData.video_view_count || 
-                  postData.video_play_count || 
-                  video.views_count || 
-                  video.plays_count || 0;
+    // Separate video_view_count and video_play_count
+    const views = postData.video_view_count || video.views_count || 0;
+    const plays = postData.video_play_count || video.plays_count || 0;
     
     const followers = postData.owner?.edge_followed_by?.count || 0;
     const engagementRate = followers > 0 ? ((likes + comments) / followers) * 100 : 0;
@@ -124,7 +127,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
     }
 
     // Get thumbnail URL
-    let thumbnailUrl = '/user/profile-placeholder.png';
+    let thumbnailUrl = '/dummy-image.png';
     if (postData.display_resources && postData.display_resources.length > 0) {
       thumbnailUrl = postData.display_resources[postData.display_resources.length - 1].src;
     } else if (postData.thumbnail_src) {
@@ -141,6 +144,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
       likes,
       comments,
       views,
+      plays,
       followers,
       engagementRate,
       avatarUrl: getProxiedImageUrl(avatarUrl),
@@ -247,6 +251,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
         let totalLikes = 0;
         let totalComments = 0;
         let totalViews = 0;
+        let totalPlays = 0;
         let totalFollowers = 0;
         let totalEngagementRates = 0;
         let validEngagementCount = 0;
@@ -274,6 +279,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
           likes: number;
           comments: number;
           views: number;
+          plays: number;
           engagementRate: number;
           isVerified: boolean;
           postId: string;
@@ -285,6 +291,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
           let influencerTotalLikes = 0;
           let influencerTotalComments = 0;
           let influencerTotalViews = 0;
+          let influencerTotalPlays = 0;
           let influencerEngagementRates = 0;
           let influencerValidEngagements = 0;
           let influencerFollowers = 0;
@@ -300,11 +307,13 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
             totalLikes += postDataDetail.likes;
             totalComments += postDataDetail.comments;
             totalViews += postDataDetail.views;
+            totalPlays += postDataDetail.plays;
             
             // Accumulate influencer-specific totals
             influencerTotalLikes += postDataDetail.likes;
             influencerTotalComments += postDataDetail.comments;
             influencerTotalViews += postDataDetail.views;
+            influencerTotalPlays += postDataDetail.plays;
             
             if (postDataDetail.engagementRate > 0) {
               totalEngagementRates += postDataDetail.engagementRate;
@@ -336,6 +345,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
               likes: postDataDetail.likes,
               comments: postDataDetail.comments,
               views: postDataDetail.views,
+              plays: postDataDetail.plays,
               engagementRate: postDataDetail.engagementRate,
               isVerified: postDataDetail.isVerified,
               postId: video.post_result_obj?.data?.shortcode || video.post_id,
@@ -397,6 +407,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
           totalLikes,
           totalComments,
           totalViews,
+          totalPlays,
           totalFollowers,
           totalPosts,
           totalInfluencers,
@@ -475,6 +486,13 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
       subtitle: "Video views across all posts"
     },
     {
+      title: "Total Plays",
+      value: formatNumber(analyticsData.totalPlays),
+      change: getPercentageChange(analyticsData.totalPlays, 200000),
+      changeType: analyticsData.totalPlays > 200000 ? "positive" : "negative" as const,
+      subtitle: "Video plays across all posts"
+    },
+    {
       title: "Avg Engagement Rate",
       value: `${analyticsData.averageEngagementRate.toFixed(2)}%`,
       change: analyticsData.averageEngagementRate > 3 ? "+15.2%" : "-5.1%",
@@ -527,16 +545,6 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
               </>
             )}
           </button>
-{/* 
-          <button
-            onClick={handlePrintExport}
-            className="flex items-center px-6 py-2 bg-gradient-to-r from-blue-100 to-blue-200 text-blue-700 rounded-full hover:from-blue-200 hover:to-blue-300 transition-all duration-200 font-medium shadow-sm"
-          >
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-            </svg>
-            Print
-          </button> */}
         </div>
       </div>
 
@@ -668,31 +676,44 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                 </div>
               </div>
 
-              {/* Performance Timeline */}
+              {/* Video Performance */}
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-medium text-gray-600">Performance Trend</h3>
+                  <h3 className="text-sm font-medium text-gray-600">Video Performance</h3>
                 </div>
                 
-                <div className="h-32 relative">
-                  <svg className="w-full h-full" viewBox="0 0 300 120">
-                    <defs>
-                      <linearGradient id="performanceGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stopColor="#a855f7" stopOpacity="0.3"/>
-                        <stop offset="100%" stopColor="#a855f7" stopOpacity="0.1"/>
-                      </linearGradient>
-                    </defs>
-                    <path d="M 0 80 Q 50 60 100 70 T 200 50 T 300 40 L 300 120 L 0 120 Z" fill="url(#performanceGradient)"/>
-                    <path d="M 0 80 Q 50 60 100 70 T 200 50 T 300 40" stroke="#a855f7" strokeWidth="2" fill="none"/>
-                  </svg>
-                </div>
-                
-                <div className="flex justify-between text-xs text-gray-400 mt-2">
-                  <span>Day 1</span>
-                  <span>Day 7</span>
-                  <span>Day 14</span>
-                  <span>Day 21</span>
-                  <span>Today</span>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-2xl font-bold text-gray-900">{formatNumber(analyticsData.totalViews)}</p>
+                      <p className="text-sm text-gray-500">Total Views</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-bold text-gray-900">{formatNumber(analyticsData.totalPlays)}</p>
+                      <p className="text-sm text-gray-500">Total Plays</p>
+                    </div>
+                  </div>
+                  
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full transition-all duration-300"
+                      style={{ 
+                        width: analyticsData.totalPlays > 0 && analyticsData.totalViews > 0 
+                          ? `${Math.min((analyticsData.totalViews / analyticsData.totalPlays) * 100, 100)}%` 
+                          : '0%' 
+                      }}
+                    ></div>
+                  </div>
+                  
+                  <div className="text-center">
+                    <p className="text-xs text-gray-500">
+                      View to Play Ratio: {
+                        analyticsData.totalPlays > 0 && analyticsData.totalViews > 0
+                          ? `${((analyticsData.totalViews / analyticsData.totalPlays) * 100).toFixed(1)}%`
+                          : 'N/A'
+                      }
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -772,7 +793,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                           alt={`${post.username} post`}
                           className="w-16 h-16 rounded-lg mx-auto border-2 border-gray-200 shadow-sm object-cover"
                           onError={(e) => {
-                            (e.target as HTMLImageElement).src = '/user/profile-placeholder.png';
+                            (e.target as HTMLImageElement).src = '/dummy-image.png';
                           }}
                         />
                         {/* Instagram indicator */}
@@ -805,7 +826,10 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                         </div>
                         <div className="text-xs text-gray-400 space-y-0.5">
                           <p>{formatNumber(post.likes)} likes • {formatNumber(post.comments)} comments</p>
-                          {post.views > 0 && <p>{formatNumber(post.views)} views</p>}
+                          <div className="flex justify-center space-x-2">
+                            {post.views > 0 && <span>{formatNumber(post.views)} views</span>}
+                            {post.plays > 0 && <span>• {formatNumber(post.plays)} plays</span>}
+                          </div>
                         </div>
                       </div>
                     </div>
