@@ -54,7 +54,7 @@ export async function createVideoResultServer(
 export async function getVideoResultsServer(
   campaignId: string,
   page: number = 1,
-  limit: number = 20,
+  limit: number = 200,
   authToken?: string
 ): Promise<GetVideoResultsResponse> {
   try {
