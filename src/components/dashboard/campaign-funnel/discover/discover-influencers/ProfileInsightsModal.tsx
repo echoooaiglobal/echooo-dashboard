@@ -1,6 +1,8 @@
 // src/components/dashboard/campaign-funnel/discover/discover-influencers/ProfileInsightsModal.tsx
 import React, { useState, useEffect } from 'react';
 import { Influencer } from '@/types/insights-iq';
+import { checkProfileAnalyticsExists } from '@/services/profile-analytics';
+import { ProfileAnalyticsExistsResponse } from '@/types/profile-analytics';
 
 interface ProfileInsightsModalProps {
   isOpen: boolean;
@@ -29,6 +31,11 @@ const ProfileInsightsModal: React.FC<ProfileInsightsModalProps> = ({
   const [posts, setPosts] = useState<Post[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'posts'>('overview');
+  
+  // New state for analytics check
+  const [analyticsData, setAnalyticsData] = useState<ProfileAnalyticsExistsResponse | null>(null);
+  const [checkingAnalytics, setCheckingAnalytics] = useState(false);
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
 
   // Fetch posts when modal opens and influencer changes
   useEffect(() => {
@@ -53,6 +60,8 @@ const ProfileInsightsModal: React.FC<ProfileInsightsModalProps> = ({
     if (!isOpen) {
       setPosts([]);
       setActiveTab('overview');
+      setAnalyticsData(null);
+      setAnalyticsError(null);
     }
   }, [isOpen]);
 
@@ -80,10 +89,48 @@ const ProfileInsightsModal: React.FC<ProfileInsightsModalProps> = ({
     }
   };
 
-  const handleProfileAnalytics = () => {
-    // Placeholder for future implementation
-    console.log('Profile Analytics clicked for:', influencer.username);
-    // This will be implemented later
+  // Updated handleProfileAnalytics to check analytics existence
+  const handleProfileAnalytics = async () => {
+    try {
+      console.log('🔍 Profile Analytics clicked for:', influencer.username);
+      
+      // Get platform account ID from influencer
+      const platformAccountId = influencer.external_id || influencer.id;
+      
+      if (!platformAccountId) {
+        console.error('❌ No platform account ID found for influencer');
+        setAnalyticsError('Unable to find platform account ID');
+        return;
+      }
+
+      console.log('📊 Platform Account ID:', platformAccountId);
+      
+      setCheckingAnalytics(true);
+      setAnalyticsError(null);
+      
+      // Call the API to check if analytics exist
+      const response = await checkProfileAnalyticsExists(platformAccountId);
+      
+      console.log('✅ Analytics check response:', response);
+      setAnalyticsData(response);
+      
+      // TODO: Based on response, decide what to do next
+      if (response.exists) {
+        console.log(`📈 Analytics exist! Count: ${response.analytics_count}, Latest: ${response.latest_analytics_date}`);
+        // TODO: Navigate to analytics page or show analytics data
+        alert(`Analytics available! ${response.analytics_count} reports found. Latest: ${new Date(response.latest_analytics_date).toLocaleDateString()}`);
+      } else {
+        console.log('📭 No analytics found for this influencer');
+        // TODO: Show message or trigger analytics generation
+        alert('No analytics reports found for this influencer.');
+      }
+      
+    } catch (error) {
+      console.error('💥 Error checking profile analytics:', error);
+      setAnalyticsError(error instanceof Error ? error.message : 'Failed to check analytics');
+    } finally {
+      setCheckingAnalytics(false);
+    }
   };
 
   return (
@@ -159,10 +206,38 @@ const ProfileInsightsModal: React.FC<ProfileInsightsModalProps> = ({
               </button>
               <button
                 onClick={handleProfileAnalytics}
-                className="w-full bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200 transition-colors font-medium"
+                disabled={checkingAnalytics}
+                className="w-full bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
               >
-                Profile Analytics
+                {checkingAnalytics ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Checking Analytics...
+                  </>
+                ) : (
+                  'Profile Analytics'
+                )}
               </button>
+              
+              {/* Show analytics error if any */}
+              {analyticsError && (
+                <div className="text-xs text-red-600 text-center mt-1">
+                  {analyticsError}
+                </div>
+              )}
+              
+              {/* Show analytics status if available */}
+              {analyticsData && !checkingAnalytics && (
+                <div className="text-xs text-gray-600 text-center mt-1">
+                  {analyticsData.exists 
+                    ? `${analyticsData.analytics_count} analytics reports available`
+                    : 'No analytics reports found'
+                  }
+                </div>
+              )}
             </div>
           </div>
 
@@ -240,6 +315,11 @@ const ProfileInsightsModal: React.FC<ProfileInsightsModalProps> = ({
                       <span className="text-sm font-medium text-gray-900">{influencer.platform_account_type}</span>
                     </div>
                   )}
+                  {/* Show platform account ID for debugging */}
+                  <div className="flex justify-between py-2 border-b border-gray-100">
+                    <span className="text-sm text-gray-500">Platform ID</span>
+                    <span className="text-xs font-mono text-gray-600">{influencer.external_id || influencer.id || 'N/A'}</span>
+                  </div>
                 </div>
               </div>
             )}
