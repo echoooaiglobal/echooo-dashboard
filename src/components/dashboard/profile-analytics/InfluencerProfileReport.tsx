@@ -25,6 +25,7 @@ const InfluencerProfileReport: React.FC = () => {
   const { profile, pricing, price_explanations } = profileAnalysis;
 
   const formatNumber = (num: number) => {
+    if(num === null || num === undefined) return '0';
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
     if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
     return num.toLocaleString();
@@ -59,11 +60,11 @@ const InfluencerProfileReport: React.FC = () => {
       <div className="flex flex-wrap gap-1 mb-8 bg-gray-100 p-1 rounded-lg">
         {[
           { id: 'overview', label: 'Overview', icon: BarChart3 },
-          { id: 'analytics', label: 'Analytics', icon: Activity },
-          { id: 'growth', label: 'Growth', icon: TrendingUp },
           { id: 'audience', label: 'Audience', icon: Users },
-          { id: 'pricing', label: 'Pricing', icon: DollarSign },
+          { id: 'growth', label: 'Growth', icon: TrendingUp },
           { id: 'content', label: 'Content', icon: Target },
+          { id: 'pricing', label: 'Pricing', icon: DollarSign },
+          { id: 'analytics', label: 'Analytics', icon: Activity },
         ].map(({ id, label, icon: Icon }) => (
           <button
             key={id}

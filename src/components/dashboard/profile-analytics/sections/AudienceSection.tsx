@@ -189,7 +189,7 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
           </h4>
           <div className="bg-gradient-to-r from-blue-50 to-pink-50 rounded-lg p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {profile.audience.gender_distribution.map((gender, index) => (
+              {profile?.audience?.gender_distribution?.map((gender, index) => (
                 <div key={index} className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
@@ -222,7 +222,7 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             {/* Age Range Cards */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
-              {profile.audience.gender_age_distribution
+              {profile?.audience.gender_age_distribution? profile.audience.gender_age_distribution
                 .reduce((acc: any[], curr) => {
                   const existing = acc.find(item => item.age_range === curr.age_range);
                   if (existing) {
@@ -270,14 +270,14 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
                       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:opacity-20 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-all duration-700"></div>
                     </div>
                   );
-                })}
+                }): 'N/A'}
             </div>
 
             {/* Gender breakdown by age */}
             <div className="border-t border-gray-200 pt-6">
               <h5 className="font-medium text-gray-700 mb-4">Gender Breakdown by Age</h5>
               <div className="space-y-3">
-                {profile.audience.gender_age_distribution
+                {profile.audience.gender_age_distribution? profile.audience.gender_age_distribution
                   .sort((a, b) => {
                     const ageOrder = ['13-17', '18-24', '25-34', '35-44', '45-64'];
                     return ageOrder.indexOf(a.age_range) - ageOrder.indexOf(b.age_range);
@@ -301,7 +301,7 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
                       </div>
                       <div className="w-12 text-sm font-medium text-right">{ageGender.value.toFixed(1)}%</div>
                     </div>
-                  ))}
+                  )): 'N/A'}
               </div>
             </div>
           </div>
@@ -315,7 +315,7 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
               Top Countries
             </h4>
             <div className="space-y-2">
-              {profile.audience.countries.slice(0, 8).map((country, index) => (
+              {profile.audience?.countries?.slice(0, 8).map((country, index) => (
                 <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <span className="font-medium">{getCountryName(country.code)}</span>
                   <span className="text-purple-600 font-semibold">{country.value.toFixed(1)}%</span>
@@ -330,7 +330,7 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
               Top Cities
             </h4>
             <div className="space-y-2">
-              {profile.audience.cities.slice(0, 8).map((city, index) => (
+              {profile.audience?.cities?.slice(0, 8).map((city, index) => (
                 <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <span className="font-medium text-sm">{city.name}</span>
                   <span className="text-purple-600 font-semibold text-sm">{city.value.toFixed(1)}%</span>
@@ -361,7 +361,7 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
         <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
           <h3 className="text-lg font-semibold mb-4">Audience Ethnicity</h3>
           <div className="space-y-2">
-            {profile.audience.ethnicities.map((ethnicity, index) => (
+            {profile?.audience?.ethnicities?.map((ethnicity, index) => (
               <div key={index} className="flex items-center justify-between">
                 <span className="text-gray-700">{ethnicity.name}</span>
                 <span className="font-medium">{ethnicity.value.toFixed(1)}%</span>
@@ -396,7 +396,7 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
             <div>
               <h4 className="font-medium mb-2">Follower Types</h4>
               <div className="space-y-1">
-                {profile.audience.follower_types.map((type, index) => (
+                {profile?.audience?.follower_types?.map((type, index) => (
                   <div key={index} className="flex justify-between text-sm">
                     <span className="capitalize text-gray-600">{type.name.replace('_', ' ')}</span>
                     <span className="font-medium">{type.value.toFixed(1)}%</span>
@@ -407,7 +407,7 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
             <div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Significant Followers</span>
-                <span className="font-medium">{profile.audience.significant_followers_percentage.toFixed(1)}%</span>
+                <span className="font-medium">{profile?.audience?.significant_followers_percentage?.toFixed(1)}%</span>
               </div>
             </div>
           </div>
@@ -416,7 +416,7 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
         <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
           <h3 className="text-lg font-semibold mb-4">Audience Interests</h3>
           <div className="space-y-2">
-            {profile.audience.interests.slice(0, 8).map((interest, index) => (
+            {profile?.audience?.interests?.slice(0, 8).map((interest, index) => (
               <div key={index} className="flex items-center justify-between">
                 <span className="text-gray-700 text-sm">{interest.name}</span>
                 <span className="font-medium text-sm">{interest.value.toFixed(1)}%</span>
@@ -430,18 +430,18 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
       <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
         <h3 className="text-lg font-semibold mb-4 flex items-center">
           <Star className="w-5 h-5 mr-2" />
-          Notable Followers ({profile.audience.significant_followers_percentage.toFixed(1)}% of total)
+          Notable Followers ({profile?.audience?.significant_followers_percentage?.toFixed(1)}% of total)
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-          {profile.audience.significant_followers.slice(0, 12).map((follower, index) => (
+          {profile?.audience?.significant_followers?.slice(0, 12).map((follower, index) => (
             <div key={index} className="text-center p-3 border border-gray-200 rounded-lg">
               <img
                 src={follower.image_url}
                 alt={follower.platform_username}
                 className="w-12 h-12 rounded-full mx-auto mb-2"
               />
-              <div className="font-medium text-xs">@{follower.platform_username}</div>
-              <div className="text-xs text-gray-500">{formatNumber(follower.follower_count)}</div>
+              <div className="font-medium text-xs">@{follower?.platform_username}</div>
+              <div className="text-xs text-gray-500">{formatNumber(follower?.follower_count)}</div>
               {follower.is_verified && <Verified className="w-3 h-3 text-blue-500 mx-auto mt-1" />}
             </div>
           ))}
@@ -449,7 +449,7 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
       </div>
 
       {/* Audience Likers Analysis */}
-      {profile.audience_likers && profile.audience_likers.countries && (
+      {profile?.audience_likers && profile?.audience_likers?.countries && (
         <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
           <h3 className="text-lg font-semibold mb-4 flex items-center">
             <Heart className="w-5 h-5 mr-2" />
