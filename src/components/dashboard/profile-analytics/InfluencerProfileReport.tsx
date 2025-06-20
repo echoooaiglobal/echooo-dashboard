@@ -19,6 +19,8 @@ import AudienceSection from './sections/AudienceSection';
 import ContentSection from './sections/ContentSection';
 import PricingSection from './sections/PricingSection';
 import AnalyticsSection from './sections/AnalyticsSection';
+import AudienceTabsSection from './sections/AudienceTabsSection';
+// import profileAnalysis from './data/profile-analysis';
 
 const InfluencerProfileReport: React.FC = () => {
   const [activeSection, setActiveSection] = useState<'overview' | 'audience' | 'content' | 'pricing' | 'growth' | 'analytics'>('overview');
@@ -92,7 +94,7 @@ const InfluencerProfileReport: React.FC = () => {
           />
         )}
         {activeSection === 'audience' && (
-          <AudienceSection
+          <AudienceTabsSection 
             profile={profile}
             formatNumber={formatNumber}
           />
