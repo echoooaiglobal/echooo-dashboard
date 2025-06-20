@@ -46,6 +46,9 @@ export const ENDPOINTS = {
     DELETE: (id: string) => `/influencer-contacts/${id}`,
     LIST: '/influencer-contacts',
   },
+  PROFILE_ANALYTICS: {
+    EXISTS: (platformAccountId: string) => `/profile-analytics/exists/${platformAccountId}`,
+  },
   CLIENTS: {
     LIST: '/clients',
     DETAIL: (id: string) => `/clients/${id}`,
