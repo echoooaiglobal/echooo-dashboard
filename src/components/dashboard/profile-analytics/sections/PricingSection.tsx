@@ -68,13 +68,13 @@ const PricingSection: React.FC<PricingSectionProps> = ({
   return (
     <div className="space-y-8">
       {/* Pricing Overview */}
-      <div className="bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl p-8 text-white">
+      {/* <div className="bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl p-8 text-white">
         <h3 className="text-2xl font-bold mb-4">Pricing Information</h3>
         <p className="text-lg opacity-90">Estimated collaboration rates in {pricing.currency}</p>
         <div className="mt-4 text-sm opacity-80">
           Based on engagement rate, audience quality, and market standards
         </div>
-      </div>
+      </div> */}
 
       {/* Pricing Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

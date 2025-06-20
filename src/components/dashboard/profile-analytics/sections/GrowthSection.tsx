@@ -47,14 +47,14 @@ const GrowthSection = ({ profile }) => {
       <div className="max-w-7xl mx-auto">
         
         {/* Header Section */}
-        <div className="text-center mb-12">
+        {/* <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
             Instagram Analytics Dashboard
           </h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
             Comprehensive growth analysis and performance metrics for @{profile.platform_username}
           </p>
-        </div>
+        </div> */}
 
         {/* Key Metrics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
