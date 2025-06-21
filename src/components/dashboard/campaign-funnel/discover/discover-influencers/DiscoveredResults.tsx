@@ -7,8 +7,10 @@ import { DiscoveredCreatorsResults, Influencer } from '@/types/insights-iq';
 import { SortField, SortOrder } from '@/lib/creator-discovery-types';
 import ProfileInsightsModal from './ProfileInsightsModal';
 import { formatNumber } from '@/utils/format';
+import { Platform } from '@/types/platform';
 
 interface DiscoverResultsProps {
+  selectedPlatform?: Platform | null;
   influencers: DiscoverInfluencer[];
   discoveredCreatorsResults: DiscoveredCreatorsResults | null;
   isLoading: boolean;
@@ -37,6 +39,7 @@ interface DiscoverResultsProps {
 }
 
 const DiscoverResults: React.FC<DiscoverResultsProps> = ({
+  selectedPlatform,
   influencers,
   discoveredCreatorsResults,
   isLoading,

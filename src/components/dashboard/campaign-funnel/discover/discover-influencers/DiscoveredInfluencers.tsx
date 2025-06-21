@@ -502,6 +502,7 @@ const DiscoveredInfluencers: React.FC<DiscoveredInfluencersProps> = ({
       
       {/* Always show results */}
       <DiscoveredResults 
+        selectedPlatform={selectedPlatform}
         influencers={influencers}
         discoveredCreatorsResults={discoveredCreatorsResults}
         isLoading={isLoading}
