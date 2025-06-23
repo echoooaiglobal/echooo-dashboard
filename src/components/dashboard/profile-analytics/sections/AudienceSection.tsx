@@ -17,6 +17,7 @@ import {
   Eye
 } from 'lucide-react';
 import { ResponsiveBar } from '@nivo/bar';
+import { ResponsivePie } from '@nivo/pie';
 import { Profile } from '@/types/insightiq/profile-analytics';
 
 interface ProfileData {
@@ -129,180 +130,413 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
     return 'text-red-600 bg-red-50';
   };
 
+  // Filter states with 10% or higher percentage
+  const getFilteredStates = () => {
+    return profile?.audience?.states?.filter(state => (state.value || 0) >= 10) || [];
+  };
+
+  const shouldShowStates = () => {
+    return getFilteredStates().length > 0;
+  };
+
+  // Prepare data for charts
+  const prepareGenderPieData = () => {
+    return profile?.audience?.gender_distribution?.map(gender => ({
+      id: gender.gender,
+      label: gender.gender,
+      value: gender.value,
+      color: gender.gender === 'MALE' ? '#3B82F6' : '#EC4899'
+    })) || [];
+  };
+
+  const prepareAgeData = () => {
+    return profile?.audience?.gender_age_distribution ? profile.audience.gender_age_distribution
+      .reduce((acc: any[], curr) => {
+        const existing = acc.find(item => item.age_range === curr.age_range);
+        if (existing) {
+          existing.value += curr.value;
+        } else {
+          acc.push({ age_range: curr.age_range, value: curr.value });
+        }
+        return acc;
+      }, [])
+      .sort((a, b) => {
+        const ageOrder = ['13-17', '18-24', '25-34', '35-44', '45-64'];
+        return ageOrder.indexOf(a.age_range) - ageOrder.indexOf(b.age_range);
+      }) : [];
+  };
+
+  const prepareAgePieData = () => {
+    const ageData = prepareAgeData();
+    const colors = ['#A855F7', '#3B82F6', '#10B981', '#F59E0B', '#EF4444'];
+    
+    return ageData.map((age, index) => ({
+      id: age.age_range,
+      label: `${age.age_range} years`,
+      value: age.value,
+      color: colors[index] || '#6B7280'
+    }));
+  };
+
+  const prepareGenderAgeBarData = () => {
+    if (!profile?.audience?.gender_age_distribution) return [];
+    
+    const ageRanges = ['13-17', '18-24', '25-34', '35-44', '45-64'];
+    
+    return ageRanges.map(ageRange => {
+      const maleData = profile.audience.gender_age_distribution.find(
+        item => item.age_range === ageRange && item.gender === 'MALE'
+      );
+      const femaleData = profile.audience.gender_age_distribution.find(
+        item => item.age_range === ageRange && item.gender === 'FEMALE'
+      );
+      
+      return {
+        ageRange,
+        Male: maleData?.value || 0,
+        Female: femaleData?.value || 0
+      };
+    });
+  };
+
   return (
     <div className="space-y-8">
       {/* Audience Overview */}
       <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
         <h3 className="text-xl font-semibold mb-6">Audience Demographics</h3>
         
-        {/* Gender Distribution */}
+        {/* Combined Gender and Age Distribution */}
         <div className="mb-8">
-          <h4 className="text-lg font-medium mb-4 flex items-center">
-            <Users className="w-5 h-5 mr-2" />
-            Gender Distribution
+          <h4 className="text-xl font-bold mb-6 flex items-center">
+            <Users className="w-6 h-6 mr-2" />
+            Gender & Age Distribution
           </h4>
           <div className="bg-gradient-to-r from-blue-50 to-pink-50 rounded-lg p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {profile?.audience?.gender_distribution?.map((gender, index) => (
-                <div key={index} className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className={`w-4 h-4 rounded-full ${
-                        gender.gender === 'MALE' ? 'bg-blue-500' : 
-                        gender.gender === 'FEMALE' ? 'bg-pink-500' : 'bg-gray-500'
-                      }`}></div>
-                      <span className="font-medium text-gray-700">{gender.gender}</span>
-                    </div>
-                    <span className="text-xl font-bold text-gray-800">{gender.value.toFixed(1)}%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-3">
-                    <div
-                      className={`h-3 rounded-full transition-all duration-500 ${
-                        gender.gender === 'MALE' ? 'bg-gradient-to-r from-blue-400 to-blue-600' : 
-                        gender.gender === 'FEMALE' ? 'bg-gradient-to-r from-pink-400 to-pink-600' : 'bg-gray-500'
-                      }`}
-                      style={{ width: `${gender.value}%` }}
-                    ></div>
-                  </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Gender Pie Chart */}
+              <div>
+                <h5 className="text-lg font-bold mb-4 text-center text-gray-800">Gender Distribution</h5>
+                <div className="h-96">
+                  <ResponsivePie
+                    data={prepareGenderPieData()}
+                    margin={{ top: 40, right: 80, bottom: 80, left: 80 }}
+                    innerRadius={0.4}
+                    padAngle={3}
+                    cornerRadius={4}
+                    activeOuterRadiusOffset={12}
+                    colors={({ data }) => data.color}
+                    borderWidth={3}
+                    borderColor={{ from: 'color', modifiers: [['darker', 0.3]] }}
+                    arcLinkLabelsSkipAngle={10}
+                    arcLinkLabelsTextColor="#374151"
+                    arcLinkLabelsThickness={3}
+                    arcLinkLabelsColor={{ from: 'color' }}
+                    arcLabelsSkipAngle={10}
+                    arcLabelsTextColor="#FFFFFF"
+                    arcLinkLabel={(d) => `${d.id}: ${d.value.toFixed(1)}%`}
+                    arcLabel={(d) => `${d.value.toFixed(1)}%`}
+                    theme={{
+                      fontSize: 15,
+                      fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+                      tooltip: {
+                        container: {
+                          background: '#1F2937',
+                          color: '#F9FAFB',
+                          fontSize: '15px',
+                          borderRadius: '8px',
+                          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                          border: 'none'
+                        }
+                      }
+                    }}
+                    tooltip={({ datum }) => (
+                      <div className="bg-gray-800 text-white p-4 rounded-lg shadow-lg">
+                        <div className="font-bold text-xl">{datum.label}</div>
+                        <div className="text-blue-300 font-bold text-xl">{datum.value.toFixed(1)}%</div>
+                      </div>
+                    )}
+                  />
                 </div>
-              ))}
-            </div>
-          </div>
-        </div>
+              </div>
 
-        {/* Age Distribution */}
-        <div className="mb-8">
-          <h4 className="text-lg font-medium mb-4">Age Distribution</h4>
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            {/* Age Range Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
-              {profile?.audience?.gender_age_distribution ? profile.audience.gender_age_distribution
-                .reduce((acc: any[], curr) => {
-                  const existing = acc.find(item => item.age_range === curr.age_range);
-                  if (existing) {
-                    existing.value += curr.value;
-                  } else {
-                    acc.push({ age_range: curr.age_range, value: curr.value });
-                  }
-                  return acc;
-                }, [])
-                .sort((a, b) => {
-                  const ageOrder = ['13-17', '18-24', '25-34', '35-44', '45-64'];
-                  return ageOrder.indexOf(a.age_range) - ageOrder.indexOf(b.age_range);
-                })
-                .map((age, index) => {
-                  const colors = [
-                    'from-purple-400 to-purple-600',
-                    'from-blue-400 to-blue-600', 
-                    'from-green-400 to-green-600',
-                    'from-yellow-400 to-yellow-600',
-                    'from-red-400 to-red-600'
-                  ];
-                  return (
-                    <div key={index} className="relative overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-4 hover:shadow-lg transition-all duration-300 group">
-                      <div className="text-center">
-                        <div className={`text-2xl font-bold bg-gradient-to-r ${colors[index]} bg-clip-text text-transparent mb-2`}>
-                          {age.value.toFixed(1)}%
-                        </div>
-                        <div className="text-sm font-medium text-gray-700 mb-3">{age.age_range} years</div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div
-                            className={`h-2 rounded-full bg-gradient-to-r ${colors[index]} transition-all duration-700`}
-                            style={{ width: `${Math.min((age.value / Math.max(...profile.audience.gender_age_distribution.reduce((acc: any[], curr) => {
-                              const existing = acc.find(item => item.age_range === curr.age_range);
-                              if (existing) {
-                                existing.value += curr.value;
-                              } else {
-                                acc.push({ age_range: curr.age_range, value: curr.value });
-                              }
-                              return acc;
-                            }, []).map(item => item.value))) * 100, 100)}%` }}
-                          ></div>
-                        </div>
+              {/* Age Pie Chart */}
+              <div>
+                <h5 className="text-lg font-bold mb-4 text-center text-gray-800">Age Distribution</h5>
+                <div className="h-96">
+                  <ResponsivePie
+                    data={prepareAgePieData()}
+                    margin={{ top: 40, right: 80, bottom: 80, left: 80 }}
+                    innerRadius={0.4}
+                    padAngle={2}
+                    cornerRadius={4}
+                    activeOuterRadiusOffset={12}
+                    colors={({ data }) => data.color}
+                    borderWidth={3}
+                    borderColor={{ from: 'color', modifiers: [['darker', 0.3]] }}
+                    arcLinkLabelsSkipAngle={10}
+                    arcLinkLabelsTextColor="#374151"
+                    arcLinkLabelsThickness={3}
+                    arcLinkLabelsColor={{ from: 'color' }}
+                    arcLabelsSkipAngle={10}
+                    arcLabelsTextColor="#FFFFFF"
+                    arcLinkLabel={(d) => `${d.id}: ${d.value.toFixed(1)}%`}
+                    arcLabel={(d) => `${d.value.toFixed(1)}%`}
+                    theme={{
+                      fontSize: 15,
+                      fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+                      tooltip: {
+                        container: {
+                          background: '#1F2937',
+                          color: '#F9FAFB',
+                          fontSize: '15px',
+                          borderRadius: '8px',
+                          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                          border: 'none'
+                        }
+                      }
+                    }}
+                    tooltip={({ datum }) => (
+                      <div className="bg-gray-800 text-white p-4 rounded-lg shadow-lg">
+                        <div className="font-bold text-xl">{datum.label}</div>
+                        <div className="text-blue-300 font-bold text-xl">{datum.value.toFixed(1)}%</div>
                       </div>
-                      {/* Hover effect overlay */}
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:opacity-20 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-all duration-700"></div>
-                    </div>
-                  );
-                }) : <div className="text-gray-500">N/A</div>}
+                    )}
+                  />
+                </div>
+              </div>
             </div>
 
-            {/* Gender breakdown by age */}
-            <div className="border-t border-gray-200 pt-6">
-              <h5 className="font-medium text-gray-700 mb-4">Gender Breakdown by Age</h5>
-              <div className="space-y-3">
-                {profile?.audience?.gender_age_distribution ? profile.audience.gender_age_distribution
-                  .sort((a, b) => {
-                    const ageOrder = ['13-17', '18-24', '25-34', '35-44', '45-64'];
-                    return ageOrder.indexOf(a.age_range) - ageOrder.indexOf(b.age_range);
-                  })
-                  .map((ageGender, index) => (
-                    <div key={index} className="flex items-center space-x-4">
-                      <div className="w-20 text-sm font-medium text-gray-600">{ageGender.age_range}</div>
-                      <div className="flex items-center space-x-2">
-                        <div className={`w-3 h-3 rounded-full ${
-                          ageGender.gender === 'MALE' ? 'bg-blue-500' : 'bg-pink-500'
-                        }`}></div>
-                        <span className="text-xs text-gray-500 uppercase">{ageGender.gender}</span>
-                      </div>
-                      <div className="flex-1 bg-gray-200 rounded-full h-2">
-                        <div
-                          className={`h-2 rounded-full ${
-                            ageGender.gender === 'MALE' ? 'bg-blue-500' : 'bg-pink-500'
-                          }`}
-                          style={{ width: `${(ageGender.value / 50) * 100}%` }}
-                        ></div>
-                      </div>
-                      <div className="w-12 text-sm font-medium text-right">{ageGender.value.toFixed(1)}%</div>
+            {/* Gender breakdown by age - Vertical Bar Chart */}
+            <div className="border-t border-gray-200 pt-8 mt-8">
+              <h5 className="font-bold text-lg text-gray-800 mb-6 text-center">Gender Breakdown by Age</h5>
+              <div className="h-96">
+                <ResponsiveBar
+                  data={prepareGenderAgeBarData()}
+                  keys={['Male', 'Female']}
+                  indexBy="ageRange"
+                  margin={{ top: 50, right: 130, bottom: 50, left: 80 }}
+                  padding={0.3}
+                  groupMode="grouped"
+                  innerPadding={3}
+                  valueScale={{ type: 'linear' }}
+                  indexScale={{ type: 'band', round: true }}
+                  colors={['#3B82F6', '#EC4899']}
+                  defs={[
+                    {
+                      id: 'maleGradient',
+                      type: 'linearGradient',
+                      colors: [
+                        { offset: 0, color: '#3B82F6' },
+                        { offset: 100, color: '#1D4ED8' }
+                      ]
+                    },
+                    {
+                      id: 'femaleGradient',
+                      type: 'linearGradient',
+                      colors: [
+                        { offset: 0, color: '#EC4899' },
+                        { offset: 100, color: '#DB2777' }
+                      ]
+                    }
+                  ]}
+                  fill={[
+                    {
+                      match: {
+                        id: 'Male'
+                      },
+                      id: 'maleGradient'
+                    },
+                    {
+                      match: {
+                        id: 'Female'
+                      },
+                      id: 'femaleGradient'
+                    }
+                  ]}
+                  borderRadius={4}
+                  borderWidth={1}
+                  borderColor={{ from: 'color', modifiers: [['darker', 0.2]] }}
+                  axisTop={null}
+                  axisRight={null}
+                  axisBottom={{
+                    tickSize: 5,
+                    tickPadding: 8,
+                    tickRotation: 0,
+                    legend: 'Age Range',
+                    legendPosition: 'middle',
+                    legendOffset: 32
+                  }}
+                  axisLeft={{
+                    tickSize: 5,
+                    tickPadding: 12,
+                    tickRotation: 0,
+                    legend: 'Percentage (%)',
+                    legendPosition: 'middle',
+                    legendOffset: -60,
+                    format: value => `${value}%`
+                  }}
+                  enableLabel={true}
+                  label={d => `${d.value.toFixed(1)}%`}
+                  labelSkipWidth={12}
+                  labelSkipHeight={12}
+                  labelTextColor="#ffffff"
+                  legends={[
+                    {
+                      dataFrom: 'keys',
+                      anchor: 'bottom-right',
+                      direction: 'column',
+                      justify: false,
+                      translateX: 120,
+                      translateY: 0,
+                      itemsSpacing: 4,
+                      itemWidth: 100,
+                      itemHeight: 20,
+                      itemDirection: 'left-to-right',
+                      itemOpacity: 0.85,
+                      symbolSize: 20,
+                      effects: [
+                        {
+                          on: 'hover',
+                          style: {
+                            itemOpacity: 1
+                          }
+                        }
+                      ]
+                    }
+                  ]}
+                  animate={true}
+                  motionConfig="gentle"
+                  theme={{
+                    background: 'transparent',
+                    text: {
+                      fontSize: 14,
+                      fill: '#374151',
+                      fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+                      fontWeight: 700
+                    },
+                    axis: {
+                      domain: {
+                        line: {
+                          stroke: '#e5e7eb',
+                          strokeWidth: 1
+                        }
+                      },
+                      legend: {
+                        text: {
+                          fontSize: 15,
+                          fill: '#6b7280',
+                          fontWeight: 700
+                        }
+                      },
+                      ticks: {
+                        line: {
+                          stroke: '#e5e7eb',
+                          strokeWidth: 1
+                        },
+                        text: {
+                          fontSize: 13,
+                          fill: '#6b7280',
+                          fontWeight: 700
+                        }
+                      }
+                    },
+                    grid: {
+                      line: {
+                        stroke: '#f3f4f6',
+                        strokeWidth: 1
+                      }
+                    }
+                  }}
+                  tooltip={({ id, value, indexValue }) => (
+                    <div className="bg-gray-800 text-white p-4 rounded-lg shadow-lg">
+                      <div className="font-bold text-xl mb-2">{indexValue} years</div>
+                      <div className="font-bold text-lg">{id}</div>
+                      <div className="text-blue-300 font-bold text-xl">{value.toFixed(1)}%</div>
                     </div>
-                  )) : <div className="text-gray-500">N/A</div>}
+                  )}
+                />
               </div>
             </div>
           </div>
         </div>
 
         {/* Geographic Data - Countries, States, Cities */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className={`grid grid-cols-1 ${shouldShowStates() ? 'lg:grid-cols-3' : 'lg:grid-cols-2'} gap-6`}>
           <div>
-            <h4 className="text-lg font-medium mb-4 flex items-center">
+            <h4 className="text-lg font-medium mb-4 flex items-center group">
               <Flag className="w-5 h-5 mr-2" />
               Top Countries
+              <div className="relative ml-2">
+                <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
+                  ?
+                </div>
+                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+                  <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+                    Countries where your audience is located, ranked by percentage
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                  </div>
+                </div>
+              </div>
             </h4>
             <div className="space-y-2 max-h-80 overflow-y-auto">
               {profile?.audience?.countries?.map((country, index) => (
                 <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                   <span className="font-medium">{getCountryName(country.code)}</span>
-                  <span className="text-purple-600 font-semibold">{country.value.toFixed(1)}%</span>
+                  <span className="text-purple-600 font-semibold">{country.value?.toFixed(1) || '0.0'}%</span>
                 </div>
               ))}
             </div>
           </div>
 
-          <div>
-            <h4 className="text-lg font-medium mb-4 flex items-center">
-              <Building2 className="w-5 h-5 mr-2" />
-              Top States
-            </h4>
-            <div className="space-y-2 max-h-80 overflow-y-auto">
-              {profile?.audience?.states?.length > 0 ? profile.audience.states.map((state, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                  <span className="font-medium text-sm">{state.name}</span>
-                  <span className="text-purple-600 font-semibold text-sm">{state.value.toFixed(1)}%</span>
+          {shouldShowStates() && (
+            <div>
+              <h4 className="text-lg font-medium mb-4 flex items-center group">
+                <Building2 className="w-5 h-5 mr-2" />
+                Top States
+                <div className="relative ml-2">
+                  <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
+                    ?
+                  </div>
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+                    <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+                      States/provinces with significant audience presence (≥10%)
+                      <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                    </div>
+                  </div>
                 </div>
-              )) : <div className="text-gray-500 text-sm">No state data available</div>}
+              </h4>
+              <div className="space-y-2 max-h-80 overflow-y-auto">
+                {getFilteredStates().map((state, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                    <span className="font-medium text-sm">{state.name}</span>
+                    <span className="text-purple-600 font-semibold text-sm">{state.value?.toFixed(1) || '0.0'}%</span>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           <div>
-            <h4 className="text-lg font-medium mb-4 flex items-center">
+            <h4 className="text-lg font-medium mb-4 flex items-center group">
               <MapPin className="w-5 h-5 mr-2" />
               Top Cities
+              <div className="relative ml-2">
+                <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
+                  ?
+                </div>
+                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+                  <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+                    Cities with the highest concentration of your audience
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                  </div>
+                </div>
+              </div>
             </h4>
             <div className="space-y-2 max-h-80 overflow-y-auto">
               {profile?.audience?.cities?.map((city, index) => (
                 <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                   <span className="font-medium text-sm">{city.name}</span>
-                  <span className="text-purple-600 font-semibold text-sm">{city.value.toFixed(1)}%</span>
+                  <span className="text-purple-600 font-semibold text-sm">{city.value?.toFixed(1) || '0.0'}%</span>
                 </div>
               ))}
             </div>
@@ -313,33 +547,57 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
       {/* Language & Ethnicity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-          <h3 className="text-lg font-semibold mb-4 flex items-center">
+          <h3 className="text-lg font-semibold mb-4 flex items-center group">
             <Languages className="w-5 h-5 mr-2" />
             Audience Languages
+            <div className="relative ml-2">
+              <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
+                ?
+              </div>
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+                <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+                  Primary languages spoken by your audience members
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                </div>
+              </div>
+            </div>
           </h3>
           <div className="space-y-2 max-h-80 overflow-y-auto">
             {profile?.audience?.languages?.map((lang, index) => (
               <div key={index} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
                 <span className="text-gray-700">{getLanguageName(lang.code)}</span>
-                <span className="font-medium">{lang.value.toFixed(2)}%</span>
+                <span className="font-medium">{lang.value?.toFixed(2) || '0.00'}%</span>
               </div>
             ))}
           </div>
         </div>
 
         <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-          <h3 className="text-lg font-semibold mb-4">Audience Ethnicity</h3>
+          <h3 className="text-lg font-semibold mb-4 flex items-center group">
+            Audience Ethnicity
+            <div className="relative ml-2">
+              <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
+                ?
+              </div>
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+                <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+                  Ethnic background distribution of your audience
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                </div>
+              </div>
+            </div>
+          </h3>
           <div className="space-y-3">
             {profile?.audience?.ethnicities?.map((ethnicity, index) => (
               <div key={index} className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-gray-700">{ethnicity.name}</span>
-                  <span className="font-medium">{ethnicity.value.toFixed(1)}%</span>
+                  <span className="font-medium">{ethnicity.value?.toFixed(1) || '0.0'}%</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div
                     className="bg-gradient-to-r from-blue-400 to-purple-500 h-2 rounded-full transition-all duration-500"
-                    style={{ width: `${ethnicity.value}%` }}
+                    style={{ width: `${ethnicity.value || 0}%` }}
                   ></div>
                 </div>
               </div>
@@ -350,15 +608,26 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
 
       {/* Brand Affinity */}
       <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-        <h3 className="text-lg font-semibold mb-4 flex items-center">
+        <h3 className="text-lg font-semibold mb-4 flex items-center group">
           <Award className="w-5 h-5 mr-2" />
           Brand Affinity
+          <div className="relative ml-2">
+            <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
+              ?
+            </div>
+            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+              <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+                Brands and companies your audience shows interest in
+                <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+              </div>
+            </div>
+          </div>
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-96 overflow-y-auto">
           {profile?.audience?.brand_affinity?.map((brand, index) => (
             <div key={index} className="bg-gradient-to-r from-gray-50 to-gray-100 p-4 rounded-lg border hover:shadow-md transition-all">
               <div className="text-sm font-medium text-gray-800 mb-1">{brand.name}</div>
-              <div className="text-xs text-purple-600 font-semibold">{(brand.value * 100).toFixed(3)}%</div>
+              <div className="text-xs text-purple-600 font-semibold">{((brand.value || 0) * 100).toFixed(3)}%</div>
             </div>
           ))}
         </div>
@@ -367,22 +636,33 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
       {/* Audience Quality & Insights */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-          <h3 className="text-lg font-semibold mb-4 flex items-center">
+          <h3 className="text-lg font-semibold mb-4 flex items-center group">
             <UserCheck className="w-5 h-5 mr-2" />
             Audience Quality
+            <div className="relative ml-2">
+              <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
+                ?
+              </div>
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+                <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+                  Assessment of follower authenticity and engagement quality
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                </div>
+              </div>
+            </div>
           </h3>
           <div className="space-y-6">
             <div>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-gray-600">Credibility Score</span>
-                <span className={`text-2xl font-bold px-3 py-1 rounded-lg ${getCredibilityColor(profile?.audience?.credibility_score)}`}>
-                  {(profile?.audience?.credibility_score * 100).toFixed(1)}%
+                <span className={`text-2xl font-bold px-3 py-1 rounded-lg ${getCredibilityColor(profile?.audience?.credibility_score || 0)}`}>
+                  {((profile?.audience?.credibility_score || 0) * 100).toFixed(1)}%
                 </span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-3">
                 <div
                   className="bg-gradient-to-r from-green-400 to-green-600 h-3 rounded-full transition-all duration-500"
-                  style={{ width: `${profile?.audience?.credibility_score * 100}%` }}
+                  style={{ width: `${(profile?.audience?.credibility_score || 0) * 100}%` }}
                 ></div>
               </div>
             </div>
@@ -394,12 +674,12 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
                   <div key={index} className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="capitalize text-gray-600">{getFollowerTypeLabel(type.name)}</span>
-                      <span className="font-medium">{type.value.toFixed(1)}%</span>
+                      <span className="font-medium">{type.value?.toFixed(1) || '0.0'}%</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div
                         className={`h-2 rounded-full transition-all duration-500 ${getFollowerTypeColor(type.name)}`}
-                        style={{ width: `${type.value}%` }}
+                        style={{ width: `${type.value || 0}%` }}
                       ></div>
                     </div>
                   </div>
@@ -410,22 +690,33 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
             <div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Significant Followers</span>
-                <span className="font-medium">{profile?.audience?.significant_followers_percentage?.toFixed(1)}%</span>
+                <span className="font-medium">{profile?.audience?.significant_followers_percentage?.toFixed(1) || '0.0'}%</span>
               </div>
             </div>
           </div>
         </div>
 
         <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-          <h3 className="text-lg font-semibold mb-4 flex items-center">
+          <h3 className="text-lg font-semibold mb-4 flex items-center group">
             <Target className="w-5 h-5 mr-2" />
             Audience Interests
+            <div className="relative ml-2">
+              <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
+                ?
+              </div>
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+                <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+                  Topics and categories your audience is most interested in
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                </div>
+              </div>
+            </div>
           </h3>
           <div className="space-y-2 max-h-80 overflow-y-auto">
             {profile?.audience?.interests?.map((interest, index) => (
               <div key={index} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
                 <span className="text-gray-700 text-sm">{interest.name}</span>
-                <span className="font-medium text-sm">{interest.value.toFixed(1)}%</span>
+                <span className="font-medium text-sm">{interest.value?.toFixed(1) || '0.0'}%</span>
               </div>
             ))}
           </div>
@@ -434,9 +725,20 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
 
       {/* Credibility Score Band */}
       <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-        <h3 className="text-lg font-semibold mb-6 flex items-center">
+        <h3 className="text-lg font-semibold mb-6 flex items-center group">
           <Shield className="w-5 h-5 mr-2" />
           Credibility Score Distribution
+          <div className="relative ml-2">
+            <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
+              ?
+            </div>
+            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+              <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+                How your credibility score compares to other profiles
+                <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+              </div>
+            </div>
+          </div>
         </h3>
         
         {/* Nivo Bar Chart */}
@@ -605,7 +907,7 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
           </div>
           <div className="text-center bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-4">
             <div className="text-2xl font-bold text-orange-600">
-              {(profile?.audience?.credibility_score * 100).toFixed(1)}%
+              {((profile?.audience?.credibility_score || 0) * 100).toFixed(1)}%
             </div>
             <div className="text-sm text-gray-600 font-medium">User's Score</div>
           </div>
@@ -614,9 +916,20 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
 
       {/* Follower Reachability */}
       <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-        <h3 className="text-lg font-semibold mb-4 flex items-center">
+        <h3 className="text-lg font-semibold mb-4 flex items-center group">
           <Eye className="w-5 h-5 mr-2" />
           Follower Reachability
+          <div className="relative ml-2">
+            <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
+              ?
+            </div>
+            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+              <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+                Distribution of followers by their own following count
+                <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+              </div>
+            </div>
+          </div>
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {profile?.audience?.follower_reachability?.map((reach, index) => (
@@ -626,11 +939,11 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
                  reach.following_range === '1500-' ? 'Over 1500' :
                  reach.following_range} following
               </div>
-              <div className="text-2xl font-bold text-emerald-600">{reach.value.toFixed(1)}%</div>
+              <div className="text-2xl font-bold text-emerald-600">{reach.value?.toFixed(1) || '0.0'}%</div>
               <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
                 <div
                   className="bg-emerald-500 h-2 rounded-full transition-all duration-500"
-                  style={{ width: `${reach.value}%` }}
+                  style={{ width: `${reach.value || 0}%` }}
                 ></div>
               </div>
             </div>
@@ -640,9 +953,20 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
 
       {/* Significant Followers */}
       <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-        <h3 className="text-lg font-semibold mb-4 flex items-center">
+        <h3 className="text-lg font-semibold mb-4 flex items-center group">
           <Star className="w-5 h-5 mr-2" />
-          Notable Followers ({profile?.audience?.significant_followers_percentage?.toFixed(1)}% of total)
+          Notable Followers ({profile?.audience?.significant_followers_percentage?.toFixed(1) || '0.0'}% of total)
+          <div className="relative ml-2">
+            <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
+              ?
+            </div>
+            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+              <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+                High-profile followers with significant reach and influence
+                <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+              </div>
+            </div>
+          </div>
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 max-h-96 overflow-y-auto">
           {profile?.audience?.significant_followers?.map((follower, index) => (
@@ -659,7 +983,7 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
                 <div className="font-medium text-xs truncate max-w-20">@{follower?.platform_username}</div>
                 {follower.is_verified && <Verified className="w-3 h-3 text-blue-500 ml-1 flex-shrink-0" />}
               </div>
-              <div className="text-xs text-gray-500">{formatNumber(follower?.follower_count)}</div>
+              <div className="text-xs text-gray-500">{formatNumber(follower?.follower_count || 0)}</div>
             </div>
           ))}
         </div>
