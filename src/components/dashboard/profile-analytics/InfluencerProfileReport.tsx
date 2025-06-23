@@ -8,9 +8,14 @@ import {
   Target,
   TrendingUp,
   DollarSign,
-  Activity
+  Activity,
+  MapPin, 
+  Globe, 
+  ExternalLink,
+  Verified,
+  RefreshCw
 } from 'lucide-react';
-import profileAnalysis from '@/lib/profile-analysis';
+import { InsightIQProfileAnalyticsResponse } from '@/types/insightiq/profile-analytics';
 
 // Import the individual section components
 import OverviewSection from './sections/OverviewSection';
@@ -20,11 +25,26 @@ import ContentSection from './sections/ContentSection';
 import PricingSection from './sections/PricingSection';
 import AnalyticsSection from './sections/AnalyticsSection';
 import AudienceTabsSection from './sections/AudienceTabsSection';
-// import profileAnalysis from './data/profile-analysis';
 
-const InfluencerProfileReport: React.FC = () => {
+interface InfluencerProfileReportProps {
+  analyticsData?: InsightIQProfileAnalyticsResponse;
+  platformAccountId?: string | null;
+  platformId?: string | null;
+  onRefresh?: () => void;
+  isRefreshing?: boolean;
+}
+
+const InfluencerProfileReport: React.FC<InfluencerProfileReportProps> = ({
+  analyticsData,
+  platformAccountId,
+  platformId,
+  onRefresh,
+  isRefreshing = false
+}) => {
   const [activeSection, setActiveSection] = useState<'overview' | 'audience' | 'content' | 'pricing' | 'growth' | 'analytics'>('overview');
-  const { profile, pricing, price_explanations } = profileAnalysis;
+  const profile = analyticsData?.profile || null;
+  const pricing = analyticsData?.pricing || null;
+  const price_explanations = analyticsData?.price_explanations || null;
 
   const formatNumber = (num: number) => {
     if(num === null || num === undefined) return '0';
@@ -56,10 +76,104 @@ const InfluencerProfileReport: React.FC = () => {
     return 'Nano Influencer';
   };
 
+  // Helper function to format location
+  const formatLocation = () => {
+    if (!profile?.location) return 'Location not specified';
+    
+    const { city, state, country } = profile.location;
+    const parts = [city, state, country].filter(Boolean);
+    
+    if (parts.length === 0) return 'Location not specified';
+    return parts.join(', ');
+  };
+
+  if (!profile) {
+    return (
+      <div className="p-4">
+        <div className="text-center py-8">
+          <p className="text-gray-500">No profile data available</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-7xl mx-auto p-6">
+    <div className="p-4">
+      {/* Profile Header */}
+      <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl p-6 text-white mb-6">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="relative">
+              <img
+                src={profile.image_url}
+                alt={profile.full_name}
+                className="w-20 h-20 rounded-full border-4 border-white shadow-lg"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = '/placeholder-avatar.png'; // Fallback image
+                }}
+              />
+              {profile.is_verified && (
+                <div className="absolute -bottom-1 -right-1 bg-blue-500 rounded-full p-1">
+                  <Verified className="w-4 h-4 text-white" />
+                </div>
+              )}
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold">{profile.full_name}</h1>
+              <p className="text-lg opacity-90">@{profile.platform_username}</p>
+              <p className="text-sm opacity-80 mt-2 max-w-md">{profile.introduction}</p>
+              <div className="flex items-center mt-3 space-x-4 text-sm">
+                <span className="flex items-center space-x-1">
+                  <MapPin className="w-4 h-4" />
+                  <span>{formatLocation()}</span>
+                </span>
+                <span className="flex items-center space-x-1">
+                  <Globe className="w-4 h-4" />
+                  <span>{profile.language || 'Not specified'}</span>
+                </span>
+                <a 
+                  href={profile.url} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center space-x-1 hover:opacity-80"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  <span>View Profile</span>
+                </a>
+              </div>
+            </div>
+          </div>
+          <div className="text-right space-y-3">
+            {/* Refresh Icon */}
+            <div className="flex justify-end">
+              <button
+                onClick={onRefresh}
+                disabled={isRefreshing}
+                className="bg-white/20 hover:bg-white/30 rounded-full p-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title={isRefreshing ? 'Refreshing data...' : 'Refresh data from source'}
+              >
+                <RefreshCw className={`w-4 h-4 text-white ${isRefreshing ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+            
+            <div className="bg-white/20 rounded-xl p-3">
+              <div className="text-xl font-bold">{formatNumber(profile.follower_count)}</div>
+              <div className="text-xs opacity-80">Followers</div>
+            </div>
+            <div className="bg-white/20 rounded-xl p-3">
+              <div className="text-sm font-bold">{getInfluencerTier(profile.follower_count)}</div>
+              <div className="text-xs opacity-80">Tier</div>
+            </div>
+            <div className="text-xs opacity-90">
+              Last updated: {new Date(profile.updated_at).toLocaleDateString()}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Navigation Tabs */}
-      <div className="flex flex-wrap gap-1 mb-8 bg-gray-100 p-1 rounded-lg">
+      <div className="flex flex-wrap gap-1 mb-6 bg-gray-100 p-1 rounded-lg">
         {[
           { id: 'overview', label: 'Overview', icon: BarChart3 },
           { id: 'audience', label: 'Audience', icon: Users },
@@ -84,7 +198,7 @@ const InfluencerProfileReport: React.FC = () => {
       </div>
  
       {/* Content */}
-      <div className="min-h-screen">
+      <div>
         {activeSection === 'overview' && (
           <OverviewSection
             profile={profile}

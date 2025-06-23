@@ -20,6 +20,17 @@ import { LocationService } from './locations/location.service';
 
 export const locationService = new LocationService();
 
+// Export profile analytics service
+export { ProfileAnalyticsService } from './profile-analytics/profile-analytics.service';
+
+import { ProfileAnalyticsService } from './profile-analytics/profile-analytics.service';
+
+export const profileAnalyticsService = new ProfileAnalyticsService();
+
+// Export services object
 export const InsightIQServices = {
-  location: locationService
+  location: locationService,
+  profileAnalytics: profileAnalyticsService
 } as const;
+
+

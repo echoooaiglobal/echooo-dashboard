@@ -18,98 +18,10 @@ import {
   Eye,
   AlertCircle
 } from 'lucide-react';
-
-interface GenderDistribution {
-  gender: string;
-  value: number;
-}
-
-interface AgeDistribution {
-  gender: string;
-  age_range: string;
-  value: number;
-}
-
-interface Country {
-  code: string;
-  value: number;
-}
-
-interface State {
-  name: string;
-  value: number;
-}
-
-interface City {
-  name: string;
-  value: number;
-  latitude?: number;
-  longitude?: number;
-}
-
-interface Language {
-  code: string;
-  value: number;
-}
-
-interface Ethnicity {
-  name: string;
-  value: number;
-}
-
-interface FollowerType {
-  name: string;
-  value: number;
-}
-
-interface Interest {
-  name: string;
-  value: number;
-}
-
-interface BrandAffinity {
-  name: string;
-  value: number;
-  id: string;
-}
-
-interface SignificantLiker {
-  external_id: string;
-  platform_username: string;
-  url: string;
-  image_url: string;
-  follower_count: number;
-  subscriber_count?: number;
-  is_verified: boolean;
-}
-
-interface CredibilityScoreBand {
-  min: number | null;
-  max: number | null;
-  total_profile_count: number;
-  is_median?: string | null;
-}
-
-interface AudienceLikers {
-  countries?: Country[];
-  states?: State[];
-  cities?: City[];
-  gender_age_distribution?: AgeDistribution[];
-  ethnicities?: Ethnicity[];
-  languages?: Language[];
-  brand_affinity?: BrandAffinity[];
-  interests?: Interest[];
-  follower_types?: FollowerType[];
-  credibility_score?: number;
-  gender_distribution?: GenderDistribution[];
-  significant_likers_percentage?: number;
-  significant_likers?: SignificantLiker[];
-  likers_not_followers_percentage?: number;
-  credibility_score_band?: CredibilityScoreBand[];
-}
+import { Profile } from '@/types/insightiq/profile-analytics';
 
 interface ProfileData {
-  audience_likers?: AudienceLikers;
+  audience_likers?: Profile['audience_likers'];
 }
 
 interface AudienceLikersSectionProps {

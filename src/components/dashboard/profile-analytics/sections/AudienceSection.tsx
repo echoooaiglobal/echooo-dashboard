@@ -17,104 +17,10 @@ import {
   Eye
 } from 'lucide-react';
 import { ResponsiveBar } from '@nivo/bar';
-
-interface GenderDistribution {
-  gender: string;
-  value: number;
-}
-
-interface AgeDistribution {
-  gender: string;
-  age_range: string;
-  value: number;
-}
-
-interface Country {
-  code: string;
-  value: number;
-}
-
-interface State {
-  name: string;
-  value: number;
-}
-
-interface City {
-  name: string;
-  value: number;
-  latitude?: number;
-  longitude?: number;
-}
-
-interface Language {
-  code: string;
-  value: number;
-}
-
-interface Ethnicity {
-  name: string;
-  value: number;
-}
-
-interface FollowerType {
-  name: string;
-  value: number;
-}
-
-interface Interest {
-  name: string;
-  value: number;
-}
-
-interface BrandAffinity {
-  name: string;
-  value: number;
-  id: string;
-}
-
-interface SignificantFollower {
-  external_id: string;
-  platform_username: string;
-  url: string;
-  image_url: string;
-  follower_count: number;
-  subscriber_count?: number;
-  is_verified: boolean;
-}
-
-interface CredibilityScoreBand {
-  min: number | null;
-  max: number | null;
-  total_profile_count: number;
-  is_median?: string | null;
-}
-
-interface FollowerReachability {
-  following_range: string;
-  value: number;
-}
-
-interface Audience {
-  gender_distribution: GenderDistribution[];
-  gender_age_distribution: AgeDistribution[];
-  countries: Country[];
-  states: State[];
-  cities: City[];
-  languages: Language[];
-  ethnicities: Ethnicity[];
-  follower_types: FollowerType[];
-  interests: Interest[];
-  brand_affinity: BrandAffinity[];
-  credibility_score: number;
-  significant_followers_percentage: number;
-  significant_followers: SignificantFollower[];
-  credibility_score_band: CredibilityScoreBand[];
-  follower_reachability: FollowerReachability[];
-  lookalikes: any[];
-}
+import { Profile } from '@/types/insightiq/profile-analytics';
 
 interface ProfileData {
-  audience: Audience;
+  audience: Profile['audience'];
 }
 
 interface AudienceSectionProps {

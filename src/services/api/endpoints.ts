@@ -48,7 +48,10 @@ export const ENDPOINTS = {
   },
   PROFILE_ANALYTICS: {
     EXISTS: (platformAccountId: string) => `/profile-analytics/exists/${platformAccountId}`,
+    BY_HANDLE: (platformAccountId: string) => `/profile-analytics/by-handle/${platformAccountId}`,
+    WITH_SOCIAL_ACCOUNT: '/profile-analytics/with-social-account',
   },
+  
   CLIENTS: {
     LIST: '/clients',
     DETAIL: (id: string) => `/clients/${id}`,
