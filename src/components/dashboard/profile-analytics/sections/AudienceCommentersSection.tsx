@@ -17,89 +17,10 @@ import {
   Star,
   Verified
 } from 'lucide-react';
-
-interface GenderDistribution {
-  gender: string;
-  value: number;
-}
-
-interface AgeDistribution {
-  gender: string;
-  age_range: string;
-  value: number;
-}
-
-interface Country {
-  code: string;
-  value: number;
-}
-
-interface State {
-  name: string;
-  value: number;
-}
-
-interface City {
-  name: string;
-  value: number;
-  latitude?: number;
-  longitude?: number;
-}
-
-interface Language {
-  code: string;
-  value: number;
-}
-
-interface Ethnicity {
-  name: string;
-  value: number;
-}
-
-interface FollowerType {
-  name: string;
-  value: number;
-}
-
-interface Interest {
-  name: string;
-  value: number;
-}
-
-interface BrandAffinity {
-  name: string;
-  value: number;
-  id: string;
-}
-
-interface SignificantCommenter {
-  external_id: string;
-  platform_username: string;
-  url: string;
-  image_url: string;
-  follower_count: number;
-  subscriber_count?: number;
-  is_verified: boolean;
-}
-
-interface AudienceCommenters {
-  countries?: Country[];
-  states?: State[];
-  cities?: City[];
-  gender_age_distribution?: AgeDistribution[];
-  ethnicities?: Ethnicity[];
-  languages?: Language[];
-  brand_affinity?: BrandAffinity[];
-  interests?: Interest[];
-  follower_types?: FollowerType[];
-  credibility_score?: number;
-  gender_distribution?: GenderDistribution[];
-  significant_commenters_percentage?: number;
-  significant_commenters?: SignificantCommenter[];
-}
+import { Profile } from '@/types/insightiq/profile-analytics';
 
 interface ProfileData {
-  audience_commenters?: AudienceCommenters;
+  audience_commenters?: Profile['audience_commenters'];
 }
 
 interface AudienceCommentersSectionProps {

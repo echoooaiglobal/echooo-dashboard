@@ -22,6 +22,11 @@ export const INSIGHTIQ_ENDPOINTS = {
   // Topics endpoints
   TOPICS: '/social/creators/dictionary/topics',
 
+  // Profile Analytics endpoints
+  profileAnalytics: {
+    getAnalytics: '/social/creators/profiles/analytics', // GET - Get profile analytics
+  },
+
   // Influencer discovery endpoints (for future use)
   discovery: {
     search: '/discovery/search', // POST - Search influencers

@@ -3,95 +3,15 @@
 
 import { useState } from 'react';
 import { Users, Heart, MessageCircle } from 'lucide-react';
+import { Profile } from '@/types/insightiq/profile-analytics';
 import AudienceSection from './AudienceSection';
 import AudienceLikersSection from './AudienceLikersSection';
 import AudienceCommentersSection from './AudienceCommentersSection';
 
-interface GenderDistribution {
-  gender: string;
-  value: number;
-}
-
-interface AgeDistribution {
-  gender: string;
-  age_range: string;
-  value: number;
-}
-
-interface Country {
-  code: string;
-  value: number;
-}
-
-interface City {
-  name: string;
-  value: number;
-}
-
-interface Language {
-  code: string;
-  value: number;
-}
-
-interface Ethnicity {
-  name: string;
-  value: number;
-}
-
-interface FollowerType {
-  name: string;
-  value: number;
-}
-
-interface Interest {
-  name: string;
-  value: number;
-}
-
-interface SignificantFollower {
-  platform_username: string;
-  image_url: string;
-  follower_count: number;
-  is_verified: boolean;
-}
-
-interface Audience {
-  gender_distribution: GenderDistribution[];
-  gender_age_distribution: AgeDistribution[];
-  countries: Country[];
-  cities: City[];
-  languages: Language[];
-  ethnicities: Ethnicity[];
-  follower_types: FollowerType[];
-  interests: Interest[];
-  credibility_score: number;
-  significant_followers_percentage: number;
-  significant_followers: SignificantFollower[];
-}
-
-interface AudienceCommenters {
-  countries?: Country[];
-  credibility_score?: number;
-}
-
-interface AudienceLikers {
-  countries?: Country[];
-  cities?: City[];
-  gender_age_distribution?: AgeDistribution[];
-  ethnicities?: Ethnicity[];
-  languages?: Language[];
-  follower_types?: FollowerType[];
-  interests?: Interest[];
-  credibility_score?: number;
-  gender_distribution?: GenderDistribution[];
-  significant_likers_percentage?: number;
-  significant_likers?: SignificantFollower[];
-}
-
 interface ProfileData {
-  audience: Audience;
-  audience_likers?: AudienceLikers;
-  audience_commenters?: AudienceCommenters;
+  audience: Profile['audience'];
+  audience_likers?: Profile['audience_likers'];
+  audience_commenters?: Profile['audience_commenters'];
 }
 
 interface AudienceTabsSectionProps {

@@ -7,59 +7,20 @@ import {
   Heart, 
   MessageCircle, 
   Play,
-  MapPin, 
-  Globe, 
   Crown, 
-  ExternalLink,
   Verified,
   Mail,
   Building
 } from 'lucide-react';
-
-interface ProfileData {
-  image_url: string;
-  full_name: string;
-  platform_username: string;
-  introduction: string;
-  location: {
-    city: string;
-    country: string;
-  };
-  language: string;
-  url: string;
-  follower_count: number;
-  is_verified: boolean;
-  updated_at: string;
-  engagement_rate: number;
-  average_likes: number;
-  average_comments: number;
-  average_reels_views: number;
-  platform_account_type: string;
-  gender: string;
-  age_group: string;
-  content_count: number;
-  posts_hidden_likes_percentage_value: number;
-  contact_details: Array<{
-    type: string;
-    value: string;
-    label: string;
-    verified?: boolean;
-  }>;
-  top_interests: Array<{
-    name: string;
-  }>;
-  brand_affinity: Array<{
-    name: string;
-  }>;
-}
+import { Profile } from '@/types/insightiq/profile-analytics';
 
 interface OverviewSectionProps {
-  profile: ProfileData;
+  profile: Profile;
   formatNumber: (num: number) => string;
   getEngagementLevel: (rate: number) => { level: string; color: string; bg: string };
   getInfluencerTier: (followers: number) => string;
 }
-
+ 
 const OverviewSection: React.FC<OverviewSectionProps> = ({
   profile,
   formatNumber,
@@ -68,63 +29,6 @@ const OverviewSection: React.FC<OverviewSectionProps> = ({
 }) => {
   return (
     <div className="space-y-8">
-      {/* Profile Header */}
-      <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl p-8 text-white">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center space-x-6">
-            <div className="relative">
-              <img
-                src={profile.image_url}
-                alt={profile.full_name}
-                className="w-24 h-24 rounded-full border-4 border-white shadow-lg"
-              />
-              {profile.is_verified && (
-                <div className="absolute -bottom-1 -right-1 bg-blue-500 rounded-full p-1">
-                  <Verified className="w-4 h-4 text-white" />
-                </div>
-              )}
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold">{profile.full_name}</h1>
-              <p className="text-lg opacity-90">@{profile.platform_username}</p>
-              <p className="text-sm opacity-80 mt-2 max-w-md">{profile.introduction}</p>
-              <div className="flex items-center mt-3 space-x-4">
-                <span className="flex items-center space-x-1">
-                  <MapPin className="w-4 h-4" />
-                  <span>{profile.location.city}, {profile.location.country}</span>
-                </span>
-                <span className="flex items-center space-x-1">
-                  <Globe className="w-4 h-4" />
-                  <span>{profile.language}</span>
-                </span>
-                <a 
-                  href={profile.url} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex items-center space-x-1 hover:opacity-80"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  <span>View Profile</span>
-                </a>
-              </div>
-            </div>
-          </div>
-          <div className="text-right space-y-4">
-            <div className="bg-white/20 rounded-xl p-4">
-              <div className="text-2xl font-bold">{formatNumber(profile.follower_count)}</div>
-              <div className="text-sm opacity-80">Followers</div>
-            </div>
-            <div className="bg-white/20 rounded-xl p-4">
-              <div className="text-lg font-bold">{getInfluencerTier(profile.follower_count)}</div>
-              <div className="text-sm opacity-80">Tier</div>
-            </div>
-            <div className="text-sm opacity-90">
-              Last updated: {new Date(profile.updated_at).toLocaleDateString()}
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
@@ -196,11 +100,11 @@ const OverviewSection: React.FC<OverviewSectionProps> = ({
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Gender</span>
-              <span className="font-medium">{profile.gender}</span>
+              <span className="font-medium">{profile.gender || 'Not specified'}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Age Group</span>
-              <span className="font-medium">{profile.age_group}</span>
+              <span className="font-medium">{profile.age_group || 'Not specified'}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Content Count</span>
@@ -225,46 +129,54 @@ const OverviewSection: React.FC<OverviewSectionProps> = ({
             Contact Details
           </h3>
           <div className="space-y-3">
-            {profile.contact_details.map((contact, index) => (
-              <div key={index} className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <span className="text-gray-600 capitalize">{contact.type}</span>
-                  {contact.verified && <Verified className="w-3 h-3 text-blue-500" />}
+            {profile.contact_details && profile.contact_details.length > 0 ? (
+              profile.contact_details.map((contact, index) => (
+                <div key={index} className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-gray-600 capitalize">{contact.type}</span>
+                    {contact.verified && <Verified className="w-3 h-3 text-blue-500" />}
+                  </div>
+                  <a
+                    href={contact.type === 'email' ? `mailto:${contact.value}` : contact.value}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline text-sm max-w-32 truncate"
+                    title={contact.value}
+                  >
+                    {contact.label}
+                  </a>
                 </div>
-                <a
-                  href={contact.type === 'email' ? `mailto:${contact.value}` : contact.value}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline text-sm max-w-32 truncate"
-                  title={contact.value}
-                >
-                  {contact.label}
-                </a>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-gray-500 text-sm">No contact details available</p>
+            )}
           </div>
         </div>
 
         <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
           <h3 className="text-lg font-semibold mb-4 flex items-center">
-            <Crown className="w-5 h-5 mr-2 text-gold-600" />
+            <Crown className="w-5 h-5 mr-2 text-yellow-600" />
             Top Interests
           </h3>
           <div className="space-y-3">
-            {profile.top_interests.slice(0, 5).map((interest, index) => (
-              <div key={index} className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
-                  {index + 1}
+            {profile.top_interests && profile.top_interests.length > 0 ? (
+              profile.top_interests.slice(0, 5).map((interest, index) => (
+                <div key={index} className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                    {index + 1}
+                  </div>
+                  <span className="font-medium">{interest.name}</span>
                 </div>
-                <span className="font-medium">{interest.name}</span>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-gray-500 text-sm">No interests data available</p>
+            )}
           </div>
         </div>
       </div>
 
       {/* Brand Affinity */}
-      {profile.brand_affinity.length > 0 && (
+      {profile.brand_affinity && profile.brand_affinity.length > 0 && (
         <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
           <h3 className="text-lg font-semibold mb-4 flex items-center">
             <Building className="w-5 h-5 mr-2 text-indigo-600" />

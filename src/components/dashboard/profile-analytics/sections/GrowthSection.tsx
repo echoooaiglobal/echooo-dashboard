@@ -1,19 +1,34 @@
+// src/components/dashboard/profile-analytics/sections/GrowthSection.tsx
+'use client';
+
 import React from 'react';
 import { ResponsiveLine } from '@nivo/line';
 import { ResponsiveBar } from '@nivo/bar';
 import { TrendingUp, Users, Heart, BarChart3 } from 'lucide-react';
+import { Profile } from '@/types/insightiq/profile-analytics';
+import { BaseSectionProps, validateSectionProps, safeProfileAccess } from '@/types/section-component-types';
 
-const GrowthSection = ({ profile }) => {
-  // Format numbers for display
-  const formatNumber = (num) => {
-    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
-    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
-    return num.toString();
-  };
+interface GrowthSectionProps extends BaseSectionProps {}
+
+const GrowthSection: React.FC<GrowthSectionProps> = ({ profile, formatNumber }) => {
+  // Validate props
+  const validation = validateSectionProps(profile);
+  if (!validation.isValid) {
+    return (
+      <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+        <div className="text-center py-8">
+          <p className="text-gray-500">{validation.error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Safe access to reputation history with fallback
+  const reputationHistory = safeProfileAccess(profile, p => p.reputation_history, []);
 
   // Prepare data for charts
   const prepareChartData = () => {
-    const historyData = profile.reputation_history.slice(-6);
+    const historyData = reputationHistory.slice(-6);
     
     // Line chart data for followers
     const followersData = [{
@@ -46,16 +61,6 @@ const GrowthSection = ({ profile }) => {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-8">
       <div className="max-w-7xl mx-auto">
         
-        {/* Header Section */}
-        {/* <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Instagram Analytics Dashboard
-          </h1>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Comprehensive growth analysis and performance metrics for @{profile.platform_username}
-          </p>
-        </div> */}
-
         {/* Key Metrics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
           <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300">
@@ -133,7 +138,6 @@ const GrowthSection = ({ profile }) => {
                   axisTop={null}
                   axisRight={null}
                   axisBottom={{
-                    orient: 'bottom',
                     tickSize: 0,
                     tickPadding: 16,
                     tickRotation: 0,
@@ -143,7 +147,6 @@ const GrowthSection = ({ profile }) => {
                     }
                   }}
                   axisLeft={{
-                    orient: 'left',
                     tickSize: 0,
                     tickPadding: 16,
                     tickRotation: 0,
@@ -323,17 +326,6 @@ const GrowthSection = ({ profile }) => {
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Footer */}
-        <div className="mt-12 text-center">
-          <p className="text-gray-500 text-sm">
-            Last updated: {new Date(profile.updated_at).toLocaleDateString('en-US', { 
-              year: 'numeric', 
-              month: 'long', 
-              day: 'numeric' 
-            })}
-          </p>
         </div>
       </div>
     </div>
