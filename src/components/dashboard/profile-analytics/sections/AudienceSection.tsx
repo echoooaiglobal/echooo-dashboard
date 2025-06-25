@@ -199,352 +199,782 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
     });
   };
 
+  // Helper function to determine if a score range contains the user's score
+  const isUserScoreRange = (min: number | null, max: number | null, userScore: number) => {
+    const userScorePercent = userScore * 100;
+    if (min === null || min === undefined) {
+      return userScorePercent <= (max ?? 100);
+    }
+    if (max === null || max === undefined) {
+      return userScorePercent >= min;
+    }
+    return userScorePercent >= min && userScorePercent <= max;
+  };
+
   return (
     <div className="space-y-8">
-      {/* Audience Overview */}
-      <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-        <h3 className="text-xl font-semibold mb-6">Audience Demographics</h3>
-        
-        {/* Combined Gender and Age Distribution */}
-        <div className="mb-8">
-          <h4 className="text-xl font-bold mb-6 flex items-center">
-            <Users className="w-6 h-6 mr-2" />
-            Gender & Age Distribution
-          </h4>
-          <div className="bg-gradient-to-r from-blue-50 to-pink-50 rounded-lg p-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Gender Pie Chart */}
-              <div>
-                <h5 className="text-lg font-bold mb-4 text-center text-gray-800">Gender Distribution</h5>
-                <div className="h-96">
-                  <ResponsivePie
-                    data={prepareGenderPieData()}
-                    margin={{ top: 40, right: 80, bottom: 80, left: 80 }}
-                    innerRadius={0.4}
-                    padAngle={3}
-                    cornerRadius={4}
-                    activeOuterRadiusOffset={12}
-                    colors={({ data }) => data.color}
-                    borderWidth={3}
-                    borderColor={{ from: 'color', modifiers: [['darker', 0.3]] }}
-                    arcLinkLabelsSkipAngle={10}
-                    arcLinkLabelsTextColor="#374151"
-                    arcLinkLabelsThickness={3}
-                    arcLinkLabelsColor={{ from: 'color' }}
-                    arcLabelsSkipAngle={10}
-                    arcLabelsTextColor="#FFFFFF"
-                    arcLinkLabel={(d) => `${d.id}: ${d.value.toFixed(1)}%`}
-                    arcLabel={(d) => `${d.value.toFixed(1)}%`}
-                    theme={{
-                      fontSize: 15,
-                      fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
-                      tooltip: {
-                        container: {
-                          background: '#1F2937',
-                          color: '#F9FAFB',
-                          fontSize: '15px',
-                          borderRadius: '8px',
-                          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                          border: 'none'
-                        }
-                      }
-                    }}
-                    tooltip={({ datum }) => (
-                      <div className="bg-gray-800 text-white p-4 rounded-lg shadow-lg">
-                        <div className="font-bold text-xl">{datum.label}</div>
-                        <div className="text-blue-300 font-bold text-xl">{datum.value.toFixed(1)}%</div>
-                      </div>
-                    )}
-                  />
-                </div>
-              </div>
-
-              {/* Age Pie Chart */}
-              <div>
-                <h5 className="text-lg font-bold mb-4 text-center text-gray-800">Age Distribution</h5>
-                <div className="h-96">
-                  <ResponsivePie
-                    data={prepareAgePieData()}
-                    margin={{ top: 40, right: 80, bottom: 80, left: 80 }}
-                    innerRadius={0.4}
-                    padAngle={2}
-                    cornerRadius={4}
-                    activeOuterRadiusOffset={12}
-                    colors={({ data }) => data.color}
-                    borderWidth={3}
-                    borderColor={{ from: 'color', modifiers: [['darker', 0.3]] }}
-                    arcLinkLabelsSkipAngle={10}
-                    arcLinkLabelsTextColor="#374151"
-                    arcLinkLabelsThickness={3}
-                    arcLinkLabelsColor={{ from: 'color' }}
-                    arcLabelsSkipAngle={10}
-                    arcLabelsTextColor="#FFFFFF"
-                    arcLinkLabel={(d) => `${d.id}: ${d.value.toFixed(1)}%`}
-                    arcLabel={(d) => `${d.value.toFixed(1)}%`}
-                    theme={{
-                      fontSize: 15,
-                      fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
-                      tooltip: {
-                        container: {
-                          background: '#1F2937',
-                          color: '#F9FAFB',
-                          fontSize: '15px',
-                          borderRadius: '8px',
-                          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                          border: 'none'
-                        }
-                      }
-                    }}
-                    tooltip={({ datum }) => (
-                      <div className="bg-gray-800 text-white p-4 rounded-lg shadow-lg">
-                        <div className="font-bold text-xl">{datum.label}</div>
-                        <div className="text-blue-300 font-bold text-xl">{datum.value.toFixed(1)}%</div>
-                      </div>
-                    )}
-                  />
-                </div>
-              </div>
+      {/* Audience Summary - Moved to top */}
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
+        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-600 text-sm">Countries</p>
+              <p className="text-2xl font-bold text-purple-600">{profile?.audience?.countries?.length || 0}</p>
+              <p className="text-xs text-gray-500">represented</p>
             </div>
-
-            {/* Gender breakdown by age - Vertical Bar Chart */}
-            <div className="border-t border-gray-200 pt-8 mt-8">
-              <h5 className="font-bold text-lg text-gray-800 mb-6 text-center">Gender Breakdown by Age</h5>
-              <div className="h-96">
-                <ResponsiveBar
-                  data={prepareGenderAgeBarData()}
-                  keys={['Male', 'Female']}
-                  indexBy="ageRange"
-                  margin={{ top: 50, right: 130, bottom: 50, left: 80 }}
-                  padding={0.3}
-                  groupMode="grouped"
-                  innerPadding={3}
-                  valueScale={{ type: 'linear' }}
-                  indexScale={{ type: 'band', round: true }}
-                  colors={['#3B82F6', '#EC4899']}
-                  defs={[
-                    {
-                      id: 'maleGradient',
-                      type: 'linearGradient',
-                      colors: [
-                        { offset: 0, color: '#3B82F6' },
-                        { offset: 100, color: '#1D4ED8' }
-                      ]
-                    },
-                    {
-                      id: 'femaleGradient',
-                      type: 'linearGradient',
-                      colors: [
-                        { offset: 0, color: '#EC4899' },
-                        { offset: 100, color: '#DB2777' }
-                      ]
-                    }
-                  ]}
-                  fill={[
-                    {
-                      match: {
-                        id: 'Male'
-                      },
-                      id: 'maleGradient'
-                    },
-                    {
-                      match: {
-                        id: 'Female'
-                      },
-                      id: 'femaleGradient'
-                    }
-                  ]}
-                  borderRadius={4}
-                  borderWidth={1}
-                  borderColor={{ from: 'color', modifiers: [['darker', 0.2]] }}
-                  axisTop={null}
-                  axisRight={null}
-                  axisBottom={{
-                    tickSize: 5,
-                    tickPadding: 8,
-                    tickRotation: 0,
-                    legend: 'Age Range',
-                    legendPosition: 'middle',
-                    legendOffset: 32
-                  }}
-                  axisLeft={{
-                    tickSize: 5,
-                    tickPadding: 12,
-                    tickRotation: 0,
-                    legend: 'Percentage (%)',
-                    legendPosition: 'middle',
-                    legendOffset: -60,
-                    format: value => `${value}%`
-                  }}
-                  enableLabel={true}
-                  label={d => `${d.value.toFixed(1)}%`}
-                  labelSkipWidth={12}
-                  labelSkipHeight={12}
-                  labelTextColor="#ffffff"
-                  legends={[
-                    {
-                      dataFrom: 'keys',
-                      anchor: 'bottom-right',
-                      direction: 'column',
-                      justify: false,
-                      translateX: 120,
-                      translateY: 0,
-                      itemsSpacing: 4,
-                      itemWidth: 100,
-                      itemHeight: 20,
-                      itemDirection: 'left-to-right',
-                      itemOpacity: 0.85,
-                      symbolSize: 20,
-                      effects: [
-                        {
-                          on: 'hover',
-                          style: {
-                            itemOpacity: 1
-                          }
-                        }
-                      ]
-                    }
-                  ]}
-                  animate={true}
-                  motionConfig="gentle"
-                  theme={{
-                    background: 'transparent',
-                    text: {
-                      fontSize: 14,
-                      fill: '#374151',
-                      fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
-                      fontWeight: 700
-                    },
-                    axis: {
-                      domain: {
-                        line: {
-                          stroke: '#e5e7eb',
-                          strokeWidth: 1
-                        }
-                      },
-                      legend: {
-                        text: {
-                          fontSize: 15,
-                          fill: '#6b7280',
-                          fontWeight: 700
-                        }
-                      },
-                      ticks: {
-                        line: {
-                          stroke: '#e5e7eb',
-                          strokeWidth: 1
-                        },
-                        text: {
-                          fontSize: 13,
-                          fill: '#6b7280',
-                          fontWeight: 700
-                        }
-                      }
-                    },
-                    grid: {
-                      line: {
-                        stroke: '#f3f4f6',
-                        strokeWidth: 1
-                      }
-                    }
-                  }}
-                  tooltip={({ id, value, indexValue }) => (
-                    <div className="bg-gray-800 text-white p-4 rounded-lg shadow-lg">
-                      <div className="font-bold text-xl mb-2">{indexValue} years</div>
-                      <div className="font-bold text-lg">{id}</div>
-                      <div className="text-blue-300 font-bold text-xl">{value.toFixed(1)}%</div>
-                    </div>
-                  )}
-                />
-              </div>
+            <div className="bg-purple-100 p-3 rounded-full">
+              <Flag className="w-6 h-6 text-purple-600" />
             </div>
           </div>
         </div>
 
-        {/* Geographic Data - Countries, States, Cities */}
-        <div className={`grid grid-cols-1 ${shouldShowStates() ? 'lg:grid-cols-3' : 'lg:grid-cols-2'} gap-6`}>
-          <div>
-            <h4 className="text-lg font-medium mb-4 flex items-center group">
-              <Flag className="w-5 h-5 mr-2" />
-              Top Countries
-              <div className="relative ml-2">
-                <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
-                  ?
-                </div>
-                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
-                  <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
-                    Countries where your audience is located, ranked by percentage
-                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
-                  </div>
-                </div>
-              </div>
-            </h4>
-            <div className="space-y-2 max-h-80 overflow-y-auto">
-              {profile?.audience?.countries?.map((country, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                  <span className="font-medium">{getCountryName(country.code)}</span>
-                  <span className="text-purple-600 font-semibold">{country.value?.toFixed(1) || '0.0'}%</span>
-                </div>
-              ))}
+        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-600 text-sm">Languages</p>
+              <p className="text-2xl font-bold text-blue-600">{profile?.audience?.languages?.length || 0}</p>
+              <p className="text-xs text-gray-500">spoken</p>
+            </div>
+            <div className="bg-blue-100 p-3 rounded-full">
+              <Languages className="w-6 h-6 text-blue-600" />
             </div>
           </div>
+        </div>
 
-          {shouldShowStates() && (
+        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+          <div className="flex items-center justify-between">
             <div>
-              <h4 className="text-lg font-medium mb-4 flex items-center group">
-                <Building2 className="w-5 h-5 mr-2" />
-                Top States
-                <div className="relative ml-2">
-                  <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
-                    ?
-                  </div>
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
-                    <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
-                      States/provinces with significant audience presence (≥10%)
-                      <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
-                    </div>
-                  </div>
-                </div>
-              </h4>
-              <div className="space-y-2 max-h-80 overflow-y-auto">
-                {getFilteredStates().map((state, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                    <span className="font-medium text-sm">{state.name}</span>
-                    <span className="text-purple-600 font-semibold text-sm">{state.value?.toFixed(1) || '0.0'}%</span>
-                  </div>
-                ))}
-              </div>
+              <p className="text-gray-600 text-sm">Interests</p>
+              <p className="text-2xl font-bold text-green-600">{profile?.audience?.interests?.length || 0}</p>
+              <p className="text-xs text-gray-500">categories</p>
             </div>
-          )}
+            <div className="bg-green-100 p-3 rounded-full">
+              <Target className="w-6 h-6 text-green-600" />
+            </div>
+          </div>
+        </div>
 
-          <div>
-            <h4 className="text-lg font-medium mb-4 flex items-center group">
-              <MapPin className="w-5 h-5 mr-2" />
-              Top Cities
-              <div className="relative ml-2">
-                <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
-                  ?
-                </div>
-                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
-                  <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
-                    Cities with the highest concentration of your audience
-                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
-                  </div>
-                </div>
-              </div>
-            </h4>
-            <div className="space-y-2 max-h-80 overflow-y-auto">
-              {profile?.audience?.cities?.map((city, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                  <span className="font-medium text-sm">{city.name}</span>
-                  <span className="text-purple-600 font-semibold text-sm">{city.value?.toFixed(1) || '0.0'}%</span>
-                </div>
-              ))}
+        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-600 text-sm">Notable Followers</p>
+              <p className="text-2xl font-bold text-orange-600">{formatNumber(profile?.audience?.significant_followers?.length || 0)}</p>
+              <p className="text-xs text-gray-500">influencers</p>
+            </div>
+            <div className="bg-orange-100 p-3 rounded-full">
+              <Star className="w-6 h-6 text-orange-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-600 text-sm">Credibility Score</p>
+              <p className="text-2xl font-bold text-emerald-600">{((profile?.audience?.credibility_score || 0) * 100).toFixed(1)}%</p>
+              <p className="text-xs text-gray-500">quality</p>
+            </div>
+            <div className="bg-emerald-100 p-3 rounded-full">
+              <Shield className="w-6 h-6 text-emerald-600" />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Language & Ethnicity */}
+      {/* Gender Distribution and Top Countries */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Gender Distribution */}
+        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+          <h4 className="text-lg font-semibold mb-4 flex items-center">
+            <Users className="w-5 h-5 mr-2" />
+            Gender Distribution
+          </h4>
+          <div className="h-80">
+            <ResponsivePie
+              data={prepareGenderPieData()}
+              margin={{ top: 40, right: 80, bottom: 80, left: 80 }}
+              innerRadius={0.4}
+              padAngle={3}
+              cornerRadius={4}
+              activeOuterRadiusOffset={12}
+              colors={({ data }) => data.color}
+              borderWidth={3}
+              borderColor={{ from: 'color', modifiers: [['darker', 0.3]] }}
+              arcLinkLabelsSkipAngle={10}
+              arcLinkLabelsTextColor="#374151"
+              arcLinkLabelsThickness={3}
+              arcLinkLabelsColor={{ from: 'color' }}
+              arcLabelsSkipAngle={10}
+              arcLabelsTextColor="#FFFFFF"
+              arcLinkLabel={(d) => `${d.id}: ${d.value.toFixed(1)}%`}
+              arcLabel={(d) => `${d.value.toFixed(1)}%`}
+              theme={{
+                text: {
+                  fontSize: 16,
+                  fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+                },
+                tooltip: {
+                  container: {
+                    background: '#1F2937',
+                    color: '#F9FAFB',
+                    fontSize: '16px',
+                    borderRadius: '8px',
+                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                    border: 'none'
+                  }
+                }
+              }}
+              tooltip={({ datum }) => (
+                <div className="bg-gray-800 text-white p-4 rounded-lg shadow-lg">
+                  <div className="font-bold text-xl">{datum.label}</div>
+                  <div className="text-blue-300 font-bold text-xl">{datum.value.toFixed(1)}%</div>
+                </div>
+              )}
+            />
+          </div>
+        </div>
+
+        {/* Top Countries */}
+        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+          <h4 className="text-lg font-semibold mb-4 flex items-center group">
+            <Flag className="w-5 h-5 mr-2" />
+            Top Countries
+            <div className="relative ml-2">
+              <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
+                ?
+              </div>
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+                <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+                  Countries where your audience is located, ranked by percentage
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                </div>
+              </div>
+            </div>
+          </h4>
+          <div className="space-y-2 max-h-80 overflow-y-auto">
+            {profile?.audience?.countries?.map((country, index) => (
+              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                <span className="font-medium">{getCountryName(country.code)}</span>
+                <span className="text-purple-600 font-semibold">{country.value?.toFixed(1) || '0.0'}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Age Distribution and Top Cities */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Age Distribution */}
+        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+          <h4 className="text-lg font-semibold mb-4 flex items-center">
+            <Users className="w-5 h-5 mr-2" />
+            Age Distribution
+          </h4>
+          <div className="h-80">
+            <ResponsivePie
+              data={prepareAgePieData()}
+              margin={{ top: 40, right: 80, bottom: 80, left: 80 }}
+              innerRadius={0.4}
+              padAngle={2}
+              cornerRadius={4}
+              activeOuterRadiusOffset={12}
+              colors={({ data }) => data.color}
+              borderWidth={3}
+              borderColor={{ from: 'color', modifiers: [['darker', 0.3]] }}
+              arcLinkLabelsSkipAngle={10}
+              arcLinkLabelsTextColor="#374151"
+              arcLinkLabelsThickness={3}
+              arcLinkLabelsColor={{ from: 'color' }}
+              arcLabelsSkipAngle={10}
+              arcLabelsTextColor="#FFFFFF"
+              arcLinkLabel={(d) => `${d.id}: ${d.value.toFixed(1)}%`}
+              arcLabel={(d) => `${d.value.toFixed(1)}%`}
+              theme={{
+                text: {
+                  fontSize: 16,
+                  fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+                },
+                tooltip: {
+                  container: {
+                    background: '#1F2937',
+                    color: '#F9FAFB',
+                    fontSize: '16px',
+                    borderRadius: '8px',
+                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                    border: 'none'
+                  }
+                }
+              }}
+              tooltip={({ datum }) => (
+                <div className="bg-gray-800 text-white p-4 rounded-lg shadow-lg">
+                  <div className="font-bold text-xl">{datum.label}</div>
+                  <div className="text-blue-300 font-bold text-xl">{datum.value.toFixed(1)}%</div>
+                </div>
+              )}
+            />
+          </div>
+        </div>
+
+        {/* Top Cities */}
+        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+          <h4 className="text-lg font-semibold mb-4 flex items-center group">
+            <MapPin className="w-5 h-5 mr-2" />
+            Top Cities
+            <div className="relative ml-2">
+              <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
+                ?
+              </div>
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+                <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+                  Cities with the highest concentration of your audience
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                </div>
+              </div>
+            </div>
+          </h4>
+          <div className="space-y-2 max-h-80 overflow-y-auto">
+            {profile?.audience?.cities?.map((city, index) => (
+              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                <span className="font-medium text-sm">{city.name}</span>
+                <span className="text-purple-600 font-semibold text-sm">{city.value?.toFixed(1) || '0.0'}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Gender Breakdown by Age and Audience Quality */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Gender breakdown by age - Vertical Bar Chart */}
+        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+          <h4 className="text-lg font-semibold mb-4 flex items-center">
+            <Users className="w-5 h-5 mr-2" />
+            Gender Breakdown by Age
+          </h4>
+          <div className="h-80">
+            <ResponsiveBar
+              data={prepareGenderAgeBarData()}
+              keys={['Male', 'Female']}
+              indexBy="ageRange"
+              margin={{ top: 50, right: 130, bottom: 50, left: 80 }}
+              padding={0.3}
+              groupMode="grouped"
+              innerPadding={3}
+              valueScale={{ type: 'linear' }}
+              indexScale={{ type: 'band', round: true }}
+              colors={['#3B82F6', '#EC4899']}
+              defs={[
+                {
+                  id: 'maleGradient',
+                  type: 'linearGradient',
+                  colors: [
+                    { offset: 0, color: '#3B82F6' },
+                    { offset: 100, color: '#1D4ED8' }
+                  ]
+                },
+                {
+                  id: 'femaleGradient',
+                  type: 'linearGradient',
+                  colors: [
+                    { offset: 0, color: '#EC4899' },
+                    { offset: 100, color: '#DB2777' }
+                  ]
+                }
+              ]}
+              fill={[
+                {
+                  match: {
+                    id: 'Male'
+                  },
+                  id: 'maleGradient'
+                },
+                {
+                  match: {
+                    id: 'Female'
+                  },
+                  id: 'femaleGradient'
+                }
+              ]}
+              borderRadius={4}
+              borderWidth={1}
+              borderColor={{ from: 'color', modifiers: [['darker', 0.2]] }}
+              axisTop={null}
+              axisRight={null}
+              axisBottom={{
+                tickSize: 5,
+                tickPadding: 8,
+                tickRotation: 0,
+                legend: 'Age Range',
+                legendPosition: 'middle',
+                legendOffset: 32
+              }}
+              axisLeft={{
+                tickSize: 5,
+                tickPadding: 12,
+                tickRotation: 0,
+                legend: 'Percentage (%)',
+                legendPosition: 'middle',
+                legendOffset: -60,
+                format: value => `${value}%`
+              }}
+              enableLabel={true}
+              label={d => `${(d.value ?? 0).toFixed(1)}%`}
+              labelSkipWidth={8}
+              labelSkipHeight={8}
+              labelTextColor="#ffffff"
+              labelFormat={(value) => `${Number(value).toFixed(1)}%`}
+              legends={[
+                {
+                  dataFrom: 'keys',
+                  anchor: 'bottom-right',
+                  direction: 'column',
+                  justify: false,
+                  translateX: 120,
+                  translateY: 0,
+                  itemsSpacing: 4,
+                  itemWidth: 100,
+                  itemHeight: 20,
+                  itemDirection: 'left-to-right',
+                  itemOpacity: 0.85,
+                  symbolSize: 20,
+                  effects: [
+                    {
+                      on: 'hover',
+                      style: {
+                        itemOpacity: 1
+                      }
+                    }
+                  ]
+                }
+              ]}
+              animate={true}
+              motionConfig="gentle"
+              theme={{
+                background: 'transparent',
+                text: {
+                  fontSize: 14,
+                  fill: '#374151',
+                  fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+                  fontWeight: 700
+                },
+                axis: {
+                  domain: {
+                    line: {
+                      stroke: '#e5e7eb',
+                      strokeWidth: 1
+                    }
+                  },
+                  legend: {
+                    text: {
+                      fontSize: 15,
+                      fill: '#6b7280',
+                      fontWeight: 700
+                    }
+                  },
+                  ticks: {
+                    line: {
+                      stroke: '#e5e7eb',
+                      strokeWidth: 1
+                    },
+                    text: {
+                      fontSize: 13,
+                      fill: '#6b7280',
+                      fontWeight: 700
+                    }
+                  }
+                },
+                grid: {
+                  line: {
+                    stroke: '#f3f4f6',
+                    strokeWidth: 1
+                  }
+                }
+              }}
+              tooltip={({ id, value, indexValue }) => (
+                <div className="bg-gray-800 text-white p-4 rounded-lg shadow-lg">
+                  <div className="font-bold text-xl mb-2">{indexValue} years</div>
+                  <div className="font-bold text-lg">{id}</div>
+                  <div className="text-blue-300 font-bold text-xl">{value.toFixed(1)}%</div>
+                </div>
+              )}
+            />
+          </div>
+        </div>
+
+        {/* Audience Quality - Removed Credibility Score */}
+        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+          <h3 className="text-lg font-semibold mb-4 flex items-center group">
+            <UserCheck className="w-5 h-5 mr-2" />
+            Audience Quality
+            <div className="relative ml-2">
+              <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
+                ?
+              </div>
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+                <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+                  Assessment of follower authenticity and engagement quality
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                </div>
+              </div>
+            </div>
+          </h3>
+          <div className="space-y-6">
+            <div>
+              <h4 className="font-medium mb-3">Follower Types</h4>
+              <div className="space-y-3">
+                {profile?.audience?.follower_types?.map((type, index) => (
+                  <div key={index} className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="capitalize text-gray-600">{getFollowerTypeLabel(type.name)}</span>
+                      <span className="font-medium">{type.value?.toFixed(1) || '0.0'}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full transition-all duration-500 ${getFollowerTypeColor(type.name)}`}
+                        style={{ width: `${type.value || 0}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            <div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Significant Followers</span>
+                <span className="font-medium">{profile?.audience?.significant_followers_percentage?.toFixed(1) || '0.0'}%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Brand Affinity and Audience Interests */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Brand Affinity - Updated to match Audience Interests format */}
+        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+          <h3 className="text-lg font-semibold mb-4 flex items-center group">
+            <Award className="w-5 h-5 mr-2" />
+            Brand Affinity
+            <div className="relative ml-2">
+              <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
+                ?
+              </div>
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+                <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+                  Brands and companies your audience shows interest in
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                </div>
+              </div>
+            </div>
+          </h3>
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {profile?.audience?.brand_affinity?.map((brand, index) => (
+              <div key={index} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
+                <span className="text-gray-700 text-sm">{brand.name}</span>
+                <span className="font-medium text-sm">{((brand.value || 0) * 100).toFixed(1)}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Audience Interests */}
+        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+          <h3 className="text-lg font-semibold mb-4 flex items-center group">
+            <Target className="w-5 h-5 mr-2" />
+            Audience Interests
+            <div className="relative ml-2">
+              <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
+                ?
+              </div>
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+                <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+                  Topics and categories your audience is most interested in
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                </div>
+              </div>
+            </div>
+          </h3>
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {profile?.audience?.interests?.map((interest, index) => (
+              <div key={index} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
+                <span className="text-gray-700 text-sm">{interest.name}</span>
+                <span className="font-medium text-sm">{interest.value?.toFixed(1) || '0.0'}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Credibility Score Distribution and Follower Reachability */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Credibility Score Distribution - Enhanced User Score Highlighting */}
+        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+          <h3 className="text-lg font-semibold mb-6 flex items-center group">
+            <Shield className="w-5 h-5 mr-2" />
+            Credibility Score Distribution
+            <div className="relative ml-2">
+              <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
+                ?
+              </div>
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+                <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+                  How your credibility score compares to other profiles
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                </div>
+              </div>
+            </div>
+          </h3>
+          
+          {/* Summary Stats moved above chart */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div className="text-center bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4">
+              <div className="text-2xl font-bold text-green-600">
+                {formatNumber(profile?.audience?.credibility_score_band?.reduce((sum, band) => sum + band.total_profile_count, 0) || 0)}
+              </div>
+              <div className="text-sm text-gray-600 font-medium">Total Profiles</div>
+            </div>
+            <div className="text-center bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-4 border-2 border-orange-300 shadow-lg">
+              <div className="text-2xl font-bold text-orange-600">
+                {((profile?.audience?.credibility_score || 0) * 100).toFixed(1)}%
+              </div>
+              <div className="text-sm text-gray-600 font-medium flex items-center justify-center">
+                <span className="mr-1">🎯</span>
+                Your Score
+              </div>
+            </div>
+          </div>
+          
+          {/* Nivo Bar Chart with Enhanced User Score Highlighting */}
+          <div className="h-64 w-full">
+            <ResponsiveBar
+              data={
+                profile?.audience?.credibility_score_band?.map((band) => {
+                  const userScore = profile?.audience?.credibility_score || 0;
+                  const isUserRange = isUserScoreRange(band.min, band.max, userScore);
+                  
+                  return {
+                    id: `${band.min ?? 0}-${band.max ?? 100}`,
+                    scoreRange:
+                      band.min !== null && band.min !== undefined
+                        ? `${band.min.toFixed(0)}-${band.max?.toFixed(0) ?? '100'}%`
+                        : `0-${band.max?.toFixed(0) ?? '100'}%`,
+                    profileCount: band.total_profile_count,
+                    median: (band as any).is_median === 'True' ? 1 : 0,
+                    userRange: isUserRange ? 1 : 0,
+                  };
+                }) || []
+              }
+              keys={['profileCount']}
+              indexBy="scoreRange"
+              margin={{ top: 20, right: 30, bottom: 70, left: 60 }}
+              padding={0.15}
+              valueScale={{ type: 'linear' }}
+              indexScale={{ type: 'band', round: true }}
+              colors={(bar) => {
+                if (bar.data.userRange === 1) return '#f97316'; // Orange for user's range
+                if (bar.data.median === 1) return '#8b5cf6'; // Purple for median
+                return '#3b82f6'; // Blue for regular
+              }}
+              defs={[
+                {
+                  id: 'gradientBlue',
+                  type: 'linearGradient',
+                  colors: [
+                    { offset: 0, color: '#3b82f6' },
+                    { offset: 100, color: '#1d4ed8' }
+                  ]
+                },
+                {
+                  id: 'gradientOrange',
+                  type: 'linearGradient',
+                  colors: [
+                    { offset: 0, color: '#f97316' },
+                    { offset: 100, color: '#ea580c' }
+                  ]
+                },
+                {
+                  id: 'gradientPurple',
+                  type: 'linearGradient',
+                  colors: [
+                    { offset: 0, color: '#8b5cf6' },
+                    { offset: 100, color: '#7c3aed' }
+                  ]
+                },
+                {
+                  id: 'userRangePattern',
+                  type: 'patternLines',
+                  background: '#f97316',
+                  color: '#ffffff',
+                  rotation: -45,
+                  lineWidth: 3,
+                  spacing: 8
+                }
+              ]}
+              fill={[
+                {
+                  match: (d) => (d.data as any).userRange === 1,
+                  id: 'gradientOrange'
+                },
+                {
+                  match: (d) => (d.data as any).median === 1,
+                  id: 'gradientPurple'
+                },
+                {
+                  match: '*',
+                  id: 'gradientBlue'
+                }
+              ]}
+              borderRadius={4}
+              borderWidth={(bar) => (bar.data as any).userRange === 1 ? 3 : 0}
+              borderColor={(bar) => (bar.data as any).userRange === 1 ? '#ea580c' : 'transparent'}
+              axisTop={null}
+              axisRight={null}
+              axisBottom={{
+                tickSize: 5,
+                tickPadding: 8,
+                tickRotation: -35,
+                legend: 'Credibility Score Range',
+                legendPosition: 'middle',
+                legendOffset: 55,
+                format: (value) => value
+              }}
+              axisLeft={{
+                tickSize: 5,
+                tickPadding: 5,
+                tickRotation: 0,
+                legend: 'Profiles',
+                legendPosition: 'middle',
+                legendOffset: -50,
+                format: (value) => formatNumber(Number(value))
+              }}
+              enableLabel={false}
+              animate={true}
+              motionConfig="gentle"
+              theme={{
+                background: 'transparent',
+                text: {
+                  fontSize: 11,
+                  fill: '#374151',
+                  fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+                  fontWeight: 500
+                },
+                axis: {
+                  domain: {
+                    line: {
+                      stroke: '#e5e7eb',
+                      strokeWidth: 1
+                    }
+                  },
+                  legend: {
+                    text: {
+                      fontSize: 12,
+                      fill: '#6b7280',
+                      fontWeight: 600
+                    }
+                  },
+                  ticks: {
+                    line: {
+                      stroke: '#e5e7eb',
+                      strokeWidth: 1
+                    },
+                    text: {
+                      fontSize: 10,
+                      fill: '#6b7280',
+                      fontWeight: 500
+                    }
+                  }
+                },
+                grid: {
+                  line: {
+                    stroke: '#f3f4f6',
+                    strokeWidth: 1
+                  }
+                },
+                tooltip: {
+                  container: {
+                    background: '#1f2937',
+                    color: '#f9fafb',
+                    fontSize: '12px',
+                    borderRadius: '8px',
+                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                    border: 'none'
+                  }
+                }
+              }}
+              tooltip={({ value, data }) => (
+                <div className="bg-gray-800 text-white p-3 rounded-lg shadow-lg">
+                  <div className="font-semibold">Score Range: {data.scoreRange}</div>
+                  <div className="text-blue-300">Profiles: {formatNumber(Number(value))}</div>
+                  {data.userRange === 1 && (
+                    <div className="text-orange-300 text-xs mt-1 font-bold">🎯 YOUR RANGE</div>
+                  )}
+                  {data.median === 1 && data.userRange !== 1 && (
+                    <div className="text-purple-300 text-xs mt-1">📊 Median Range</div>
+                  )}
+                </div>
+              )}
+              role="application"
+              ariaLabel="Credibility score distribution chart"
+            />
+          </div>
+          
+          {/* Enhanced Legend */}
+          <div className="flex items-center justify-center space-x-4 mt-4 text-xs">
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 bg-gradient-to-t from-blue-500 to-blue-600 rounded"></div>
+              <span className="text-gray-600">Regular</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 bg-gradient-to-t from-purple-500 to-purple-600 rounded"></div>
+              <span className="text-gray-600">Median</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 bg-gradient-to-t from-orange-500 to-orange-600 rounded border-2 border-orange-700"></div>
+              <span className="text-gray-600 font-semibold">🎯 Your Score</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Follower Reachability - Added top margin */}
+        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+          <h3 className="text-lg font-semibold mb-4 flex items-center group">
+            <Eye className="w-5 h-5 mr-2" />
+            Follower Reachability
+            <div className="relative ml-2">
+              <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
+                ?
+              </div>
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+                <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+                  Distribution of followers by their own following count
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                </div>
+              </div>
+            </div>
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
+            {profile?.audience?.follower_reachability?.map((reach, index) => (
+              <div key={index} className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-lg border">
+                <div className="text-sm font-medium text-gray-700 mb-2">
+                  {reach.following_range === '-500' ? 'Under 500' :
+                   reach.following_range === '1500-' ? 'Over 1500' :
+                   reach.following_range} following
+                </div>
+                <div className="text-2xl font-bold text-emerald-600">{reach.value?.toFixed(1) || '0.0'}%</div>
+                <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                  <div
+                    className="bg-emerald-500 h-2 rounded-full transition-all duration-500"
+                    style={{ width: `${reach.value || 0}%` }}
+                  ></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Audience Languages and Audience Ethnicity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
           <h3 className="text-lg font-semibold mb-4 flex items-center group">
@@ -606,352 +1036,7 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
         </div>
       </div>
 
-      {/* Brand Affinity */}
-      <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-        <h3 className="text-lg font-semibold mb-4 flex items-center group">
-          <Award className="w-5 h-5 mr-2" />
-          Brand Affinity
-          <div className="relative ml-2">
-            <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
-              ?
-            </div>
-            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
-              <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
-                Brands and companies your audience shows interest in
-                <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
-              </div>
-            </div>
-          </div>
-        </h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-96 overflow-y-auto">
-          {profile?.audience?.brand_affinity?.map((brand, index) => (
-            <div key={index} className="bg-gradient-to-r from-gray-50 to-gray-100 p-4 rounded-lg border hover:shadow-md transition-all">
-              <div className="text-sm font-medium text-gray-800 mb-1">{brand.name}</div>
-              <div className="text-xs text-purple-600 font-semibold">{((brand.value || 0) * 100).toFixed(3)}%</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Audience Quality & Insights */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-          <h3 className="text-lg font-semibold mb-4 flex items-center group">
-            <UserCheck className="w-5 h-5 mr-2" />
-            Audience Quality
-            <div className="relative ml-2">
-              <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
-                ?
-              </div>
-              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
-                <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
-                  Assessment of follower authenticity and engagement quality
-                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
-                </div>
-              </div>
-            </div>
-          </h3>
-          <div className="space-y-6">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-gray-600">Credibility Score</span>
-                <span className={`text-2xl font-bold px-3 py-1 rounded-lg ${getCredibilityColor(profile?.audience?.credibility_score || 0)}`}>
-                  {((profile?.audience?.credibility_score || 0) * 100).toFixed(1)}%
-                </span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-3">
-                <div
-                  className="bg-gradient-to-r from-green-400 to-green-600 h-3 rounded-full transition-all duration-500"
-                  style={{ width: `${(profile?.audience?.credibility_score || 0) * 100}%` }}
-                ></div>
-              </div>
-            </div>
-            
-            <div>
-              <h4 className="font-medium mb-3">Follower Types</h4>
-              <div className="space-y-3">
-                {profile?.audience?.follower_types?.map((type, index) => (
-                  <div key={index} className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="capitalize text-gray-600">{getFollowerTypeLabel(type.name)}</span>
-                      <span className="font-medium">{type.value?.toFixed(1) || '0.0'}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className={`h-2 rounded-full transition-all duration-500 ${getFollowerTypeColor(type.name)}`}
-                        style={{ width: `${type.value || 0}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            
-            <div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Significant Followers</span>
-                <span className="font-medium">{profile?.audience?.significant_followers_percentage?.toFixed(1) || '0.0'}%</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-          <h3 className="text-lg font-semibold mb-4 flex items-center group">
-            <Target className="w-5 h-5 mr-2" />
-            Audience Interests
-            <div className="relative ml-2">
-              <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
-                ?
-              </div>
-              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
-                <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
-                  Topics and categories your audience is most interested in
-                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
-                </div>
-              </div>
-            </div>
-          </h3>
-          <div className="space-y-2 max-h-80 overflow-y-auto">
-            {profile?.audience?.interests?.map((interest, index) => (
-              <div key={index} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
-                <span className="text-gray-700 text-sm">{interest.name}</span>
-                <span className="font-medium text-sm">{interest.value?.toFixed(1) || '0.0'}%</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Credibility Score Band */}
-      <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-        <h3 className="text-lg font-semibold mb-6 flex items-center group">
-          <Shield className="w-5 h-5 mr-2" />
-          Credibility Score Distribution
-          <div className="relative ml-2">
-            <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
-              ?
-            </div>
-            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
-              <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
-                How your credibility score compares to other profiles
-                <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
-              </div>
-            </div>
-          </div>
-        </h3>
-        
-        {/* Nivo Bar Chart */}
-        <div className="h-96 w-full">
-          <ResponsiveBar
-            data={profile?.audience?.credibility_score_band?.map((band, index) => ({
-              id: `${band.min || 0}-${band.max || 100}`,
-              scoreRange: band.min ? `${band.min.toFixed(0)}-${band.max?.toFixed(0) || '100'}%` : `0-${band.max?.toFixed(0) || '100'}%`,
-              profileCount: band.total_profile_count,
-              isMedian: band.is_median === 'True',
-              color: band.is_median === 'True' ? '#f97316' : '#3b82f6'
-            })) || []}
-            keys={['profileCount']}
-            indexBy="scoreRange"
-            margin={{ top: 50, right: 60, bottom: 80, left: 80 }}
-            padding={0.15}
-            valueScale={{ type: 'linear' }}
-            indexScale={{ type: 'band', round: true }}
-            colors={({ data }) => data.color}
-            defs={[
-              {
-                id: 'gradientBlue',
-                type: 'linearGradient',
-                colors: [
-                  { offset: 0, color: '#3b82f6' },
-                  { offset: 100, color: '#1d4ed8' }
-                ]
-              },
-              {
-                id: 'gradientOrange',
-                type: 'linearGradient',
-                colors: [
-                  { offset: 0, color: '#f97316' },
-                  { offset: 100, color: '#ea580c' }
-                ]
-              }
-            ]}
-            fill={[
-              {
-                match: (d) => d.data.isMedian,
-                id: 'gradientOrange'
-              },
-              {
-                match: '*',
-                id: 'gradientBlue'
-              }
-            ]}
-            borderRadius={4}
-            borderWidth={0}
-            axisTop={null}
-            axisRight={null}
-            axisBottom={{
-              tickSize: 5,
-              tickPadding: 5,
-              tickRotation: -45,
-              legend: 'Credibility Score Range',
-              legendPosition: 'middle',
-              legendOffset: 60,
-              format: (value) => value
-            }}
-            axisLeft={{
-              tickSize: 5,
-              tickPadding: 5,
-              tickRotation: 0,
-              legend: 'Number of Profiles',
-              legendPosition: 'middle',
-              legendOffset: -60,
-              format: (value) => formatNumber(value)
-            }}
-            enableLabel={true}
-            label={(d) => formatNumber(d.value)}
-            labelSkipWidth={12}
-            labelSkipHeight={12}
-            labelTextColor="#ffffff"
-            labelFormat={(value) => formatNumber(value)}
-            animate={true}
-            motionConfig="gentle"
-            theme={{
-              background: 'transparent',
-              text: {
-                fontSize: 12,
-                fill: '#374151',
-                fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif'
-              },
-              axis: {
-                domain: {
-                  line: {
-                    stroke: '#e5e7eb',
-                    strokeWidth: 1
-                  }
-                },
-                legend: {
-                  text: {
-                    fontSize: 13,
-                    fill: '#6b7280',
-                    fontWeight: 500
-                  }
-                },
-                ticks: {
-                  line: {
-                    stroke: '#e5e7eb',
-                    strokeWidth: 1
-                  },
-                  text: {
-                    fontSize: 11,
-                    fill: '#6b7280'
-                  }
-                }
-              },
-              grid: {
-                line: {
-                  stroke: '#f3f4f6',
-                  strokeWidth: 1
-                }
-              },
-              tooltip: {
-                container: {
-                  background: '#1f2937',
-                  color: '#f9fafb',
-                  fontSize: '12px',
-                  borderRadius: '8px',
-                  boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                  border: 'none'
-                }
-              }
-            }}
-            tooltip={({ id, value, data }) => (
-              <div className="bg-gray-800 text-white p-3 rounded-lg shadow-lg">
-                <div className="font-semibold">Score Range: {data.scoreRange}</div>
-                <div className="text-blue-300">Profiles: {formatNumber(value)}</div>
-                {data.isMedian && (
-                  <div className="text-orange-300 text-xs mt-1">📊 Median Range</div>
-                )}
-              </div>
-            )}
-            role="application"
-            ariaLabel="Credibility score distribution chart"
-          />
-        </div>
-        
-        {/* Legend */}
-        <div className="flex items-center justify-center space-x-8 mt-6 text-sm">
-          <div className="flex items-center space-x-2">
-            <div className="w-4 h-4 bg-gradient-to-t from-blue-500 to-blue-600 rounded"></div>
-            <span className="text-gray-600">Regular Distribution</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-4 h-4 bg-gradient-to-t from-orange-500 to-orange-600 rounded"></div>
-            <span className="text-gray-600">Median Range</span>
-          </div>
-        </div>
-        
-        {/* Summary Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 pt-6 border-t border-gray-200">
-          <div className="text-center bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4">
-            <div className="text-2xl font-bold text-blue-600">
-              {profile?.audience?.credibility_score_band?.length || 0}
-            </div>
-            <div className="text-sm text-gray-600 font-medium">Score Bands</div>
-          </div>
-          <div className="text-center bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4">
-            <div className="text-2xl font-bold text-green-600">
-              {formatNumber(profile?.audience?.credibility_score_band?.reduce((sum, band) => sum + band.total_profile_count, 0) || 0)}
-            </div>
-            <div className="text-sm text-gray-600 font-medium">Total Profiles</div>
-          </div>
-          <div className="text-center bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-4">
-            <div className="text-2xl font-bold text-orange-600">
-              {((profile?.audience?.credibility_score || 0) * 100).toFixed(1)}%
-            </div>
-            <div className="text-sm text-gray-600 font-medium">User's Score</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Follower Reachability */}
-      <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-        <h3 className="text-lg font-semibold mb-4 flex items-center group">
-          <Eye className="w-5 h-5 mr-2" />
-          Follower Reachability
-          <div className="relative ml-2">
-            <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
-              ?
-            </div>
-            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
-              <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
-                Distribution of followers by their own following count
-                <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
-              </div>
-            </div>
-          </div>
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {profile?.audience?.follower_reachability?.map((reach, index) => (
-            <div key={index} className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-lg border">
-              <div className="text-sm font-medium text-gray-700 mb-2">
-                {reach.following_range === '-500' ? 'Under 500' :
-                 reach.following_range === '1500-' ? 'Over 1500' :
-                 reach.following_range} following
-              </div>
-              <div className="text-2xl font-bold text-emerald-600">{reach.value?.toFixed(1) || '0.0'}%</div>
-              <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                <div
-                  className="bg-emerald-500 h-2 rounded-full transition-all duration-500"
-                  style={{ width: `${reach.value || 0}%` }}
-                ></div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Significant Followers */}
+      {/* Notable Followers - 6 items per row grid layout */}
       <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
         <h3 className="text-lg font-semibold mb-4 flex items-center group">
           <Star className="w-5 h-5 mr-2" />
@@ -968,58 +1053,26 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
             </div>
           </div>
         </h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 max-h-96 overflow-y-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 max-h-96 overflow-y-auto">
           {profile?.audience?.significant_followers?.map((follower, index) => (
-            <div key={index} className="text-center p-3 border border-gray-200 rounded-lg hover:shadow-md transition-all">
+            <div key={index} className="flex flex-col items-center p-3 border border-gray-200 rounded-lg hover:shadow-md transition-all bg-gray-50">
               <img
                 src={follower.image_url}
                 alt={follower.platform_username}
-                className="w-12 h-12 rounded-full mx-auto mb-2 object-cover"
+                className="w-16 h-16 rounded-full object-cover flex-shrink-0 mb-2"
                 onError={(e) => {
-                  e.currentTarget.src = 'https://via.placeholder.com/48x48?text=User';
+                  e.currentTarget.src = 'https://via.placeholder.com/64x64?text=User';
                 }}
               />
-              <div className="flex items-center justify-center mb-1">
-                <div className="font-medium text-xs truncate max-w-20">@{follower?.platform_username}</div>
-                {follower.is_verified && <Verified className="w-3 h-3 text-blue-500 ml-1 flex-shrink-0" />}
+              <div className="text-center min-w-0 w-full">
+                <div className="flex items-center justify-center space-x-1 mb-1">
+                  <span className="font-medium text-xs truncate max-w-20">@{follower?.platform_username}</span>
+                  {follower.is_verified && <Verified className="w-3 h-3 text-blue-500 flex-shrink-0" />}
+                </div>
+                <div className="text-xs text-gray-500">{formatNumber(follower?.follower_count || 0)} followers</div>
               </div>
-              <div className="text-xs text-gray-500">{formatNumber(follower?.follower_count || 0)}</div>
             </div>
           ))}
-        </div>
-      </div>
-
-      {/* Summary Statistics */}
-      <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-6 border border-purple-100">
-        <h3 className="text-lg font-semibold mb-4 flex items-center">
-          <TrendingUp className="w-5 h-5 mr-2" />
-          Audience Summary
-        </h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-purple-600 mb-1">
-              {profile?.audience?.countries?.length || 0}
-            </div>
-            <div className="text-sm text-gray-600">Countries Represented</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-blue-600 mb-1">
-              {profile?.audience?.languages?.length || 0}
-            </div>
-            <div className="text-sm text-gray-600">Languages Spoken</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-green-600 mb-1">
-              {profile?.audience?.interests?.length || 0}
-            </div>
-            <div className="text-sm text-gray-600">Interest Categories</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-orange-600 mb-1">
-              {formatNumber(profile?.audience?.significant_followers?.length || 0)}
-            </div>
-            <div className="text-sm text-gray-600">Notable Followers</div>
-          </div>
         </div>
       </div>
     </div>
