@@ -6,7 +6,7 @@ import { Search, X, Check, Users, ExternalLink } from 'react-feather';
 import DiscoverFilters from './DiscoverFilters';
 import DiscoveredResults from './DiscoveredResults';
 import { DiscoverInfluencer } from '@/lib/types';
-import { Campaign } from '@/services/campaign/campaign.service';
+import { Campaign } from '@/types/campaign';
 import { CampaignListMember, addInfluencerToList } from '@/services/campaign/campaign-list.service';
 import { DiscoveredCreatorsResults, Influencer } from '@/types/insights-iq';
 import { InfluencerSearchFilter } from '@/lib/creator-discovery-types';
@@ -166,9 +166,19 @@ const DiscoveredInfluencers: React.FC<DiscoveredInfluencersProps> = ({
   };
 
   // Handle profile insights (console for now)
-  const handleProfileInsights = (influencer: UserhandleResult) => {
-    console.log('Profile Insights clicked for:', influencer);
-    // TODO: Implement profile insights modal later
+  const handleProfileInsights = (influencer: UserhandleResult) => { 
+    console.log('handleProfileAnalytics called: ', influencer, selectedPlatform);
+    if (!influencer?.user_id || !selectedPlatform?.id) return;
+    
+    const params = new URLSearchParams({
+      user: influencer.user_id,
+      username: influencer.username,
+      platform: selectedPlatform.work_platform_id,
+    });
+    
+    const url = `/profile-analytics?${params.toString()}`;
+    // Open in new tab instead of using router.push
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   // Handle add to list from search dropdown

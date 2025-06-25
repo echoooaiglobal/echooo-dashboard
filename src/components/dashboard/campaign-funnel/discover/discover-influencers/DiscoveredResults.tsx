@@ -1,7 +1,7 @@
 // src/components/dashboard/campaign-funnel/discover/discover-influencers/DiscoveredResults.tsx
 import React, { useState, useEffect } from 'react';
 import { DiscoverInfluencer } from '@/lib/types';
-import { Campaign } from '@/services/campaign/campaign.service';
+import { Campaign } from '@/types/campaign';
 import { CampaignListMember } from '@/services/campaign/campaign-list.service';
 import { DiscoveredCreatorsResults, Influencer } from '@/types/insights-iq';
 import { SortField, SortOrder } from '@/lib/creator-discovery-types';

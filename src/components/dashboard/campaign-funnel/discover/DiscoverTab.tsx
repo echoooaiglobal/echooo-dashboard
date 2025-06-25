@@ -5,7 +5,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import EmptyState from './EmptyState';
 import BrandInfoForm from './BrandInfoForm';
-import { Campaign } from '@/services/campaign/campaign.service';
+import { Campaign } from '@/types/campaign';
 import DiscoveredInfluencers from '@/components/dashboard/campaign-funnel/discover/discover-influencers/DiscoveredInfluencers';
 import ShortlistedInfluencers from '@/components/dashboard/campaign-funnel/discover/shortlisted-influencers/ShortlistedInfluencers';
 import { DiscoverInfluencer } from '@/lib/types';
@@ -59,7 +59,7 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
     const baseParams: Partial<InfluencerSearchFilter> = {
       work_platform_id: "9bb8913b-ddd9-430b-a66a-d74d846e6c66",
       sort_by: { field: "FOLLOWER_COUNT", order: "DESCENDING" },
-      limit: 5, offset: 0, post_type: "ALL",
+      limit: 10, offset: 0, post_type: "ALL",
     };
     
     // Only add default values if defaultFilters is true
