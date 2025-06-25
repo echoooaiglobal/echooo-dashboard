@@ -1,10 +1,11 @@
 // src/context/CampaignContext.tsx
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { getCompanyCampaigns, getCampaignById, Campaign } from '@/services/campaign/campaign.service';
+import { getCompanyCampaigns, getCampaignById } from '@/services/campaign/campaign.service';
 import { getStoredCompany } from '@/services/auth/auth.utils';
+import { Campaign } from '@/types/campaign';
 
 interface CampaignContextType {
   campaigns: Campaign[];
@@ -12,7 +13,7 @@ interface CampaignContextType {
   isLoading: boolean;
   error: string | null;
   refreshCampaigns: (force?: boolean) => Promise<void>;
-  setCurrentCampaign: (campaign: Campaign | null) => void; // Allow null
+  setCurrentCampaign: (campaign: Campaign | null) => void;
   getCampaign: (id: string) => Promise<Campaign | null>;
 }
 
@@ -25,28 +26,70 @@ export function CampaignProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastFetchTime, setLastFetchTime] = useState<number | null>(null);
+  
+  // Use ref to access latest campaigns without causing re-renders
+  const campaignsRef = useRef<Campaign[]>([]);
+  
+  // Keep ref in sync with state
+  useEffect(() => {
+    campaignsRef.current = campaigns;
+  }, [campaigns]);
+
+  // Track ongoing requests to prevent duplicates
+  const ongoingRequests = useRef<Set<string>>(new Set());
 
   // Get a specific campaign by ID
   const getCampaign = useCallback(async (id: string): Promise<Campaign | null> => {
     try {
-      // First check if it's in our local state
-      const existingCampaign = campaigns.find(c => c.id === id);
+      // First check if it's in our local state using ref
+      const existingCampaign = campaignsRef.current.find(c => c.id === id);
       if (existingCampaign) {
         setCurrentCampaign(existingCampaign);
         return existingCampaign;
       }
       
-      // Otherwise fetch from API
-      const campaign = await getCampaignById(id);
-      if (campaign) {
-        setCurrentCampaign(campaign);
+      // Prevent duplicate requests for the same ID
+      if (ongoingRequests.current.has(id)) {
+        // Wait for ongoing request to complete and then check again
+        while (ongoingRequests.current.has(id)) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        // Check again after waiting
+        const campaignAfterWait = campaignsRef.current.find(c => c.id === id);
+        if (campaignAfterWait) {
+          setCurrentCampaign(campaignAfterWait);
+          return campaignAfterWait;
+        }
+        return currentCampaign?.id === id ? currentCampaign : null;
       }
-      // console.log('Fetched campaign:', campaign);
-      return campaign;
+      
+      // Mark request as ongoing
+      ongoingRequests.current.add(id);
+      
+      try {
+        // Otherwise fetch from API
+        const campaign = await getCampaignById(id);
+        if (campaign) {
+          setCurrentCampaign(campaign);
+          // Add to campaigns list if not already there
+          setCampaigns(prev => {
+            if (!prev.find(c => c.id === campaign.id)) {
+              return [...prev, campaign];
+            }
+            return prev;
+          });
+        }
+        return campaign;
+      } finally {
+        // Remove from ongoing requests
+        ongoingRequests.current.delete(id);
+      }
     } catch (error) {
+      ongoingRequests.current.delete(id);
+      console.error('Error fetching campaign:', error);
       return null;
     }
-  }, [campaigns]);
+  }, []); // No dependencies to prevent recreation
 
   // Refresh campaigns function with throttling
   const refreshCampaigns = useCallback(async (force = false) => {

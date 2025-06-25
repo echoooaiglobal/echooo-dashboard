@@ -67,7 +67,7 @@ const DashboardMetricsSection: React.FC<DashboardMetricsSectionProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-md mb-8 overflow-hidden">
+    <div className="bg-white rounded-xl shadow-md mb-1 overflow-hidden">
       {/* Header with tabs and toggle */}
       <div 
         className="flex justify-between items-center p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50"

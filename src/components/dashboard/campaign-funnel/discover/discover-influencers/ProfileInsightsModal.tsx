@@ -3,8 +3,11 @@ import React, { useState, useEffect } from 'react';
 import { Influencer } from '@/types/insights-iq';
 import { checkProfileAnalyticsExists } from '@/services/profile-analytics';
 import { ProfileAnalyticsExistsResponse } from '@/types/profile-analytics';
+import { useRouter } from 'next/navigation';
+import { Platform } from '@/types/platform';
 
 interface ProfileInsightsModalProps {
+  selectedPlatform?: Platform | null;
   isOpen: boolean;
   onClose: () => void;
   influencer: Influencer | null;
@@ -23,11 +26,13 @@ interface Post {
 }
 
 const ProfileInsightsModal: React.FC<ProfileInsightsModalProps> = ({
+  selectedPlatform,
   isOpen,
   onClose,
   influencer,
   onFetchPosts
 }) => {
+  const router = useRouter();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'posts'>('overview');
@@ -54,7 +59,7 @@ const ProfileInsightsModal: React.FC<ProfileInsightsModalProps> = ({
         });
     }
   }, [isOpen, influencer, onFetchPosts, activeTab]);
-
+console.log('influencerinfluencerinfluencer: ', influencer)
   // Reset state when modal closes
   useEffect(() => {
     if (!isOpen) {
@@ -89,48 +94,20 @@ const ProfileInsightsModal: React.FC<ProfileInsightsModalProps> = ({
     }
   };
 
-  // Updated handleProfileAnalytics to check analytics existence
-  const handleProfileAnalytics = async () => {
-    try {
-      console.log('🔍 Profile Analytics clicked for:', influencer.username);
-      
-      // Get platform account ID from influencer
-      const platformAccountId = influencer.external_id || influencer.id;
-      
-      if (!platformAccountId) {
-        console.error('❌ No platform account ID found for influencer');
-        setAnalyticsError('Unable to find platform account ID');
-        return;
-      }
-
-      console.log('📊 Platform Account ID:', platformAccountId);
-      
-      setCheckingAnalytics(true);
-      setAnalyticsError(null);
-      
-      // Call the API to check if analytics exist
-      const response = await checkProfileAnalyticsExists(platformAccountId);
-      
-      console.log('✅ Analytics check response:', response);
-      setAnalyticsData(response);
-      
-      // TODO: Based on response, decide what to do next
-      if (response.exists) {
-        console.log(`📈 Analytics exist! Count: ${response.analytics_count}, Latest: ${response.latest_analytics_date}`);
-        // TODO: Navigate to analytics page or show analytics data
-        alert(`Analytics available! ${response.analytics_count} reports found. Latest: ${new Date(response.latest_analytics_date).toLocaleDateString()}`);
-      } else {
-        console.log('📭 No analytics found for this influencer');
-        // TODO: Show message or trigger analytics generation
-        alert('No analytics reports found for this influencer.');
-      }
-      
-    } catch (error) {
-      console.error('💥 Error checking profile analytics:', error);
-      setAnalyticsError(error instanceof Error ? error.message : 'Failed to check analytics');
-    } finally {
-      setCheckingAnalytics(false);
-    }
+  // Updated handleProfileAnalytics to open in new tab
+  const handleProfileAnalytics = () => { 
+    console.log('handleProfileAnalytics called: ', influencer, selectedPlatform);
+    if (!influencer?.id || !selectedPlatform?.id) return;
+    
+    const params = new URLSearchParams({
+      user: influencer.id,
+      username: influencer.username,
+      platform: selectedPlatform.work_platform_id,
+    });
+    
+    const url = `/profile-analytics?${params.toString()}`;
+    // Open in new tab instead of using router.push
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -206,20 +183,12 @@ const ProfileInsightsModal: React.FC<ProfileInsightsModalProps> = ({
               </button>
               <button
                 onClick={handleProfileAnalytics}
-                disabled={checkingAnalytics}
-                className="w-full bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                className="w-full bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center"
               >
-                {checkingAnalytics ? (
-                  <>
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Checking Analytics...
-                  </>
-                ) : (
-                  'Profile Analytics'
-                )}
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                </svg>
+                Profile Analytics
               </button>
               
               {/* Show analytics error if any */}

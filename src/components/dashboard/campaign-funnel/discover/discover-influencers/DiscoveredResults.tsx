@@ -574,6 +574,7 @@ const DiscoverResults: React.FC<DiscoverResultsProps> = ({
 
       {/* Profile Insights Modal */}
       <ProfileInsightsModal
+        selectedPlatform={selectedPlatform}
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         influencer={selectedInfluencer}

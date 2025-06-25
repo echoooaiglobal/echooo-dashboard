@@ -66,7 +66,7 @@ const Age: React.FC<AgeFilterProps> = ({
 
   // Creator age handlers
   const handleCreatorAgeChange = (type: 'min' | 'max', value: number) => {
-    const currentAge = filters.creator_age || { min: 18, max: 65 };
+    const currentAge = filters.creator_age || {};
     onFilterChange({
       creator_age: {
         ...currentAge,
@@ -81,7 +81,7 @@ const Age: React.FC<AgeFilterProps> = ({
 
   // Audience age handlers
   const handleAudienceAgeChange = (type: 'min' | 'max' | 'percentage_value', value: number) => {
-    const currentAge = filters.audience_age || { min: 18, max: 65, percentage_value: 5 };
+    const currentAge = filters.audience_age || {};
     onFilterChange({
       audience_age: {
         ...currentAge,
@@ -97,13 +97,13 @@ const Age: React.FC<AgeFilterProps> = ({
   // Mini dropdown component
   const MiniDropdown: React.FC<{
     id: string;
-    value: number;
+    value?: number;
     options: { value: number; label: string }[];
     onChange: (value: number) => void;
     placeholder: string;
   }> = ({ id, value, options, onChange, placeholder }) => {
     const isOpen = openDropdown === id;
-    const selectedOption = options.find(opt => opt.value === value);
+    const selectedOption = value !== undefined ? options.find(opt => opt.value === value) : undefined;
 
     return (
       <div className="relative">
@@ -151,6 +151,7 @@ const Age: React.FC<AgeFilterProps> = ({
   const selectedCount = (hasCreatorAge ? 1 : 0) + (hasAudienceAge ? 1 : 0);
 
   const hasActiveFilters = hasCreatorAge || hasAudienceAge;
+  
   return (
     <FilterComponent
       hasActiveFilters={hasActiveFilters}
@@ -185,21 +186,25 @@ const Age: React.FC<AgeFilterProps> = ({
           <div className="grid grid-cols-3 gap-2">
             <MiniDropdown
               id="audience-min"
-              value={filters.audience_age?.min || 18}
-              options={AGE_OPTIONS.filter(opt => opt.value < (filters.audience_age?.max || 65))}
+              value={filters.audience_age?.min}
+              options={AGE_OPTIONS.filter(opt => 
+                !filters.audience_age?.max || opt.value < filters.audience_age.max
+              )}
               onChange={(value) => handleAudienceAgeChange('min', value)}
               placeholder="Min"
             />
             <MiniDropdown
               id="audience-max"
-              value={filters.audience_age?.max || 65}
-              options={AGE_OPTIONS.filter(opt => opt.value > (filters.audience_age?.min || 18))}
+              value={filters.audience_age?.max}
+              options={AGE_OPTIONS.filter(opt => 
+                !filters.audience_age?.min || opt.value > filters.audience_age.min
+              )}
               onChange={(value) => handleAudienceAgeChange('max', value)}
               placeholder="Max"
             />
             <MiniDropdown
               id="audience-percentage"
-              value={filters.audience_age?.percentage_value || 5}
+              value={filters.audience_age?.percentage_value}
               options={PERCENTAGE_OPTIONS}
               onChange={(value) => handleAudienceAgeChange('percentage_value', value)}
               placeholder=">%"
@@ -231,17 +236,21 @@ const Age: React.FC<AgeFilterProps> = ({
           <div className="grid grid-cols-2 gap-2">
             <MiniDropdown
               id="creator-min"
-              value={filters.creator_age?.min || 18}
-              options={AGE_OPTIONS.filter(opt => opt.value < (filters.creator_age?.max || 65))}
+              value={filters.creator_age?.min}
+              options={AGE_OPTIONS.filter(opt => 
+                !filters.creator_age?.max || opt.value < filters.creator_age.max
+              )}
               onChange={(value) => handleCreatorAgeChange('min', value)}
-              placeholder="Min"
+              placeholder="Min Age"
             />
             <MiniDropdown
               id="creator-max"
-              value={filters.creator_age?.max || 65}
-              options={AGE_OPTIONS.filter(opt => opt.value > (filters.creator_age?.min || 18))}
+              value={filters.creator_age?.max}
+              options={AGE_OPTIONS.filter(opt => 
+                !filters.creator_age?.min || opt.value > filters.creator_age.min
+              )}
               onChange={(value) => handleCreatorAgeChange('max', value)}
-              placeholder="Max"
+              placeholder="Max Age"
             />
           </div>
         </div>
