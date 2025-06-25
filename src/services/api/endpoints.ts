@@ -12,8 +12,15 @@ export const ENDPOINTS = {
     LIST: '/campaigns',
     CREATE: '/campaigns',
     DETAIL: (id: string) => `/campaigns/${id}`,
+    UPDATE: (id: string) => `/campaigns/${id}`,
+    DELETE: (id: string) => `/campaigns/${id}`,
+    RESTORE: (id: string) => `/campaigns/${id}/restore`,
     METRICS: (id: string) => `/campaigns/${id}/metrics`,
+    // Company-specific campaign endpoints
     COMPANY: (companyId: string) => `/campaigns/company/${companyId}`,
+    COMPANY_DELETED: (companyId: string) => `/campaigns/company/${companyId}/deleted`,
+    // Global deleted campaigns (if needed)
+    DELETED: '/campaigns/deleted',
   },
   CAMPAIGN_LISTS: {
     LIST_MEMBERS: (id: string) => `/campaign-list-members`,
@@ -94,7 +101,6 @@ export const ENDPOINTS = {
     BY_MODEL: (model: string) => `/statuses/model/${model}`,
     DETAIL: (id: string) => `/statuses/${id}`,
   },
-
 
   // Video Results
   RESULTS: {

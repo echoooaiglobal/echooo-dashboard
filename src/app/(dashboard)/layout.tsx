@@ -89,7 +89,7 @@ export default function DashboardLayout({
   }
   
   return (
-    <div className="min-h-screen bg-gray-50 overflow-x-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-blue-150 to-purple-100 overflow-x-hidden">
       <div className="w-full max-w-[100vw] overflow-hidden">
         <div className="w-[95%] mx-auto py-3 overflow-hidden">
           {content}

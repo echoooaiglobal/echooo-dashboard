@@ -14,8 +14,6 @@ import { getCampaignListMembers, CampaignListMember, CampaignListMembersResponse
 import { InfluencerSearchFilter } from '@/lib/creator-discovery-types';
 import { Platform } from '@/types/platform';
 import { formatNumber } from '@/utils/format'
-// Default Pakistan location ID (replace with actual ID from your API)
-const PAKISTAN_LOCATION_ID = "abd21c98-2950-45cd-b224-89b5a9f3c014";
 
 interface DiscoverTabProps {
   campaignData?: Campaign | null;
@@ -51,27 +49,30 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
   const [selectedPlatform, setSelectedPlatform] = useState<Platform | null>(null);
 
   // Prepare age group from campaign data
+  const defaultFilters = campaignData?.default_filters;
   const creatorInterests = campaignData?.category?.name || '';
   const ageGroup = campaignData?.audience_age_group || '';
   const [left, right] = ageGroup.split('-');
 
   // Search parameters state using new InfluencerSearchFilter type
-  const [searchParams, setSearchParams] = useState<InfluencerSearchFilter>({
-    work_platform_id: selectedPlatform?.work_platform_id || "9bb8913b-ddd9-430b-a66a-d74d846e6c66",
-    creator_age: {
-      min: parseInt(left?.trim() || '18'),
-      max: parseInt(right?.trim() || '35')
-    },
-    creator_locations: [],
-    creator_interests: [creatorInterests],
-    // creator_account_type: ["CREATOR"],
-    sort_by: {
-      field: "FOLLOWER_COUNT",
-      order: "DESCENDING"
-    },
-    limit: 10,
-    offset: 0,
-    post_type: "ALL",
+  const [searchParams, setSearchParams] = useState<InfluencerSearchFilter>(() => {
+    const baseParams: Partial<InfluencerSearchFilter> = {
+      work_platform_id: "9bb8913b-ddd9-430b-a66a-d74d846e6c66",
+      sort_by: { field: "FOLLOWER_COUNT", order: "DESCENDING" },
+      limit: 5, offset: 0, post_type: "ALL",
+    };
+    
+    // Only add default values if defaultFilters is true
+    if (defaultFilters) {
+      if (left && right && !isNaN(parseInt(left)) && !isNaN(parseInt(right))) {
+        baseParams.creator_age = { min: parseInt(left.trim()), max: parseInt(right.trim()) };
+      }
+      if (creatorInterests) {
+        baseParams.creator_interests = [creatorInterests];
+      }
+    }
+    
+    return baseParams as InfluencerSearchFilter;
   });
 
   // NEW: Function to fetch platforms from your API
@@ -254,18 +255,18 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
   };
 
   // NEW: Load platforms when component mounts
-  useEffect(() => {
-    fetchPlatforms();
+  useEffect(() => { 
+    if(platforms.length === 0) {
+      fetchPlatforms();
+    }
   }, [fetchPlatforms]);
 
-  // Initial load of influencers when component mounts or platform changes
-  // useEffect(() => {
-  //   // Only fetch if we're on the discovered tab, have a selected platform, and it's not a new campaign
-  //   if (activeFilter === 'discovered' && campaignData && !isNewCampaign && selectedPlatform) {
-  //     console.log('🚀 Initial influencer fetch triggered for platform:', selectedPlatform.name);
-  //     fetchInfluencers(searchParams);
-  //   }
-  // }, [activeFilter, campaignData, isNewCampaign, selectedPlatform, fetchInfluencers]);
+  useEffect(() => {
+    // Only fetch if we're on the discovered tab, have a selected platform, and it's not a new campaign
+    if (defaultFilters && !isNewCampaign && selectedPlatform) {
+      fetchInfluencers(searchParams);
+    }
+  }, [defaultFilters, isNewCampaign, selectedPlatform]);
 
   // Fetch campaign list members when campaign data is available
   useEffect(() => {

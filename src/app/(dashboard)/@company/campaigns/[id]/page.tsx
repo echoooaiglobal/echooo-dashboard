@@ -29,7 +29,11 @@ export default function CampaignDetailPage() {
 
       try {
         setIsLoading(true);
+        setError(null); // Clear any previous errors
+        
+        console.log('Loading campaign:', campaignId); // Debug log
         const campaign = await getCampaign(campaignId);
+        console.log('Campaign loaded:', campaign); // Debug log
         
         if (!campaign) {
           if (!/^[0-9a-f-]{32,36}$/i.test(campaignId)) {
@@ -46,12 +50,29 @@ export default function CampaignDetailPage() {
       }
     }
     
+    // Clear current campaign when switching to a different campaign
+    if (currentCampaign && currentCampaign.id !== campaignId) {
+      setCurrentCampaign(null);
+    }
+    
     loadCampaign();
     
+    // Cleanup function
     return () => {
-      setCurrentCampaign(null);
+      // Only clear if we're unmounting completely, not just switching campaigns
+      if (!campaignId) {
+        setCurrentCampaign(null);
+      }
     };
-  }, [campaignId, getCampaign, setCurrentCampaign]);
+  }, [campaignId]); // Removed getCampaign from dependencies to prevent re-runs
+
+  // Separate effect to handle current campaign changes
+  useEffect(() => {
+    if (currentCampaign && currentCampaign.id === campaignId) {
+      setIsLoading(false);
+      setError(null);
+    }
+  }, [currentCampaign, campaignId]);
 
   if (isLoading) {
     return <LoadingSpinner />;
