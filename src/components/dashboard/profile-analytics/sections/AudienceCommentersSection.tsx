@@ -17,6 +17,8 @@ import {
   Star,
   Verified
 } from 'lucide-react';
+import { ResponsiveBar } from '@nivo/bar';
+import { ResponsivePie } from '@nivo/pie';
 import { Profile } from '@/types/insightiq/profile-analytics';
 
 interface ProfileData {
@@ -129,6 +131,81 @@ const AudienceCommentersSection: React.FC<AudienceCommentersSectionProps> = ({
     return 'text-red-600 bg-red-50';
   };
 
+  // Filter states with 10% or higher percentage
+  const getFilteredStates = () => {
+    return profile?.audience_commenters?.states?.filter((state: { name: string; value?: number }) => (state.value || 0) >= 10) || [];
+  };
+
+  const shouldShowStates = () => {
+    return getFilteredStates().length > 0;
+  };
+
+  // Prepare data for charts
+  const prepareGenderPieData = () => {
+    return profile?.audience_commenters?.gender_distribution?.map((gender: { gender: string; value: number }) => ({
+      id: gender.gender,
+      label: gender.gender,
+      value: gender.value,
+      color: gender.gender === 'MALE' ? '#3B82F6' : '#EC4899'
+    })) || [];
+  };
+
+  const prepareAgeData = () => {
+    return profile?.audience_commenters?.gender_age_distribution ? profile.audience_commenters.gender_age_distribution
+      .reduce(
+        (
+          acc: { age_range: string; value: number }[],
+          curr: { age_range: string; value: number }
+        ) => {
+          const existing = acc.find(item => item.age_range === curr.age_range);
+          if (existing) {
+            existing.value += curr.value;
+          } else {
+            acc.push({ age_range: curr.age_range, value: curr.value });
+          }
+          return acc;
+        },
+        []
+      )
+      .sort((a: { age_range: string; value: number }, b: { age_range: string; value: number }) => {
+        const ageOrder = ['13-17', '18-24', '25-34', '35-44', '45-64'];
+        return ageOrder.indexOf(a.age_range) - ageOrder.indexOf(b.age_range);
+      }) : [];
+  };
+
+  const prepareAgePieData = () => {
+    const ageData = prepareAgeData();
+    const colors = ['#A855F7', '#3B82F6', '#10B981', '#F59E0B', '#EF4444'];
+    
+    return ageData.map((age: { age_range: string; value: number }, index: number) => ({
+      id: age.age_range,
+      label: `${age.age_range} years`,
+      value: age.value,
+      color: colors[index] || '#6B7280'
+    }));
+  };
+
+  const prepareGenderAgeBarData = () => {
+    if (!profile?.audience_commenters?.gender_age_distribution) return [];
+    
+    const ageRanges = ['13-17', '18-24', '25-34', '35-44', '45-64'];
+    
+    return ageRanges.map(ageRange => {
+      const maleData = profile.audience_commenters?.gender_age_distribution.find(
+        (item: { age_range: string; gender: string; value: number }) => item.age_range === ageRange && item.gender === 'MALE'
+      );
+      const femaleData = profile.audience_commenters?.gender_age_distribution.find(
+        (item: { age_range: string; gender: string; value: number }) => item.age_range === ageRange && item.gender === 'FEMALE'
+      );
+      
+      return {
+        ageRange,
+        Male: maleData?.value || 0,
+        Female: femaleData?.value || 0
+      };
+    });
+  };
+
   const audienceCommenters = profile?.audience_commenters;
 
   // Check if commenters data is available and has meaningful content
@@ -200,210 +277,347 @@ const AudienceCommentersSection: React.FC<AudienceCommentersSectionProps> = ({
           </div>
         </div>
 
-        {/* Gender Distribution */}
-        {audienceCommenters.gender_distribution && (
+        {/* Combined Gender and Age Distribution */}
+        {(audienceCommenters.gender_distribution || audienceCommenters.gender_age_distribution) && (
           <div className="mb-8">
-            <h4 className="text-lg font-medium mb-4 flex items-center">
-              <Users className="w-5 h-5 mr-2" />
-              Gender Distribution
+            <h4 className="text-xl font-bold mb-6 flex items-center">
+              <Users className="w-6 h-6 mr-2" />
+              Gender & Age Distribution
             </h4>
-            <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {audienceCommenters.gender_distribution.map((gender, index) => (
-                  <div key={index} className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div className={`w-4 h-4 rounded-full ${
-                          gender.gender === 'MALE' ? 'bg-blue-500' : 
-                          gender.gender === 'FEMALE' ? 'bg-purple-500' : 'bg-gray-500'
-                        }`}></div>
-                        <span className="font-medium text-gray-700">{gender.gender}</span>
-                      </div>
-                      <span className="text-xl font-bold text-gray-800">{gender.value?.toFixed(1) || '0.0'}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-3">
-                      <div
-                        className={`h-3 rounded-full transition-all duration-500 ${
-                          gender.gender === 'MALE' ? 'bg-gradient-to-r from-blue-400 to-blue-600' : 
-                          gender.gender === 'FEMALE' ? 'bg-gradient-to-r from-purple-400 to-purple-600' : 'bg-gray-500'
-                        }`}
-                        style={{ width: `${gender.value || 0}%` }}
-                      ></div>
+            <div className="bg-gradient-to-r from-blue-50 to-pink-50 rounded-lg p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Gender Pie Chart */}
+                {audienceCommenters.gender_distribution && (
+                  <div className="bg-white rounded-lg p-4 shadow-sm">
+                    <h5 className="text-lg font-bold mb-4 text-center text-gray-800">Gender Distribution</h5>
+                    <div className="h-96">
+                      <ResponsivePie
+                        data={prepareGenderPieData()}
+                        margin={{ top: 40, right: 80, bottom: 80, left: 80 }}
+                        innerRadius={0.4}
+                        padAngle={3}
+                        cornerRadius={4}
+                        activeOuterRadiusOffset={12}
+                        colors={['#3B82F6', '#EC4899']}
+                        borderWidth={3}
+                        borderColor={{ from: 'color', modifiers: [['darker', 0.3]] }}
+                        arcLinkLabelsSkipAngle={10}
+                        arcLinkLabelsTextColor="#374151"
+                        arcLinkLabelsThickness={3}
+                        arcLinkLabelsColor={{ from: 'color' }}
+                        arcLabelsSkipAngle={10}
+                        arcLabelsTextColor="#FFFFFF"
+                        arcLinkLabel={(d) => `${d.id}: ${d.value.toFixed(1)}%`}
+                        arcLabel={(d) => `${d.value.toFixed(1)}%`}
+                        theme={{
+                          text: {
+                            fontSize: 15,
+                            fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif'
+                          },
+                          tooltip: {
+                            container: {
+                              background: '#1F2937',
+                              color: '#F9FAFB',
+                              fontSize: '15px',
+                              borderRadius: '8px',
+                              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                              border: 'none'
+                            }
+                          }
+                        }}
+                        tooltip={({ datum }) => (
+                          <div className="bg-gray-800 text-white p-4 rounded-lg shadow-lg">
+                            <div className="font-bold text-xl">{datum.label}</div>
+                            <div className="text-blue-300 font-bold text-xl">{datum.value.toFixed(1)}%</div>
+                          </div>
+                        )}
+                      />
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
+                )}
 
-        {/* Age Distribution */}
-        {audienceCommenters.gender_age_distribution && (
-          <div className="mb-8">
-            <h4 className="text-lg font-medium mb-4">Age Distribution</h4>
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
-              {/* Age Range Cards */}
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
-                {audienceCommenters.gender_age_distribution
-                  .reduce((acc: any[], curr) => {
-                    const existing = acc.find(item => item.age_range === curr.age_range);
-                    if (existing) {
-                      existing.value += curr.value;
-                    } else {
-                      acc.push({ age_range: curr.age_range, value: curr.value });
-                    }
-                    return acc;
-                  }, [])
-                  .sort((a, b) => {
-                    const ageOrder = ['13-17', '18-24', '25-34', '35-44', '45-64'];
-                    return ageOrder.indexOf(a.age_range) - ageOrder.indexOf(b.age_range);
-                  })
-                  .map((age, index) => {
-                    const colors = [
-                      'from-purple-400 to-purple-600',
-                      'from-blue-400 to-blue-600', 
-                      'from-indigo-400 to-indigo-600',
-                      'from-cyan-400 to-cyan-600',
-                      'from-teal-400 to-teal-600'
-                    ];
-                    return (
-                      <div key={index} className="relative overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-4 hover:shadow-lg transition-all duration-300 group">
-                        <div className="text-center">
-                          <div className={`text-2xl font-bold bg-gradient-to-r ${colors[index]} bg-clip-text text-transparent mb-2`}>
-                            {age.value?.toFixed(1) || '0.0'}%
+                {/* Age Pie Chart */}
+                {audienceCommenters.gender_age_distribution && (
+                  <div className="bg-white rounded-lg p-4 shadow-sm">
+                    <h5 className="text-lg font-bold mb-4 text-center text-gray-800">Age Distribution</h5>
+                    <div className="h-96">
+                      <ResponsivePie
+                        data={prepareAgePieData()}
+                        margin={{ top: 40, right: 80, bottom: 80, left: 80 }}
+                        innerRadius={0.4}
+                        padAngle={2}
+                        cornerRadius={4}
+                        activeOuterRadiusOffset={12}
+                        colors={['#A855F7', '#3B82F6', '#10B981', '#F59E0B', '#EF4444']}
+                        borderWidth={3}
+                        borderColor={{ from: 'color', modifiers: [['darker', 0.3]] }}
+                        arcLinkLabelsSkipAngle={10}
+                        arcLinkLabelsTextColor="#374151"
+                        arcLinkLabelsThickness={3}
+                        arcLinkLabelsColor={{ from: 'color' }}
+                        arcLabelsSkipAngle={10}
+                        arcLabelsTextColor="#FFFFFF"
+                        arcLinkLabel={(d) => `${d.id}: ${d.value.toFixed(1)}%`}
+                        arcLabel={(d) => `${d.value.toFixed(1)}%`}
+                        theme={{
+                          text: {
+                            fontSize: 15,
+                            fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif'
+                          },
+                          tooltip: {
+                            container: {
+                              background: '#1F2937',
+                              color: '#F9FAFB',
+                              fontSize: '15px',
+                              borderRadius: '8px',
+                              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                              border: 'none'
+                            }
+                          }
+                        }}
+                        tooltip={({ datum }) => (
+                          <div className="bg-gray-800 text-white p-4 rounded-lg shadow-lg">
+                            <div className="font-bold text-xl">{datum.label}</div>
+                            <div className="text-blue-300 font-bold text-xl">{datum.value.toFixed(1)}%</div>
                           </div>
-                          <div className="text-sm font-medium text-gray-700 mb-3">{age.age_range} years</div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div
-                              className={`h-2 rounded-full bg-gradient-to-r ${colors[index]} transition-all duration-700`}
-                              style={{ width: `${Math.min((age.value / Math.max(...audienceCommenters.gender_age_distribution!.reduce((acc: any[], curr) => {
-                                const existing = acc.find(item => item.age_range === curr.age_range);
-                                if (existing) {
-                                  existing.value += curr.value;
-                                } else {
-                                  acc.push({ age_range: curr.age_range, value: curr.value });
-                                }
-                                return acc;
-                              }, []).map(item => item.value))) * 100, 100)}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:opacity-20 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-all duration-700"></div>
-                      </div>
-                    );
-                  })}
+                        )}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Gender breakdown by age */}
-              <div className="border-t border-gray-200 pt-6">
-                <h5 className="font-medium text-gray-700 mb-4">Gender Breakdown by Age</h5>
-                <div className="space-y-3">
-                  {audienceCommenters.gender_age_distribution
-                    .sort((a, b) => {
-                      const ageOrder = ['13-17', '18-24', '25-34', '35-44', '45-64'];
-                      return ageOrder.indexOf(a.age_range) - ageOrder.indexOf(b.age_range);
-                    })
-                    .map((ageGender, index) => (
-                      <div key={index} className="flex items-center space-x-4">
-                        <div className="w-20 text-sm font-medium text-gray-600">{ageGender.age_range}</div>
-                        <div className="flex items-center space-x-2">
-                          <div className={`w-3 h-3 rounded-full ${
-                            ageGender.gender === 'MALE' ? 'bg-blue-500' : 'bg-purple-500'
-                          }`}></div>
-                          <span className="text-xs text-gray-500 uppercase">{ageGender.gender}</span>
+              {/* Gender breakdown by age - Vertical Bar Chart */}
+              {audienceCommenters.gender_age_distribution && (
+                <div className="border-t border-gray-200 pt-10 mt-6 bg-white rounded-lg p-6 shadow-sm">
+                  <h5 className="font-bold text-lg text-gray-800 mb-6 text-center">Gender Breakdown by Age</h5>
+                  <div className="h-96">
+                    <ResponsiveBar
+                      data={prepareGenderAgeBarData()}
+                      keys={['Male', 'Female']}
+                      indexBy="ageRange"
+                      margin={{ top: 50, right: 130, bottom: 50, left: 80 }}
+                      padding={0.3}
+                      groupMode="grouped"
+                      innerPadding={3}
+                      valueScale={{ type: 'linear' }}
+                      indexScale={{ type: 'band', round: true }}
+                      colors={['#3B82F6', '#EC4899']}
+                      defs={[
+                        {
+                          id: 'maleGradient',
+                          type: 'linearGradient',
+                          colors: [
+                            { offset: 0, color: '#3B82F6' },
+                            { offset: 100, color: '#1D4ED8' }
+                          ]
+                        },
+                        {
+                          id: 'femaleGradient',
+                          type: 'linearGradient',
+                          colors: [
+                            { offset: 0, color: '#EC4899' },
+                            { offset: 100, color: '#DB2777' }
+                          ]
+                        }
+                      ]}
+                      fill={[
+                        {
+                          match: {
+                            id: 'Male'
+                          },
+                          id: 'maleGradient'
+                        },
+                        {
+                          match: {
+                            id: 'Female'
+                          },
+                          id: 'femaleGradient'
+                        }
+                      ]}
+                      borderRadius={4}
+                      borderWidth={1}
+                      borderColor={{ from: 'color', modifiers: [['darker', 0.2]] }}
+                      axisTop={null}
+                      axisRight={null}
+                      axisBottom={{
+                        tickSize: 5,
+                        tickPadding: 8,
+                        tickRotation: 0,
+                        legend: 'Age Range',
+                        legendPosition: 'middle',
+                        legendOffset: 32
+                      }}
+                      axisLeft={{
+                        tickSize: 5,
+                        tickPadding: 12,
+                        tickRotation: 0,
+                        legend: 'Percentage (%)',
+                        legendPosition: 'middle',
+                        legendOffset: -60,
+                        format: value => `${value}%`
+                      }}
+                      enableLabel={true}
+                      label={d => `${(d.value ?? 0).toFixed(1)}%`}
+                      labelSkipWidth={12}
+                      labelSkipHeight={12}
+                      labelTextColor="#ffffff"
+                      legends={[
+                        {
+                          dataFrom: 'keys',
+                          anchor: 'bottom-right',
+                          direction: 'column',
+                          justify: false,
+                          translateX: 120,
+                          translateY: 0,
+                          itemsSpacing: 4,
+                          itemWidth: 100,
+                          itemHeight: 20,
+                          itemDirection: 'left-to-right',
+                          itemOpacity: 0.85,
+                          symbolSize: 20,
+                          effects: [
+                            {
+                              on: 'hover',
+                              style: {
+                                itemOpacity: 1
+                              }
+                            }
+                          ]
+                        }
+                      ]}
+                      animate={true}
+                      motionConfig="gentle"
+                      theme={{
+                        background: 'transparent',
+                        text: {
+                          fontSize: 14,
+                          fill: '#374151',
+                          fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+                          fontWeight: 700
+                        },
+                        axis: {
+                          domain: {
+                            line: {
+                              stroke: '#e5e7eb',
+                              strokeWidth: 1
+                            }
+                          },
+                          legend: {
+                            text: {
+                              fontSize: 15,
+                              fill: '#6b7280',
+                              fontWeight: 700
+                            }
+                          },
+                          ticks: {
+                            line: {
+                              stroke: '#e5e7eb',
+                              strokeWidth: 1
+                            },
+                            text: {
+                              fontSize: 13,
+                              fill: '#6b7280',
+                              fontWeight: 700
+                            }
+                          }
+                        },
+                        grid: {
+                          line: {
+                            stroke: '#f3f4f6',
+                            strokeWidth: 1
+                          }
+                        }
+                      }}
+                      tooltip={({ id, value, indexValue }) => (
+                        <div className="bg-gray-800 text-white p-4 rounded-lg shadow-lg">
+                          <div className="font-bold text-xl mb-2">{indexValue} years</div>
+                          <div className="font-bold text-lg">{id}</div>
+                          <div className="text-blue-300 font-bold text-xl">{value.toFixed(1)}%</div>
                         </div>
-                        <div className="flex-1 bg-gray-200 rounded-full h-2">
-                          <div
-                            className={`h-2 rounded-full ${
-                              ageGender.gender === 'MALE' ? 'bg-blue-500' : 'bg-purple-500'
-                            }`}
-                            style={{ width: `${((ageGender.value || 0) / 50) * 100}%` }}
-                          ></div>
-                        </div>
-                        <div className="w-12 text-sm font-medium text-right">{ageGender.value?.toFixed(1) || '0.0'}%</div>
-                      </div>
-                    ))}
+                      )}
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         )}
 
         {/* Geographic Data - Countries, States, Cities */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className={`grid grid-cols-1 ${shouldShowStates() ? 'lg:grid-cols-3' : 'lg:grid-cols-2'} gap-6`}>
           <div>
-            <h4 className="text-lg font-medium mb-4 flex items-center">
+            <h4 className="text-lg font-medium mb-4 flex items-center group">
               <Flag className="w-5 h-5 mr-2" />
               Top Countries (Commenters)
+              <div className="relative ml-2">
+                <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
+                  ?
+                </div>
+                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+                  <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+                    Countries where your active commenters are located
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                  </div>
+                </div>
+              </div>
             </h4>
-            <div className="space-y-3">
-              {audienceCommenters?.countries?.slice(0, 8).map((country, index) => (
-                <div key={index} className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg border border-gray-100 hover:shadow-md transition-all duration-200">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                      <span className="text-blue-600 font-semibold text-sm">
-                        {country.code}
-                      </span>
-                    </div>
-                    <span className="font-medium text-gray-800">{getCountryName(country.code)}</span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-blue-600 font-bold text-lg">{country.value?.toFixed(1) || '0.0'}%</span>
-                  </div>
+            <div className="space-y-2 max-h-80 overflow-y-auto">
+              {audienceCommenters?.countries?.map((country: { code: string; value?: number }, index: number) => (
+                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                  <span className="font-medium">{getCountryName(country.code)}</span>
+                  <span className="text-blue-600 font-semibold">{country.value?.toFixed(1) || '0.0'}%</span>
                 </div>
               ))}
             </div>
-            
-            {/* Countries Chart Visualization */}
-            {audienceCommenters?.countries && audienceCommenters.countries.length > 0 && (
-              <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                <h5 className="font-medium text-gray-700 mb-3">Geographic Distribution</h5>
-                <div className="space-y-2">
-                  {audienceCommenters.countries.slice(0, 5).map((country, index) => (
-                    <div key={index} className="flex items-center space-x-3">
-                      <div className="w-20 text-sm font-medium text-gray-600 truncate">
-                        {getCountryName(country.code)}
-                      </div>
-                      <div className="flex-1 bg-gray-200 rounded-full h-3">
-                        <div
-                          className="bg-gradient-to-r from-blue-400 to-blue-600 h-3 rounded-full transition-all duration-1000"
-                          style={{ 
-                            width: `${(country.value / Math.max(...audienceCommenters.countries!.map(c => c.value))) * 100}%` 
-                          }}
-                        ></div>
-                      </div>
-                      <div className="w-12 text-sm font-bold text-blue-600 text-right">
-                        {country.value?.toFixed(1) || '0.0'}%
-                      </div>
+          </div>
+
+          {shouldShowStates() && (
+            <div>
+              <h4 className="text-lg font-medium mb-4 flex items-center group">
+                <Building2 className="w-5 h-5 mr-2" />
+                Top States
+                <div className="relative ml-2">
+                  <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
+                    ?
+                  </div>
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+                    <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+                      States/provinces with significant commenter presence (≥10%)
+                      <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
                     </div>
-                  ))}
+                  </div>
                 </div>
+              </h4>
+              <div className="space-y-2 max-h-80 overflow-y-auto">
+                {getFilteredStates().map((state: { name: string; value?: number }, index: number) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                    <span className="font-medium text-sm">{state.name}</span>
+                    <span className="text-blue-600 font-semibold text-sm">{state.value?.toFixed(1) || '0.0'}%</span>
+                  </div>
+                ))}
               </div>
-            )}
-          </div>
-
-          <div>
-            <h4 className="text-lg font-medium mb-4 flex items-center">
-              <Building2 className="w-5 h-5 mr-2" />
-              Top States
-            </h4>
-            <div className="space-y-2 max-h-80 overflow-y-auto">
-              {audienceCommenters?.states?.length > 0 ? audienceCommenters.states.map((state, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                  <span className="font-medium text-sm">{state.name}</span>
-                  <span className="text-blue-600 font-semibold text-sm">{state.value?.toFixed(1) || '0.0'}%</span>
-                </div>
-              )) : <div className="text-gray-500 text-sm">No state data available</div>}
             </div>
-          </div>
+          )}
 
           <div>
-            <h4 className="text-lg font-medium mb-4 flex items-center">
+            <h4 className="text-lg font-medium mb-4 flex items-center group">
               <MapPin className="w-5 h-5 mr-2" />
               Top Cities
+              <div className="relative ml-2">
+                <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
+                  ?
+                </div>
+                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+                  <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+                    Cities with the highest concentration of your commenters
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                  </div>
+                </div>
+              </div>
             </h4>
             <div className="space-y-2 max-h-80 overflow-y-auto">
-              {audienceCommenters?.cities?.map((city, index) => (
+              {audienceCommenters?.cities?.map((city: { name: string; value?: number }, index: number) => (
                 <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                   <span className="font-medium text-sm">{city.name}</span>
                   <span className="text-blue-600 font-semibold text-sm">{city.value?.toFixed(1) || '0.0'}%</span>
@@ -418,9 +632,20 @@ const AudienceCommentersSection: React.FC<AudienceCommentersSectionProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {audienceCommenters.languages && (
           <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-            <h3 className="text-lg font-semibold mb-4 flex items-center">
+            <h3 className="text-lg font-semibold mb-4 flex items-center group">
               <Languages className="w-5 h-5 mr-2" />
               Commenters Languages
+              <div className="relative ml-2">
+                <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
+                  ?
+                </div>
+                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+                  <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+                    Primary languages spoken by your active commenters
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                  </div>
+                </div>
+              </div>
             </h3>
             <div className="space-y-2 max-h-80 overflow-y-auto">
               {audienceCommenters.languages.map((lang, index) => (
@@ -435,9 +660,23 @@ const AudienceCommentersSection: React.FC<AudienceCommentersSectionProps> = ({
 
         {audienceCommenters.ethnicities && (
           <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-            <h3 className="text-lg font-semibold mb-4">Commenters Ethnicity</h3>
+            <h3 className="text-lg font-semibold mb-4 flex items-center group">
+              Commenters Ethnicity
+              <div className="relative ml-2">
+                <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
+                  ?
+                </div>
+                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+                  <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+                    Ethnic background distribution of your commenters
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                  </div>
+                </div>
+              </div>
+            </h3>
             <div className="space-y-3">
-              {audienceCommenters.ethnicities.map((ethnicity, index) => (
+              {audienceCommenters.ethnicities.map(
+                (ethnicity: { name: string; value?: number }, index: number) => (
                 <div key={index} className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-gray-700">{ethnicity.name}</span>
@@ -459,12 +698,24 @@ const AudienceCommentersSection: React.FC<AudienceCommentersSectionProps> = ({
       {/* Brand Affinity */}
       {audienceCommenters.brand_affinity && (
         <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-          <h3 className="text-lg font-semibold mb-4 flex items-center">
+          <h3 className="text-lg font-semibold mb-4 flex items-center group">
             <Award className="w-5 h-5 mr-2" />
             Brand Affinity (Commenters)
+            <div className="relative ml-2">
+              <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
+                ?
+              </div>
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+                <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+                  Brands and companies your commenters show interest in
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                </div>
+              </div>
+            </div>
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-96 overflow-y-auto">
-            {audienceCommenters.brand_affinity.map((brand, index) => (
+            {audienceCommenters.brand_affinity.map(
+              (brand: { name: string; value?: number }, index: number) => (
               <div key={index} className="bg-gradient-to-r from-gray-50 to-gray-100 p-4 rounded-lg border hover:shadow-md transition-all">
                 <div className="text-sm font-medium text-gray-800 mb-1">{brand.name}</div>
                 <div className="text-xs text-blue-600 font-semibold">{((brand.value || 0) * 100).toFixed(3)}%</div>
@@ -477,9 +728,20 @@ const AudienceCommentersSection: React.FC<AudienceCommentersSectionProps> = ({
       {/* Audience Quality & Insights */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-          <h3 className="text-lg font-semibold mb-4 flex items-center">
+          <h3 className="text-lg font-semibold mb-4 flex items-center group">
             <UserCheck className="w-5 h-5 mr-2" />
             Commenters Quality
+            <div className="relative ml-2">
+              <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
+                ?
+              </div>
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+                <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+                  Assessment of commenter authenticity and engagement quality
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                </div>
+              </div>
+            </div>
           </h3>
           
           {audienceCommenters.credibility_score !== undefined ? (
@@ -514,7 +776,11 @@ const AudienceCommentersSection: React.FC<AudienceCommentersSectionProps> = ({
                 <div>
                   <h4 className="font-medium mb-3">Follower Types</h4>
                   <div className="space-y-3">
-                    {audienceCommenters.follower_types.map((type, index) => (
+                    {audienceCommenters.follower_types.map(
+                      (
+                        type: { name: string; value?: number },
+                        index: number
+                      ) => (
                       <div key={index} className="space-y-2">
                         <div className="flex justify-between text-sm">
                           <span className="capitalize text-gray-600">{getFollowerTypeLabel(type.name)}</span>
@@ -579,12 +845,24 @@ const AudienceCommentersSection: React.FC<AudienceCommentersSectionProps> = ({
 
         {audienceCommenters.interests && (
           <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-            <h3 className="text-lg font-semibold mb-4 flex items-center">
+            <h3 className="text-lg font-semibold mb-4 flex items-center group">
               <Target className="w-5 h-5 mr-2" />
               Commenters Interests
+              <div className="relative ml-2">
+                <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
+                  ?
+                </div>
+                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+                  <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+                    Topics and categories your commenters are most interested in
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                  </div>
+                </div>
+              </div>
             </h3>
             <div className="space-y-2 max-h-80 overflow-y-auto">
-              {audienceCommenters.interests.map((interest, index) => (
+              {audienceCommenters.interests.map(
+                (interest: { name: string; value?: number }, index: number) => (
                 <div key={index} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
                   <span className="text-gray-700 text-sm">{interest.name}</span>
                   <span className="font-medium text-sm">{interest.value?.toFixed(1) || '0.0'}%</span>
@@ -598,12 +876,32 @@ const AudienceCommentersSection: React.FC<AudienceCommentersSectionProps> = ({
       {/* Significant Commenters */}
       {audienceCommenters.significant_commenters && audienceCommenters.significant_commenters.length > 0 && (
         <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-          <h3 className="text-lg font-semibold mb-4 flex items-center">
+          <h3 className="text-lg font-semibold mb-4 flex items-center group">
             <Star className="w-5 h-5 mr-2" />
             Notable Commenters ({audienceCommenters.significant_commenters_percentage?.toFixed(1)}% of total)
+            <div className="relative ml-2">
+              <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
+                ?
+              </div>
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+                <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+                  High-profile commenters with significant reach and influence
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                </div>
+              </div>
+            </div>
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 max-h-96 overflow-y-auto">
-            {audienceCommenters.significant_commenters.map((commenter, index) => (
+            {audienceCommenters.significant_commenters.map(
+              (
+                commenter: {
+                  image_url: string;
+                  platform_username: string;
+                  is_verified?: boolean;
+                  follower_count: number;
+                },
+                index: number
+              ) => (
               <div key={index} className="text-center p-3 border border-gray-200 rounded-lg hover:shadow-md transition-all">
                 <img
                   src={commenter.image_url}

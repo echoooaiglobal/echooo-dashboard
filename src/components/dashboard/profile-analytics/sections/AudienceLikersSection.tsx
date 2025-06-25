@@ -18,6 +18,8 @@ import {
   Eye,
   AlertCircle
 } from 'lucide-react';
+import { ResponsiveBar } from '@nivo/bar';
+import { ResponsivePie } from '@nivo/pie';
 import { Profile } from '@/types/insightiq/profile-analytics';
 
 interface ProfileData {
@@ -130,6 +132,75 @@ const AudienceLikersSection: React.FC<AudienceLikersSectionProps> = ({
     return 'text-red-600 bg-red-50';
   };
 
+  // Filter states with 10% or higher percentage
+  const getFilteredStates = () => {
+    return profile?.audience_likers?.states?.filter(state => (state.value || 0) >= 10) || [];
+  };
+
+  const shouldShowStates = () => {
+    return getFilteredStates().length > 0;
+  };
+
+  // Prepare data for charts
+  const prepareGenderPieData = () => {
+    return profile?.audience_likers?.gender_distribution?.map(gender => ({
+      id: gender.gender,
+      label: gender.gender,
+      value: gender.value,
+      color: gender.gender === 'MALE' ? '#3B82F6' : '#EC4899'
+    })) || [];
+  };
+
+  const prepareAgeData = () => {
+    return profile?.audience_likers?.gender_age_distribution ? profile.audience_likers.gender_age_distribution
+      .reduce((acc: any[], curr) => {
+        const existing = acc.find(item => item.age_range === curr.age_range);
+        if (existing) {
+          existing.value += curr.value;
+        } else {
+          acc.push({ age_range: curr.age_range, value: curr.value });
+        }
+        return acc;
+      }, [])
+      .sort((a, b) => {
+        const ageOrder = ['13-17', '18-24', '25-34', '35-44', '45-64'];
+        return ageOrder.indexOf(a.age_range) - ageOrder.indexOf(b.age_range);
+      }) : [];
+  };
+
+  const prepareAgePieData = () => {
+    const ageData = prepareAgeData();
+    const colors = ['#A855F7', '#3B82F6', '#10B981', '#F59E0B', '#EF4444'];
+    
+    return ageData.map((age, index) => ({
+      id: age.age_range,
+      label: `${age.age_range} years`,
+      value: age.value,
+      color: colors[index] || '#6B7280'
+    }));
+  };
+
+  const prepareGenderAgeBarData = () => {
+    if (!profile?.audience_likers?.gender_age_distribution) return [];
+    
+    const ageRanges = ['13-17', '18-24', '25-34', '35-44', '45-64'];
+    
+    return ageRanges.map(ageRange => {
+      const maleData = profile.audience_likers.gender_age_distribution.find(
+        item => item.age_range === ageRange && item.gender === 'MALE'
+      );
+      const femaleData = profile.audience_likers.gender_age_distribution.find(
+        item => item.age_range === ageRange && item.gender === 'FEMALE'
+      );
+      
+      return {
+        ageRange,
+        Male: maleData?.value || 0,
+        Female: femaleData?.value || 0
+      };
+    });
+  };
+
   const audienceLikers = profile?.audience_likers;
 
   // Check if likers data is available and has meaningful content
@@ -184,286 +255,412 @@ const AudienceLikersSection: React.FC<AudienceLikersSectionProps> = ({
 
   return (
     <div className="space-y-8">
-      {/* Likers Overview */}
-      <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-        <h3 className="text-xl font-semibold mb-6 flex items-center">
-          <Heart className="w-6 h-6 mr-2 text-blue-500" />
-          Active Likers Demographics
-        </h3>
-        
-        <div className="bg-gradient-to-r from-blue-50 to-pink-50 rounded-lg p-6 mb-6">
-          <div className="text-center">
-            <Heart className="w-12 h-12 text-blue-500 mx-auto mb-3" />
-            <h4 className="text-lg font-semibold text-gray-800 mb-2">Active Likers</h4>
-            <p className="text-gray-600 text-sm">
-              Users who actively engage by liking posts and content
-            </p>
-          </div>
-        </div>
-        
-        {/* Gender Distribution */}
-        {audienceLikers.gender_distribution && (
-          <div className="mb-8">
-            <h4 className="text-lg font-medium mb-4 flex items-center">
-              <Users className="w-5 h-5 mr-2" />
-              Gender Distribution
-            </h4>
-            <div className="bg-gradient-to-r from-blue-50 to-pink-50 rounded-lg p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {audienceLikers.gender_distribution.map((gender, index) => (
-                  <div key={index} className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div className={`w-4 h-4 rounded-full ${
-                          gender.gender === 'MALE' ? 'bg-blue-500' : 
-                          gender.gender === 'FEMALE' ? 'bg-pink-500' : 'bg-gray-500'
-                        }`}></div>
-                        <span className="font-medium text-gray-700">{gender.gender}</span>
-                      </div>
-                      <span className="text-xl font-bold text-gray-800">{gender.value?.toFixed(1) || '0.0'}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-3">
-                      <div
-                        className={`h-3 rounded-full transition-all duration-500 ${
-                          gender.gender === 'MALE' ? 'bg-gradient-to-r from-blue-400 to-blue-600' : 
-                          gender.gender === 'FEMALE' ? 'bg-gradient-to-r from-pink-400 to-pink-600' : 'bg-gray-500'
-                        }`}
-                        style={{ width: `${gender.value || 0}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Age Distribution */}
-        {audienceLikers.gender_age_distribution && (
-          <div className="mb-8">
-            <h4 className="text-lg font-medium mb-4">Age Distribution</h4>
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
-              {/* Age Range Cards */}
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
-                {audienceLikers.gender_age_distribution
-                  .reduce((acc: any[], curr) => {
-                    const existing = acc.find(item => item.age_range === curr.age_range);
-                    if (existing) {
-                      existing.value += curr.value;
-                    } else {
-                      acc.push({ age_range: curr.age_range, value: curr.value });
-                    }
-                    return acc;
-                  }, [])
-                  .sort((a, b) => {
-                    const ageOrder = ['13-17', '18-24', '25-34', '35-44', '45-64'];
-                    return ageOrder.indexOf(a.age_range) - ageOrder.indexOf(b.age_range);
-                  })
-                  .map((age, index) => {
-                    const colors = [
-                      'from-purple-400 to-purple-600',
-                      'from-blue-400 to-blue-600', 
-                      'from-green-400 to-green-600',
-                      'from-yellow-400 to-yellow-600',
-                      'from-red-400 to-red-600'
-                    ];
-                    return (
-                      <div key={index} className="relative overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-4 hover:shadow-lg transition-all duration-300 group">
-                        <div className="text-center">
-                          <div className={`text-2xl font-bold bg-gradient-to-r ${colors[index]} bg-clip-text text-transparent mb-2`}>
-                            {age.value?.toFixed(1) || '0.0'}%
-                          </div>
-                          <div className="text-sm font-medium text-gray-700 mb-3">{age.age_range} years</div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div
-                              className={`h-2 rounded-full bg-gradient-to-r ${colors[index]} transition-all duration-700`}
-                              style={{ width: `${Math.min((age.value / Math.max(...audienceLikers.gender_age_distribution!.reduce((acc: any[], curr) => {
-                                const existing = acc.find(item => item.age_range === curr.age_range);
-                                if (existing) {
-                                  existing.value += curr.value;
-                                } else {
-                                  acc.push({ age_range: curr.age_range, value: curr.value });
-                                }
-                                return acc;
-                              }, []).map(item => item.value))) * 100, 100)}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:opacity-20 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-all duration-700"></div>
-                      </div>
-                    );
-                  })}
-              </div>
-
-              {/* Gender breakdown by age */}
-              <div className="border-t border-gray-200 pt-6">
-                <h5 className="font-medium text-gray-700 mb-4">Gender Breakdown by Age</h5>
-                <div className="space-y-3">
-                  {audienceLikers.gender_age_distribution
-                    .sort((a, b) => {
-                      const ageOrder = ['13-17', '18-24', '25-34', '35-44', '45-64'];
-                      return ageOrder.indexOf(a.age_range) - ageOrder.indexOf(b.age_range);
-                    })
-                    .map((ageGender, index) => (
-                      <div key={index} className="flex items-center space-x-4">
-                        <div className="w-20 text-sm font-medium text-gray-600">{ageGender.age_range}</div>
-                        <div className="flex items-center space-x-2">
-                          <div className={`w-3 h-3 rounded-full ${
-                            ageGender.gender === 'MALE' ? 'bg-blue-500' : 'bg-pink-500'
-                          }`}></div>
-                          <span className="text-xs text-gray-500 uppercase">{ageGender.gender}</span>
-                        </div>
-                        <div className="flex-1 bg-gray-200 rounded-full h-2">
-                          <div
-                            className={`h-2 rounded-full ${
-                              ageGender.gender === 'MALE' ? 'bg-blue-500' : 'bg-pink-500'
-                            }`}
-                            style={{ width: `${((ageGender.value || 0) / 50) * 100}%` }}
-                          ></div>
-                        </div>
-                        <div className="w-12 text-sm font-medium text-right">{ageGender.value?.toFixed(1) || '0.0'}%</div>
-                      </div>
-                    ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Geographic Data - Countries, States, Cities */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div>
-            <h4 className="text-lg font-medium mb-4 flex items-center">
-              <Flag className="w-5 h-5 mr-2" />
-              Top Countries
-            </h4>
-            <div className="space-y-2 max-h-80 overflow-y-auto">
-              {audienceLikers?.countries?.map((country, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                  <span className="font-medium">{getCountryName(country.code)}</span>
-                  <span className="text-blue-600 font-semibold">{country.value?.toFixed(1) || '0.0'}%</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <h4 className="text-lg font-medium mb-4 flex items-center">
-              <Building2 className="w-5 h-5 mr-2" />
-              Top States
-            </h4>
-            <div className="space-y-2 max-h-80 overflow-y-auto">
-              {audienceLikers?.states?.length > 0 ? audienceLikers.states.map((state, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                  <span className="font-medium text-sm">{state.name}</span>
-                  <span className="text-blue-600 font-semibold text-sm">{state.value?.toFixed(1) || '0.0'}%</span>
-                </div>
-              )) : <div className="text-gray-500 text-sm">No state data available</div>}
-            </div>
-          </div>
-
-          <div>
-            <h4 className="text-lg font-medium mb-4 flex items-center">
-              <MapPin className="w-5 h-5 mr-2" />
-              Top Cities
-            </h4>
-            <div className="space-y-2 max-h-80 overflow-y-auto">
-              {audienceLikers?.cities?.map((city, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                  <span className="font-medium text-sm">{city.name}</span>
-                  <span className="text-blue-600 font-semibold text-sm">{city.value?.toFixed(1) || '0.0'}%</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Language & Ethnicity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {audienceLikers.languages && (
-          <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-            <h3 className="text-lg font-semibold mb-4 flex items-center">
-              <Languages className="w-5 h-5 mr-2" />
-              Likers Languages
-            </h3>
-            <div className="space-y-2 max-h-80 overflow-y-auto">
-              {audienceLikers.languages.map((lang, index) => (
-                <div key={index} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
-                  <span className="text-gray-700">{getLanguageName(lang.code)}</span>
-                  <span className="font-medium">{lang.value?.toFixed(2) || '0.00'}%</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {audienceLikers.ethnicities && (
-          <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-            <h3 className="text-lg font-semibold mb-4">Likers Ethnicity</h3>
-            <div className="space-y-3">
-              {audienceLikers.ethnicities.map((ethnicity, index) => (
-                <div key={index} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-700">{ethnicity.name}</span>
-                    <span className="font-medium">{ethnicity.value?.toFixed(1) || '0.0'}%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-gradient-to-r from-blue-400 to-pink-500 h-2 rounded-full transition-all duration-500"
-                      style={{ width: `${ethnicity.value || 0}%` }}
-                    ></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Brand Affinity */}
-      {audienceLikers.brand_affinity && (
+      {/* Likers Summary - Top overview cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
         <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-          <h3 className="text-lg font-semibold mb-4 flex items-center">
-            <Award className="w-5 h-5 mr-2" />
-            Brand Affinity (Likers)
-          </h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-96 overflow-y-auto">
-            {audienceLikers.brand_affinity.map((brand, index) => (
-              <div key={index} className="bg-gradient-to-r from-gray-50 to-gray-100 p-4 rounded-lg border hover:shadow-md transition-all">
-                <div className="text-sm font-medium text-gray-800 mb-1">{brand.name}</div>
-                <div className="text-xs text-blue-600 font-semibold">{((brand.value || 0) * 100).toFixed(3)}%</div>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-600 text-sm">Countries</p>
+              <p className="text-2xl font-bold text-purple-600">{audienceLikers?.countries?.length || 0}</p>
+              <p className="text-xs text-gray-500">represented</p>
+            </div>
+            <div className="bg-purple-100 p-3 rounded-full">
+              <Flag className="w-6 h-6 text-purple-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-600 text-sm">Languages</p>
+              <p className="text-2xl font-bold text-blue-600">{audienceLikers?.languages?.length || 0}</p>
+              <p className="text-xs text-gray-500">spoken</p>
+            </div>
+            <div className="bg-blue-100 p-3 rounded-full">
+              <Languages className="w-6 h-6 text-blue-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-600 text-sm">Interests</p>
+              <p className="text-2xl font-bold text-green-600">{audienceLikers?.interests?.length || 0}</p>
+              <p className="text-xs text-gray-500">categories</p>
+            </div>
+            <div className="bg-green-100 p-3 rounded-full">
+              <Target className="w-6 h-6 text-green-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-600 text-sm">Notable Likers</p>
+              <p className="text-2xl font-bold text-orange-600">{formatNumber(audienceLikers?.significant_likers?.length || 0)}</p>
+              <p className="text-xs text-gray-500">influencers</p>
+            </div>
+            <div className="bg-orange-100 p-3 rounded-full">
+              <Star className="w-6 h-6 text-orange-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-600 text-sm">Credibility Score</p>
+              <p className="text-2xl font-bold text-emerald-600">{((audienceLikers?.credibility_score || 0) * 100).toFixed(1)}%</p>
+              <p className="text-xs text-gray-500">quality</p>
+            </div>
+            <div className="bg-emerald-100 p-3 rounded-full">
+              <Shield className="w-6 h-6 text-emerald-600" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Gender Distribution and Top Countries */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Gender Distribution */}
+        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+          <h4 className="text-lg font-semibold mb-4 flex items-center">
+            <Users className="w-5 h-5 mr-2" />
+            Gender Distribution
+          </h4>
+          <div className="h-80">
+            <ResponsivePie
+              data={prepareGenderPieData()}
+              margin={{ top: 40, right: 80, bottom: 80, left: 80 }}
+              innerRadius={0.4}
+              padAngle={3}
+              cornerRadius={4}
+              activeOuterRadiusOffset={12}
+              colors={({ data }) => data.color}
+              borderWidth={3}
+              borderColor={{ from: 'color', modifiers: [['darker', 0.3]] }}
+              arcLinkLabelsSkipAngle={10}
+              arcLinkLabelsTextColor="#374151"
+              arcLinkLabelsThickness={3}
+              arcLinkLabelsColor={{ from: 'color' }}
+              arcLabelsSkipAngle={10}
+              arcLabelsTextColor="#FFFFFF"
+              arcLinkLabel={(d) => `${d.id}: ${d.value.toFixed(1)}%`}
+              arcLabel={(d) => `${d.value.toFixed(1)}%`}
+              theme={{
+                text: {
+                  fontSize: 16,
+                  fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+                },
+                tooltip: {
+                  container: {
+                    background: '#1F2937',
+                    color: '#F9FAFB',
+                    fontSize: '16px',
+                    borderRadius: '8px',
+                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                    border: 'none'
+                  }
+                }
+              }}
+              tooltip={({ datum }) => (
+                <div className="bg-gray-800 text-white p-4 rounded-lg shadow-lg">
+                  <div className="font-bold text-xl">{datum.label}</div>
+                  <div className="text-blue-300 font-bold text-xl">{datum.value.toFixed(1)}%</div>
+                </div>
+              )}
+            />
+          </div>
+        </div>
+
+        {/* Top Countries */}
+        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+          <h4 className="text-lg font-semibold mb-4 flex items-center group">
+            <Flag className="w-5 h-5 mr-2" />
+            Top Countries
+            <div className="relative ml-2">
+              <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
+                ?
+              </div>
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+                <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+                  Countries where your likers are located, ranked by percentage
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                </div>
+              </div>
+            </div>
+          </h4>
+          <div className="space-y-2 max-h-80 overflow-y-auto">
+            {audienceLikers?.countries?.map((country, index) => (
+              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                <span className="font-medium">{getCountryName(country.code)}</span>
+                <span className="text-purple-600 font-semibold">{country.value?.toFixed(1) || '0.0'}%</span>
               </div>
             ))}
           </div>
         </div>
-      )}
+      </div>
 
-      {/* Audience Quality & Insights */}
+      {/* Age Distribution and Top Cities */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Age Distribution */}
         <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-          <h3 className="text-lg font-semibold mb-4 flex items-center">
-            <UserCheck className="w-5 h-5 mr-2" />
-            Likers Quality
-          </h3>
-          <div className="space-y-6">
-            {audienceLikers.credibility_score !== undefined && (
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-gray-600">Credibility Score</span>
-                  <span className={`text-2xl font-bold px-3 py-1 rounded-lg ${getCredibilityColor(audienceLikers.credibility_score)}`}>
-                    {((audienceLikers.credibility_score || 0) * 100).toFixed(1)}%
-                  </span>
+          <h4 className="text-lg font-semibold mb-4 flex items-center">
+            <Users className="w-5 h-5 mr-2" />
+            Age Distribution
+          </h4>
+          <div className="h-80">
+            <ResponsivePie
+              data={prepareAgePieData()}
+              margin={{ top: 40, right: 80, bottom: 80, left: 80 }}
+              innerRadius={0.4}
+              padAngle={2}
+              cornerRadius={4}
+              activeOuterRadiusOffset={12}
+              colors={({ data }) => data.color}
+              borderWidth={3}
+              borderColor={{ from: 'color', modifiers: [['darker', 0.3]] }}
+              arcLinkLabelsSkipAngle={10}
+              arcLinkLabelsTextColor="#374151"
+              arcLinkLabelsThickness={3}
+              arcLinkLabelsColor={{ from: 'color' }}
+              arcLabelsSkipAngle={10}
+              arcLabelsTextColor="#FFFFFF"
+              arcLinkLabel={(d) => `${d.id}: ${d.value.toFixed(1)}%`}
+              arcLabel={(d) => `${d.value.toFixed(1)}%`}
+              theme={{
+                text: {
+                  fontSize: 16,
+                  fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+                },
+                tooltip: {
+                  container: {
+                    background: '#1F2937',
+                    color: '#F9FAFB',
+                    fontSize: '16px',
+                    borderRadius: '8px',
+                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                    border: 'none'
+                  }
+                }
+              }}
+              tooltip={({ datum }) => (
+                <div className="bg-gray-800 text-white p-4 rounded-lg shadow-lg">
+                  <div className="font-bold text-xl">{datum.label}</div>
+                  <div className="text-blue-300 font-bold text-xl">{datum.value.toFixed(1)}%</div>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-3">
-                  <div
-                    className="bg-gradient-to-r from-green-400 to-green-600 h-3 rounded-full transition-all duration-500"
-                    style={{ width: `${(audienceLikers.credibility_score || 0) * 100}%` }}
-                  ></div>
+              )}
+            />
+          </div>
+        </div>
+
+        {/* Top Cities */}
+        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+          <h4 className="text-lg font-semibold mb-4 flex items-center group">
+            <MapPin className="w-5 h-5 mr-2" />
+            Top Cities
+            <div className="relative ml-2">
+              <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
+                ?
+              </div>
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+                <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+                  Cities with the highest concentration of your likers
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
                 </div>
               </div>
-            )}
-            
+            </div>
+          </h4>
+          <div className="space-y-2 max-h-80 overflow-y-auto">
+            {audienceLikers?.cities?.map((city, index) => (
+              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                <span className="font-medium text-sm">{city.name}</span>
+                <span className="text-purple-600 font-semibold text-sm">{city.value?.toFixed(1) || '0.0'}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Gender Breakdown by Age and Likers Quality */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Gender breakdown by age - Vertical Bar Chart */}
+        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+          <h4 className="text-lg font-semibold mb-4 flex items-center">
+            <Users className="w-5 h-5 mr-2" />
+            Gender Breakdown by Age
+          </h4>
+          <div className="h-80">
+            <ResponsiveBar
+              data={prepareGenderAgeBarData()}
+              keys={['Male', 'Female']}
+              indexBy="ageRange"
+              margin={{ top: 50, right: 130, bottom: 50, left: 80 }}
+              padding={0.3}
+              groupMode="grouped"
+              innerPadding={3}
+              valueScale={{ type: 'linear' }}
+              indexScale={{ type: 'band', round: true }}
+              colors={['#3B82F6', '#EC4899']}
+              defs={[
+                {
+                  id: 'maleGradient',
+                  type: 'linearGradient',
+                  colors: [
+                    { offset: 0, color: '#3B82F6' },
+                    { offset: 100, color: '#1D4ED8' }
+                  ]
+                },
+                {
+                  id: 'femaleGradient',
+                  type: 'linearGradient',
+                  colors: [
+                    { offset: 0, color: '#EC4899' },
+                    { offset: 100, color: '#DB2777' }
+                  ]
+                }
+              ]}
+              fill={[
+                {
+                  match: {
+                    id: 'Male'
+                  },
+                  id: 'maleGradient'
+                },
+                {
+                  match: {
+                    id: 'Female'
+                  },
+                  id: 'femaleGradient'
+                }
+              ]}
+              borderRadius={4}
+              borderWidth={1}
+              borderColor={{ from: 'color', modifiers: [['darker', 0.2]] }}
+              axisTop={null}
+              axisRight={null}
+              axisBottom={{
+                tickSize: 5,
+                tickPadding: 8,
+                tickRotation: 0,
+                legend: 'Age Range',
+                legendPosition: 'middle',
+                legendOffset: 32
+              }}
+              axisLeft={{
+                tickSize: 5,
+                tickPadding: 12,
+                tickRotation: 0,
+                legend: 'Percentage (%)',
+                legendPosition: 'middle',
+                legendOffset: -60,
+                format: value => `${value}%`
+              }}
+              enableLabel={true}
+              label={d => `${(d.value ?? 0).toFixed(1)}%`}
+              labelSkipWidth={8}
+              labelSkipHeight={8}
+              labelTextColor="#ffffff"
+              labelFormat={(value) => `${Number(value).toFixed(1)}%`}
+              legends={[
+                {
+                  dataFrom: 'keys',
+                  anchor: 'bottom-right',
+                  direction: 'column',
+                  justify: false,
+                  translateX: 120,
+                  translateY: 0,
+                  itemsSpacing: 4,
+                  itemWidth: 100,
+                  itemHeight: 20,
+                  itemDirection: 'left-to-right',
+                  itemOpacity: 0.85,
+                  symbolSize: 20,
+                  effects: [
+                    {
+                      on: 'hover',
+                      style: {
+                        itemOpacity: 1
+                      }
+                    }
+                  ]
+                }
+              ]}
+              animate={true}
+              motionConfig="gentle"
+              theme={{
+                background: 'transparent',
+                text: {
+                  fontSize: 14,
+                  fill: '#374151',
+                  fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+                  fontWeight: 700
+                },
+                axis: {
+                  domain: {
+                    line: {
+                      stroke: '#e5e7eb',
+                      strokeWidth: 1
+                    }
+                  },
+                  legend: {
+                    text: {
+                      fontSize: 15,
+                      fill: '#6b7280',
+                      fontWeight: 700
+                    }
+                  },
+                  ticks: {
+                    line: {
+                      stroke: '#e5e7eb',
+                      strokeWidth: 1
+                    },
+                    text: {
+                      fontSize: 13,
+                      fill: '#6b7280',
+                      fontWeight: 700
+                    }
+                  }
+                },
+                grid: {
+                  line: {
+                    stroke: '#f3f4f6',
+                    strokeWidth: 1
+                  }
+                }
+              }}
+              tooltip={({ id, value, indexValue }) => (
+                <div className="bg-gray-800 text-white p-4 rounded-lg shadow-lg">
+                  <div className="font-bold text-xl mb-2">{indexValue} years</div>
+                  <div className="font-bold text-lg">{id}</div>
+                  <div className="text-blue-300 font-bold text-xl">{value.toFixed(1)}%</div>
+                </div>
+              )}
+            />
+          </div>
+        </div>
+
+        {/* Likers Quality - Removed Credibility Score */}
+        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+          <h3 className="text-lg font-semibold mb-4 flex items-center group">
+            <UserCheck className="w-5 h-5 mr-2" />
+            Likers Quality
+            <div className="relative ml-2">
+              <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
+                ?
+              </div>
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+                <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+                  Assessment of liker authenticity and engagement quality
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                </div>
+              </div>
+            </div>
+          </h3>
+          <div className="space-y-6">
             {audienceLikers.follower_types && (
               <div>
                 <h4 className="font-medium mb-3">Follower Types</h4>
@@ -505,14 +702,58 @@ const AudienceLikersSection: React.FC<AudienceLikersSectionProps> = ({
             )}
           </div>
         </div>
+      </div>
 
+      {/* Brand Affinity and Likers Interests */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Brand Affinity */}
+        {audienceLikers.brand_affinity && (
+          <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+            <h3 className="text-lg font-semibold mb-4 flex items-center group">
+              <Award className="w-5 h-5 mr-2" />
+              Brand Affinity
+              <div className="relative ml-2">
+                <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
+                  ?
+                </div>
+                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+                  <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+                    Brands and companies your likers show interest in
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                  </div>
+                </div>
+              </div>
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
+              {audienceLikers.brand_affinity.map((brand, index) => (
+                <div key={index} className="bg-gradient-to-r from-gray-50 to-gray-100 p-4 rounded-lg border hover:shadow-md transition-all">
+                  <div className="text-sm font-medium text-gray-800 mb-1">{brand.name}</div>
+                  <div className="text-xs text-purple-600 font-semibold">{((brand.value || 0) * 100).toFixed(3)}%</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Likers Interests */}
         {audienceLikers.interests && (
           <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-            <h3 className="text-lg font-semibold mb-4 flex items-center">
+            <h3 className="text-lg font-semibold mb-4 flex items-center group">
               <Target className="w-5 h-5 mr-2" />
               Likers Interests
+              <div className="relative ml-2">
+                <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
+                  ?
+                </div>
+                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+                  <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+                    Topics and categories your likers are most interested in
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                  </div>
+                </div>
+              </div>
             </h3>
-            <div className="space-y-2 max-h-80 overflow-y-auto">
+            <div className="space-y-2 max-h-96 overflow-y-auto">
               {audienceLikers.interests.map((interest, index) => (
                 <div key={index} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
                   <span className="text-gray-700 text-sm">{interest.name}</span>
@@ -524,160 +765,345 @@ const AudienceLikersSection: React.FC<AudienceLikersSectionProps> = ({
         )}
       </div>
 
-      {/* Credibility Score Band */}
-      {audienceLikers.credibility_score_band && (
-        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-          <h3 className="text-lg font-semibold mb-4 flex items-center">
-            <Shield className="w-5 h-5 mr-2" />
-            Credibility Score Distribution (Likers)
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {audienceLikers.credibility_score_band.slice(0, 8).map((band, index) => (
-              <div key={index} className={`p-4 rounded-lg border ${band.is_median === 'True' ? 'bg-gradient-to-br from-yellow-50 to-orange-50 border-orange-200' : 'bg-gradient-to-br from-blue-50 to-pink-50'}`}>
-                <div className="text-xs text-gray-600 mb-1">
-                  {band.min ? `${band.min.toFixed(1)}%` : '0%'} - {band.max ? `${band.max.toFixed(1)}%` : '100%'}
+      {/* Credibility Score Distribution and Follower Reachability */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Credibility Score Distribution */}
+        {audienceLikers.credibility_score_band && (
+          <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+            <h3 className="text-lg font-semibold mb-6 flex items-center group">
+              <Shield className="w-5 h-5 mr-2" />
+              Credibility Score Distribution
+              <div className="relative ml-2">
+                <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
+                  ?
                 </div>
-                <div className={`text-lg font-bold ${band.is_median === 'True' ? 'text-orange-600' : 'text-blue-600'}`}>
-                  {formatNumber(band.total_profile_count)}
-                </div>
-                <div className="text-xs text-gray-500">
-                  profiles {band.is_median === 'True' && <span className="text-orange-500 font-medium">(median)</span>}
+                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+                  <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+                    How your likers' credibility scores compare to other profiles
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                  </div>
                 </div>
               </div>
-            ))}
+            </h3>
+            
+            {/* Summary Stats moved above chart */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div className="text-center bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4">
+                <div className="text-2xl font-bold text-green-600">
+                  {formatNumber(audienceLikers.credibility_score_band?.reduce((sum, band) => sum + band.total_profile_count, 0) || 0)}
+                </div>
+                <div className="text-sm text-gray-600 font-medium">Total Profiles</div>
+              </div>
+              <div className="text-center bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-4">
+                <div className="text-2xl font-bold text-orange-600">
+                  {((audienceLikers.credibility_score || 0) * 100).toFixed(1)}%
+                </div>
+                <div className="text-sm text-gray-600 font-medium">Likers Score</div>
+              </div>
+            </div>
+            
+            {/* Nivo Bar Chart */}
+            <div className="h-64 w-full">
+              <ResponsiveBar
+                data={
+                  audienceLikers.credibility_score_band?.map((band) => ({
+                    id: `${band.min ?? 0}-${band.max ?? 100}`,
+                    scoreRange:
+                      band.min !== null && band.min !== undefined
+                        ? `${band.min.toFixed(0)}-${band.max?.toFixed(0) ?? '100'}%`
+                        : `0-${band.max?.toFixed(0) ?? '100'}%`,
+                    profileCount: band.total_profile_count,
+                    median: (band as any).is_median === 'True' ? 1 : 0,
+                  })) || []
+                }
+                keys={['profileCount']}
+                indexBy="scoreRange"
+                margin={{ top: 20, right: 30, bottom: 70, left: 60 }}
+                padding={0.15}
+                valueScale={{ type: 'linear' }}
+                indexScale={{ type: 'band', round: true }}
+                colors={(bar) =>
+                  bar.data.median === 1 ? '#f97316' : '#3b82f6'
+                }
+                defs={[
+                  {
+                    id: 'gradientBlue',
+                    type: 'linearGradient',
+                    colors: [
+                      { offset: 0, color: '#3b82f6' },
+                      { offset: 100, color: '#1d4ed8' }
+                    ]
+                  },
+                  {
+                    id: 'gradientOrange',
+                    type: 'linearGradient',
+                    colors: [
+                      { offset: 0, color: '#f97316' },
+                      { offset: 100, color: '#ea580c' }
+                    ]
+                  }
+                ]}
+                fill={[
+                  {
+                    match: (d) => (d.data as any).median === 1,
+                    id: 'gradientOrange'
+                  },
+                  {
+                    match: '*',
+                    id: 'gradientBlue'
+                  }
+                ]}
+                borderRadius={4}
+                borderWidth={0}
+                axisTop={null}
+                axisRight={null}
+                axisBottom={{
+                  tickSize: 5,
+                  tickPadding: 8,
+                  tickRotation: -35,
+                  legend: 'Credibility Score Range',
+                  legendPosition: 'middle',
+                  legendOffset: 55,
+                  format: (value) => value
+                }}
+                axisLeft={{
+                  tickSize: 5,
+                  tickPadding: 5,
+                  tickRotation: 0,
+                  legend: 'Profiles',
+                  legendPosition: 'middle',
+                  legendOffset: -50,
+                  format: (value) => formatNumber(Number(value))
+                }}
+                enableLabel={false}
+                animate={true}
+                motionConfig="gentle"
+                theme={{
+                  background: 'transparent',
+                  text: {
+                    fontSize: 11,
+                    fill: '#374151',
+                    fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+                    fontWeight: 500
+                  },
+                  axis: {
+                    domain: {
+                      line: {
+                        stroke: '#e5e7eb',
+                        strokeWidth: 1
+                      }
+                    },
+                    legend: {
+                      text: {
+                        fontSize: 12,
+                        fill: '#6b7280',
+                        fontWeight: 600
+                      }
+                    },
+                    ticks: {
+                      line: {
+                        stroke: '#e5e7eb',
+                        strokeWidth: 1
+                      },
+                      text: {
+                        fontSize: 10,
+                        fill: '#6b7280',
+                        fontWeight: 500
+                      }
+                    }
+                  },
+                  grid: {
+                    line: {
+                      stroke: '#f3f4f6',
+                      strokeWidth: 1
+                    }
+                  },
+                  tooltip: {
+                    container: {
+                      background: '#1f2937',
+                      color: '#f9fafb',
+                      fontSize: '12px',
+                      borderRadius: '8px',
+                      boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                      border: 'none'
+                    }
+                  }
+                }}
+                tooltip={({ value, data }) => (
+                  <div className="bg-gray-800 text-white p-3 rounded-lg shadow-lg">
+                    <div className="font-semibold">Score Range: {data.scoreRange}</div>
+                    <div className="text-blue-300">Profiles: {formatNumber(Number(value))}</div>
+                    {data.median === 1 && (
+                      <div className="text-orange-300 text-xs mt-1">📊 Median Range</div>
+                    )}
+                  </div>
+                )}
+                role="application"
+                ariaLabel="Credibility score distribution chart for likers"
+              />
+            </div>
+            
+            {/* Legend */}
+            <div className="flex items-center justify-center space-x-4 mt-4 text-xs">
+              <div className="flex items-center space-x-2">
+                <div className="w-3 h-3 bg-gradient-to-t from-blue-500 to-blue-600 rounded"></div>
+                <span className="text-gray-600">Regular</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-3 h-3 bg-gradient-to-t from-orange-500 to-orange-600 rounded"></div>
+                <span className="text-gray-600">Median</span>
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Significant Likers */}
+        {/* Follower Reachability */}
+        {audienceLikers.follower_reachability && (
+          <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+            <h3 className="text-lg font-semibold mb-4 flex items-center group">
+              <Eye className="w-5 h-5 mr-2" />
+              Liker Reachability
+              <div className="relative ml-2">
+                <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
+                  ?
+                </div>
+                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+                  <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+                    Distribution of likers by their own following count
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                  </div>
+                </div>
+              </div>
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
+              {audienceLikers.follower_reachability.map((reach, index) => (
+                <div key={index} className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-lg border">
+                  <div className="text-sm font-medium text-gray-700 mb-2">
+                    {reach.following_range === '-500' ? 'Under 500' :
+                     reach.following_range === '1500-' ? 'Over 1500' :
+                     reach.following_range} following
+                  </div>
+                  <div className="text-2xl font-bold text-emerald-600">{reach.value?.toFixed(1) || '0.0'}%</div>
+                  <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                    <div
+                      className="bg-emerald-500 h-2 rounded-full transition-all duration-500"
+                      style={{ width: `${reach.value || 0}%` }}
+                    ></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Likers Languages and Likers Ethnicity */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {audienceLikers.languages && (
+          <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+            <h3 className="text-lg font-semibold mb-4 flex items-center group">
+              <Languages className="w-5 h-5 mr-2" />
+              Likers Languages
+              <div className="relative ml-2">
+                <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
+                  ?
+                </div>
+                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+                  <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+                    Primary languages spoken by your likers
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                  </div>
+                </div>
+              </div>
+            </h3>
+            <div className="space-y-2 max-h-80 overflow-y-auto">
+              {audienceLikers.languages.map((lang, index) => (
+                <div key={index} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
+                  <span className="text-gray-700">{getLanguageName(lang.code)}</span>
+                  <span className="font-medium">{lang.value?.toFixed(2) || '0.00'}%</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {audienceLikers.ethnicities && (
+          <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+            <h3 className="text-lg font-semibold mb-4 flex items-center group">
+              Likers Ethnicity
+              <div className="relative ml-2">
+                <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
+                  ?
+                </div>
+                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+                  <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+                    Ethnic background distribution of your likers
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                  </div>
+                </div>
+              </div>
+            </h3>
+            <div className="space-y-3">
+              {audienceLikers.ethnicities.map((ethnicity, index) => (
+                <div key={index} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-700">{ethnicity.name}</span>
+                    <span className="font-medium">{ethnicity.value?.toFixed(1) || '0.0'}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-gradient-to-r from-blue-400 to-purple-500 h-2 rounded-full transition-all duration-500"
+                      style={{ width: `${ethnicity.value || 0}%` }}
+                    ></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Notable Likers - 6 items per row grid layout */}
       {audienceLikers.significant_likers && audienceLikers.significant_likers.length > 0 && (
         <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-          <h3 className="text-lg font-semibold mb-4 flex items-center">
+          <h3 className="text-lg font-semibold mb-4 flex items-center group">
             <Star className="w-5 h-5 mr-2" />
-            Notable Likers ({audienceLikers.significant_likers_percentage?.toFixed(1)}% of total)
+            Notable Likers ({audienceLikers.significant_likers_percentage?.toFixed(1) || '0.0'}% of total)
+            <div className="relative ml-2">
+              <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
+                ?
+              </div>
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+                <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+                  High-profile likers with significant reach and influence
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                </div>
+              </div>
+            </div>
           </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 max-h-96 overflow-y-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 max-h-96 overflow-y-auto">
             {audienceLikers.significant_likers.map((liker, index) => (
-              <div key={index} className="text-center p-3 border border-gray-200 rounded-lg hover:shadow-md transition-all">
+              <div key={index} className="flex flex-col items-center p-3 border border-gray-200 rounded-lg hover:shadow-md transition-all bg-gray-50">
                 <img
                   src={liker.image_url}
                   alt={liker.platform_username}
-                  className="w-12 h-12 rounded-full mx-auto mb-2 object-cover"
+                  className="w-16 h-16 rounded-full object-cover flex-shrink-0 mb-2"
                   onError={(e) => {
-                    e.currentTarget.src = 'https://via.placeholder.com/48x48?text=User';
+                    e.currentTarget.src = 'https://via.placeholder.com/64x64?text=User';
                   }}
                 />
-                <div className="flex items-center justify-center mb-1">
-                  <div className="font-medium text-xs truncate max-w-20">@{liker.platform_username}</div>
-                  {liker.is_verified && <Verified className="w-3 h-3 text-blue-500 ml-1 flex-shrink-0" />}
+                <div className="text-center min-w-0 w-full">
+                  <div className="flex items-center justify-center space-x-1 mb-1">
+                    <span className="font-medium text-xs truncate max-w-20">@{liker?.platform_username}</span>
+                    {liker.is_verified && <Verified className="w-3 h-3 text-blue-500 flex-shrink-0" />}
+                  </div>
+                  <div className="text-xs text-gray-500">{formatNumber(liker?.follower_count || 0)} followers</div>
                 </div>
-                <div className="text-xs text-gray-500">{formatNumber(liker.follower_count)}</div>
               </div>
             ))}
           </div>
         </div>
       )}
-
-      {/* Like Engagement Insights */}
-      <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-        <h3 className="text-lg font-semibold mb-4 flex items-center">
-          <Heart className="w-5 h-5 mr-2" />
-          Like Engagement Insights
-        </h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
-                <Heart className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <div className="text-sm text-blue-700 font-medium">Engagement Type</div>
-                <div className="text-lg font-bold text-blue-800">Likes</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 border border-green-200">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
-                <UserCheck className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <div className="text-sm text-green-700 font-medium">Quality Level</div>
-                <div className="text-lg font-bold text-green-800">
-                  {audienceLikers.credibility_score !== undefined 
-                    ? (audienceLikers.credibility_score >= 0.8 ? 'High' :
-                       audienceLikers.credibility_score >= 0.6 ? 'Medium' : 'Low')
-                    : 'Unknown'
-                  }
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 border border-purple-200">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center">
-                <Flag className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <div className="text-sm text-purple-700 font-medium">Global Reach</div>
-                <div className="text-lg font-bold text-purple-800">
-                  {audienceLikers.countries ? `${audienceLikers.countries.length} Countries` : 'No Data'}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Tips for improving like engagement */}
-        <div className="mt-6 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg p-4 border border-yellow-200">
-          <h4 className="font-semibold text-gray-800 mb-2">💡 Tips to Increase Like Engagement</h4>
-          <ul className="text-sm text-gray-600 space-y-1">
-            <li>• Post visually appealing and high-quality content</li>
-            <li>• Use trending hashtags relevant to your niche</li>
-            <li>• Post at optimal times when your audience is most active</li>
-            <li>• Create relatable content that resonates with your audience</li>
-            <li>• Engage with your followers' content to build reciprocal relationships</li>
-            <li>• Share behind-the-scenes and authentic moments</li>
-          </ul>
-        </div>
-      </div>
-
-      {/* Summary Statistics */}
-      <div className="bg-gradient-to-r from-blue-50 to-pink-50 rounded-xl p-6 border border-blue-100">
-        <h3 className="text-lg font-semibold mb-4 flex items-center">
-          <TrendingUp className="w-5 h-5 mr-2" />
-          Likers Summary
-        </h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-blue-600 mb-1">
-              {audienceLikers?.countries?.length || 0}
-            </div>
-            <div className="text-sm text-gray-600">Countries Represented</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-pink-600 mb-1">
-              {audienceLikers?.languages?.length || 0}
-            </div>
-            <div className="text-sm text-gray-600">Languages Spoken</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-purple-600 mb-1">
-              {audienceLikers?.interests?.length || 0}
-            </div>
-            <div className="text-sm text-gray-600">Interest Categories</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-orange-600 mb-1">
-              {formatNumber(audienceLikers?.significant_likers?.length || 0)}
-            </div>
-            <div className="text-sm text-gray-600">Notable Likers</div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };

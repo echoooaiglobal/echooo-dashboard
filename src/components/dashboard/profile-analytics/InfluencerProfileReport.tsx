@@ -6,24 +6,35 @@ import {
   BarChart3,
   Users,
   Target,
-  TrendingUp,
   DollarSign,
   Activity,
   MapPin, 
   Globe, 
   ExternalLink,
   Verified,
-  RefreshCw
+  RefreshCw,
+  Mail,
+  Youtube,
+  Instagram,
+  MessageSquare,
+  LinkIcon,
+  Phone,
+  Building,
+  Twitter,
+  Facebook,
+  Linkedin,
+  Music,
+  Video,
+  Camera
 } from 'lucide-react';
 import { InsightIQProfileAnalyticsResponse } from '@/types/insightiq/profile-analytics';
 
 // Import the individual section components
 import OverviewSection from './sections/OverviewSection';
-import GrowthSection from './sections/GrowthSection';
 import AudienceSection from './sections/AudienceSection';
 import ContentSection from './sections/ContentSection';
 import PricingSection from './sections/PricingSection';
-import AnalyticsSection from './sections/AnalyticsSection';
+
 import AudienceTabsSection from './sections/AudienceTabsSection';
 
 interface InfluencerProfileReportProps {
@@ -41,7 +52,7 @@ const InfluencerProfileReport: React.FC<InfluencerProfileReportProps> = ({
   onRefresh,
   isRefreshing = false
 }) => {
-  const [activeSection, setActiveSection] = useState<'overview' | 'audience' | 'content' | 'pricing' | 'growth' | 'analytics'>('overview');
+  const [activeSection, setActiveSection] = useState<'overview' | 'audience' | 'content' | 'pricing'>('overview');
   const profile = analyticsData?.profile || null;
   const pricing = analyticsData?.pricing || null;
   const price_explanations = analyticsData?.price_explanations || null;
@@ -87,6 +98,159 @@ const InfluencerProfileReport: React.FC<InfluencerProfileReportProps> = ({
     return parts.join(', ');
   };
 
+  // Helper function to get social platform icon and styling for contact details
+  const getSocialPlatformIcon = (type: string) => {
+    const lowerType = type.toLowerCase();
+    
+    switch (lowerType) {
+      case 'instagram':
+        return {
+          icon: Instagram,
+          color: 'text-pink-600',
+          bg: 'bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400',
+          bgLight: 'bg-pink-50'
+        };
+      case 'youtube':
+        return {
+          icon: Youtube,
+          color: 'text-red-600',
+          bg: 'bg-red-500',
+          bgLight: 'bg-red-50'
+        };
+      case 'twitter':
+      case 'x':
+        return {
+          icon: Twitter,
+          color: 'text-blue-400',
+          bg: 'bg-blue-400',
+          bgLight: 'bg-blue-50'
+        };
+      case 'facebook':
+        return {
+          icon: Facebook,
+          color: 'text-blue-600',
+          bg: 'bg-blue-600',
+          bgLight: 'bg-blue-50'
+        };
+      case 'linkedin':
+        return {
+          icon: Linkedin,
+          color: 'text-blue-700',
+          bg: 'bg-blue-700',
+          bgLight: 'bg-blue-50'
+        };
+      case 'tiktok':
+        return {
+          icon: Music,
+          color: 'text-black',
+          bg: 'bg-black',
+          bgLight: 'bg-gray-50'
+        };
+      case 'threads':
+        return {
+          icon: MessageSquare,
+          color: 'text-gray-800',
+          bg: 'bg-gray-800',
+          bgLight: 'bg-gray-50'
+        };
+      case 'snapchat':
+        return {
+          icon: Camera,
+          color: 'text-yellow-400',
+          bg: 'bg-yellow-400',
+          bgLight: 'bg-yellow-50'
+        };
+      case 'twitch':
+        return {
+          icon: Video,
+          color: 'text-purple-600',
+          bg: 'bg-purple-600',
+          bgLight: 'bg-purple-50'
+        };
+      case 'pinterest':
+        return {
+          icon: Target,
+          color: 'text-red-500',
+          bg: 'bg-red-500',
+          bgLight: 'bg-red-50'
+        };
+      case 'discord':
+        return {
+          icon: MessageSquare,
+          color: 'text-indigo-500',
+          bg: 'bg-indigo-500',
+          bgLight: 'bg-indigo-50'
+        };
+      case 'reddit':
+        return {
+          icon: MessageSquare,
+          color: 'text-orange-500',
+          bg: 'bg-orange-500',
+          bgLight: 'bg-orange-50'
+        };
+      case 'telegram':
+        return {
+          icon: MessageSquare,
+          color: 'text-blue-500',
+          bg: 'bg-blue-500',
+          bgLight: 'bg-blue-50'
+        };
+      case 'whatsapp':
+        return {
+          icon: Phone,
+          color: 'text-green-500',
+          bg: 'bg-green-500',
+          bgLight: 'bg-green-50'
+        };
+      case 'email':
+        return {
+          icon: Mail,
+          color: 'text-blue-600',
+          bg: 'bg-blue-500',
+          bgLight: 'bg-blue-50'
+        };
+      case 'phone':
+        return {
+          icon: Phone,
+          color: 'text-green-600',
+          bg: 'bg-green-500',
+          bgLight: 'bg-green-50'
+        };
+      case 'website':
+      case 'url':
+        return {
+          icon: LinkIcon,
+          color: 'text-indigo-600',
+          bg: 'bg-indigo-500',
+          bgLight: 'bg-indigo-50'
+        };
+      default:
+        return {
+          icon: Building,
+          color: 'text-gray-600',
+          bg: 'bg-gray-500',
+          bgLight: 'bg-gray-50'
+        };
+    }
+  };
+
+  // Helper function to get platform icon from profile data
+  const getPlatformIcon = () => {
+    // Try to detect from URL or other data
+    if (profile?.url) {
+      const url = profile.url.toLowerCase();
+      if (url.includes('instagram')) return getSocialPlatformIcon('instagram');
+      if (url.includes('youtube')) return getSocialPlatformIcon('youtube');
+      if (url.includes('twitter') || url.includes('x.com')) return getSocialPlatformIcon('twitter');
+      if (url.includes('facebook')) return getSocialPlatformIcon('facebook');
+      if (url.includes('linkedin')) return getSocialPlatformIcon('linkedin');
+      if (url.includes('tiktok')) return getSocialPlatformIcon('tiktok');
+      if (url.includes('snapchat')) return getSocialPlatformIcon('snapchat');
+      if (url.includes('twitch')) return getSocialPlatformIcon('twitch');
+    }
+    return getSocialPlatformIcon(''); // Default fallback
+  };
+
   if (!profile) {
     return (
       <div className="p-4">
@@ -96,6 +260,11 @@ const InfluencerProfileReport: React.FC<InfluencerProfileReportProps> = ({
       </div>
     );
   }
+
+  // Profile Highlights data
+  const audience = profile.audience || null;
+  const audienceCountries = audience?.countries ?? [];
+  const credibilityScore = audience?.credibility_score ?? 0;
 
   return (
     <div className="p-4">
@@ -142,31 +311,77 @@ const InfluencerProfileReport: React.FC<InfluencerProfileReportProps> = ({
                   <span>View Profile</span>
                 </a>
               </div>
+              
+              {/* Contact Details integrated in header */}
+              {profile.contact_details && profile.contact_details.length > 0 && (
+                <div className="flex flex-wrap items-center mt-3 gap-3">
+                  {profile.contact_details.map((contact, index) => {
+                    const contactPlatformInfo = getSocialPlatformIcon(contact.type);
+                    const ContactIcon = contactPlatformInfo.icon;
+                    
+                    return (
+                      <a
+                        key={index}
+                        href={contact.type === 'email' ? `mailto:${contact.value}` : contact.value}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center space-x-2 bg-white/20 hover:bg-white/30 rounded-lg px-3 py-2 transition-all duration-200 text-sm"
+                        title={`${contact.type}: ${contact.value}`}
+                      >
+                        <div className="w-5 h-5 bg-white/20 rounded-full flex items-center justify-center">
+                          <ContactIcon className="w-3 h-3 text-white" />
+                        </div>
+                        <span className="text-white/90 capitalize">{contact.type}</span>
+                        {contact.verified && (
+                          <Verified className="w-3 h-3 text-blue-300" />
+                        )}
+                      </a>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
-          <div className="text-right space-y-3">
-            {/* Refresh Icon */}
-            <div className="flex justify-end">
-              <button
-                onClick={onRefresh}
-                disabled={isRefreshing}
-                className="bg-white/20 hover:bg-white/30 rounded-full p-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                title={isRefreshing ? 'Refreshing data...' : 'Refresh data from source'}
-              >
-                <RefreshCw className={`w-4 h-4 text-white ${isRefreshing ? 'animate-spin' : ''}`} />
-              </button>
+          <div className="flex-1 flex justify-between items-start">
+            {/* Profile Highlights - Left aligned with margin */}
+            <div className="bg-white/10 rounded-xl p-4 min-w-[280px] max-w-[320px] ml-110">
+              <h4 className="font-medium mb-3 text-white/90">Profile Highlights</h4>
+              <ul className="space-y-2 text-xs text-white/80">
+                <li>• {getInfluencerTier(profile.follower_count)} with {formatNumber(profile.follower_count)} followers</li>
+                <li>• {getEngagementLevel(profile.engagement_rate).level} engagement rate ({profile.engagement_rate.toFixed(2)}%)</li>
+                <li>• Audience primarily from {audienceCountries.length > 0 ? audienceCountries[0].code : 'NA'} ({audienceCountries.length > 0 ? audienceCountries[0].value.toFixed(1) : '0'}%)</li>
+                <li>• {(credibilityScore * 100).toFixed(1)}% audience credibility score</li>
+                <li>• Best performing content type: Reels ({formatNumber(profile.average_reels_views)} avg views)</li>
+                <li>• Target audience: {profile.gender || 'Not specified'} {profile.age_group || 'Not specified'}</li>
+                <li>• Brand safety: {profile.is_verified ? 'Verified account' : 'Unverified account'}</li>
+              </ul>
             </div>
-            
-            <div className="bg-white/20 rounded-xl p-3">
-              <div className="text-xl font-bold">{formatNumber(profile.follower_count)}</div>
-              <div className="text-xs opacity-80">Followers</div>
-            </div>
-            <div className="bg-white/20 rounded-xl p-3">
-              <div className="text-sm font-bold">{getInfluencerTier(profile.follower_count)}</div>
-              <div className="text-xs opacity-80">Tier</div>
-            </div>
-            <div className="text-xs opacity-90">
-              Last updated: {new Date(profile.updated_at).toLocaleDateString()}
+
+            {/* Right side stats */}
+            <div className="text-right space-y-3">
+              {/* Refresh Icon */}
+              <div className="flex justify-end">
+                <button
+                  onClick={onRefresh}
+                  disabled={isRefreshing}
+                  className="bg-white/20 hover:bg-white/30 rounded-full p-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={isRefreshing ? 'Refreshing data...' : 'Refresh data from source'}
+                >
+                  <RefreshCw className={`w-4 h-4 text-white ${isRefreshing ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
+              
+              <div className="bg-white/20 rounded-xl p-3">
+                <div className="text-xl font-bold">{formatNumber(profile.follower_count)}</div>
+                <div className="text-xs opacity-80">Followers</div>
+              </div>
+              <div className="bg-white/20 rounded-xl p-3">
+                <div className="text-sm font-bold">{getInfluencerTier(profile.follower_count)}</div>
+                <div className="text-xs opacity-80">Tier</div>
+              </div>
+              <div className="text-xs opacity-90">
+                Last updated: {new Date(profile.updated_at).toLocaleDateString()}
+              </div>
             </div>
           </div>
         </div>
@@ -177,10 +392,8 @@ const InfluencerProfileReport: React.FC<InfluencerProfileReportProps> = ({
         {[
           { id: 'overview', label: 'Overview', icon: BarChart3 },
           { id: 'audience', label: 'Audience', icon: Users },
-          { id: 'growth', label: 'Growth', icon: TrendingUp },
           { id: 'content', label: 'Content', icon: Target },
           { id: 'pricing', label: 'Pricing', icon: DollarSign },
-          { id: 'analytics', label: 'Analytics', icon: Activity },
         ].map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -219,28 +432,12 @@ const InfluencerProfileReport: React.FC<InfluencerProfileReportProps> = ({
             formatNumber={formatNumber}
           />
         )}
-        {activeSection === 'growth' && (
-          <GrowthSection
-            profile={profile}
-            formatNumber={formatNumber}
-          />
-        )}
         {activeSection === 'pricing' && (
           <PricingSection
             pricing={pricing}
             price_explanations={price_explanations}
             profile={profile}
             formatCurrency={formatCurrency}
-          />
-        )}
-        {activeSection === 'analytics' && (
-          <AnalyticsSection
-            profile={profile}
-            pricing={pricing}
-            formatNumber={formatNumber}
-            formatCurrency={formatCurrency}
-            getInfluencerTier={getInfluencerTier}
-            getEngagementLevel={getEngagementLevel}
           />
         )}
       </div>
