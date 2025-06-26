@@ -114,7 +114,6 @@ function ProfileAnalyticsContent() {
 
     // Fetch from InsightIQ
     const insightIqResult = await profileAnalyticsService.getProfileAnalytics(username, platformId);
-    console.log('InsightIQ resultttttt111:', insightIqResult);
     if (!insightIqResult.success || !insightIqResult.data) {
       throw new Error(insightIqResult.error?.message || 'Failed to fetch analytics from InsightIQ');
     }
