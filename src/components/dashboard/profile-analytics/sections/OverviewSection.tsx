@@ -8,7 +8,11 @@ import {
   MessageCircle, 
   Play,
   Crown,
-  BarChart3
+  BarChart3,
+  HelpCircle,
+  Camera,
+  Video,
+  Share
 } from 'lucide-react';
 import { ResponsiveLine } from '@nivo/line';
 import { Profile } from '@/types/insightiq/profile-analytics';
@@ -19,6 +23,247 @@ interface OverviewSectionProps {
   getEngagementLevel: (rate: number) => { level: string; color: string; bg: string };
   getInfluencerTier: (followers: number) => string;
 }
+
+// Tooltip Component
+const Tooltip = ({ children, content }: { children: React.ReactNode; content: string }) => {
+  return (
+    <div className="group relative inline-block">
+      {children}
+      <div className="invisible group-hover:visible absolute z-50 w-64 p-3 mt-2 text-sm bg-gray-900 text-white rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-200 transform group-hover:translate-y-0 translate-y-1">
+        <div className="relative">
+          {content}
+          <div className="absolute -top-1 left-4 w-2 h-2 bg-gray-900 transform rotate-45"></div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Content Type Performance Cards Component
+const ContentTypePerformanceCards = ({ topContents, formatNumber }: { topContents: any[], formatNumber: (num: number) => string }) => {
+  // Helper function to get content type icon and styling
+  const getContentTypeConfig = (type: string) => {
+    switch (type) {
+      case 'REELS':
+        return {
+          icon: Play,
+          gradient: 'from-purple-500 to-pink-500',
+          bgGradient: 'from-purple-50 to-pink-50',
+          borderColor: 'border-purple-200',
+          iconBg: 'bg-purple-100',
+          iconColor: 'text-purple-600'
+        };
+      case 'VIDEO':
+        return {
+          icon: Video,
+          gradient: 'from-blue-500 to-cyan-500',
+          bgGradient: 'from-blue-50 to-cyan-50',
+          borderColor: 'border-blue-200',
+          iconBg: 'bg-blue-100',
+          iconColor: 'text-blue-600'
+        };
+      case 'IMAGE':
+        return {
+          icon: Camera,
+          gradient: 'from-green-500 to-emerald-500',
+          bgGradient: 'from-green-50 to-emerald-50',
+          borderColor: 'border-green-200',
+          iconBg: 'bg-green-100',
+          iconColor: 'text-green-600'
+        };
+      default:
+        return {
+          icon: Camera,
+          gradient: 'from-gray-500 to-gray-600',
+          bgGradient: 'from-gray-50 to-gray-100',
+          borderColor: 'border-gray-200',
+          iconBg: 'bg-gray-100',
+          iconColor: 'text-gray-600'
+        };
+    }
+  };
+
+  // Calculate metrics for each content type
+  const calculateTypeMetrics = (type: string) => {
+    const typeContents = topContents.filter(content => 
+      content.type?.toUpperCase() === type
+    );
+    
+    if (typeContents.length === 0) {
+      return {
+        count: 0,
+        avgLikes: 0,
+        avgComments: 0,
+        avgShares: 0,
+        totalEngagement: 0
+      };
+    }
+
+    const avgLikes = typeContents.reduce((sum, content) => 
+      sum + (content.engagement?.like_count || 0), 0) / typeContents.length;
+    
+    const avgComments = typeContents.reduce((sum, content) => 
+      sum + (content.engagement?.comment_count || 0), 0) / typeContents.length;
+    
+    const avgShares = typeContents.reduce((sum, content) => 
+      sum + (content.engagement?.share_count || 0), 0) / typeContents.length;
+    
+    const totalEngagement = avgLikes + avgComments + avgShares;
+
+    return {
+      count: typeContents.length,
+      avgLikes: Math.round(avgLikes),
+      avgComments: Math.round(avgComments),
+      avgShares: Math.round(avgShares),
+      totalEngagement: Math.round(totalEngagement)
+    };
+  };
+
+  const contentTypes = ['REELS', 'VIDEO', 'IMAGE'];
+  const typeMetrics = contentTypes.map(type => ({
+    type,
+    ...calculateTypeMetrics(type),
+    config: getContentTypeConfig(type)
+  }));
+
+  // Find the best performing type for highlighting
+  const bestPerformingType = typeMetrics.reduce((best, current) => 
+    current.totalEngagement > best.totalEngagement ? current : best
+  );
+
+  return (
+    <div className="mb-8">
+      <div className="flex items-center space-x-2 mb-6">
+        <h4 className="text-lg font-medium">Content Type Performance</h4>
+        <Tooltip content="Comparative performance analysis across different content formats. This helps identify which content types resonate best with the audience and should be prioritized in content strategy.">
+          <HelpCircle className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
+        </Tooltip>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {typeMetrics.map((typeData) => {
+          const { type, count, avgLikes, avgComments, avgShares, totalEngagement, config } = typeData;
+          const IconComponent = config.icon;
+          const isBestPerforming = typeData === bestPerformingType && totalEngagement > 0;
+          
+          return (
+            <div
+              key={type}
+              className={`relative overflow-hidden rounded-xl border-2 transition-all duration-300 hover:shadow-lg hover:scale-105 ${
+                isBestPerforming ? 'ring-2 ring-yellow-400 ring-opacity-50' : ''
+              } ${config.borderColor} bg-gradient-to-br ${config.bgGradient}`}
+            >
+              {/* Best Performing Badge */}
+              {isBestPerforming && (
+                <div className="absolute top-3 right-3 z-10">
+                  <div className="flex items-center space-x-1 bg-yellow-400 text-yellow-900 px-2 py-1 rounded-full text-xs font-bold">
+                    <TrendingUp className="w-3 h-3" />
+                    <span>Top</span>
+                  </div>
+                </div>
+              )}
+              
+              {/* Header */}
+              <div className="p-6 pb-4">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center space-x-3">
+                    <div className={`p-3 rounded-xl ${config.iconBg}`}>
+                      <IconComponent className={`w-6 h-6 ${config.iconColor}`} />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900">{type}</h3>
+                      <p className="text-sm text-gray-600">{count} posts analyzed</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Total Engagement Score */}
+                <div className="mb-4">
+                  <div className="flex items-baseline space-x-2">
+                    <span className="text-2xl font-bold text-gray-900">
+                      {formatNumber(totalEngagement)}
+                    </span>
+                    <span className="text-sm text-gray-600">avg engagement</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                    <div
+                      className={`h-2 rounded-full bg-gradient-to-r ${config.gradient} transition-all duration-500`}
+                      style={{
+                        width: count > 0 ? `${Math.min((totalEngagement / Math.max(...typeMetrics.map(t => t.totalEngagement))) * 100, 100)}%` : '0%'
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Metrics Grid */}
+              <div className="px-6 pb-6">
+                <div className="grid grid-cols-3 gap-3">
+                  {/* Likes */}
+                  <div className="text-center p-3 bg-white/60 backdrop-blur-sm rounded-lg border border-white/30">
+                    <div className="flex items-center justify-center mb-1">
+                      <Heart className="w-4 h-4 text-pink-500" />
+                    </div>
+                    <div className="text-lg font-bold text-gray-900">{formatNumber(avgLikes)}</div>
+                    <div className="text-xs text-gray-600">Likes</div>
+                  </div>
+
+                  {/* Comments */}
+                  <div className="text-center p-3 bg-white/60 backdrop-blur-sm rounded-lg border border-white/30">
+                    <div className="flex items-center justify-center mb-1">
+                      <MessageCircle className="w-4 h-4 text-blue-500" />
+                    </div>
+                    <div className="text-lg font-bold text-gray-900">{formatNumber(avgComments)}</div>
+                    <div className="text-xs text-gray-600">Comments</div>
+                  </div>
+
+                  {/* Shares */}
+                  <div className="text-center p-3 bg-white/60 backdrop-blur-sm rounded-lg border border-white/30">
+                    <div className="flex items-center justify-center mb-1">
+                      <Share className="w-4 h-4 text-green-500" />
+                    </div>
+                    <div className="text-lg font-bold text-gray-900">{formatNumber(avgShares)}</div>
+                    <div className="text-xs text-gray-600">Shares</div>
+                  </div>
+                </div>
+
+                {/* Performance Indicator */}
+                <div className="mt-4 text-center">
+                  {count === 0 ? (
+                    <span className="text-sm text-gray-500 italic">No content available</span>
+                  ) : (
+                    <div className="flex items-center justify-center space-x-1">
+                      <div className={`w-2 h-2 rounded-full ${
+                        totalEngagement > 10000 ? 'bg-green-500' :
+                        totalEngagement > 5000 ? 'bg-yellow-500' : 'bg-red-500'
+                      }`} />
+                      <span className="text-sm font-medium text-gray-700">
+                        {totalEngagement > 10000 ? 'High Performance' :
+                         totalEngagement > 5000 ? 'Good Performance' : 'Needs Improvement'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Performance Summary */}
+      <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-gray-600">
+            Best performing content type: <span className="font-semibold text-gray-900">{bestPerformingType.type}</span>
+          </span>
+          <span className="text-gray-600">
+            Total analyzed: <span className="font-semibold text-gray-900">{typeMetrics.reduce((sum, t) => sum + t.count, 0)} posts</span>
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+};
  
 const OverviewSection: React.FC<OverviewSectionProps> = ({
   profile,
@@ -63,7 +308,12 @@ const OverviewSection: React.FC<OverviewSectionProps> = ({
         <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-600 text-sm">Engagement Rate</p>
+              <div className="flex items-center space-x-2">
+                <p className="text-gray-600 text-sm">Engagement Rate</p>
+                <Tooltip content="The percentage of followers who actively engage with content through likes, comments, shares, and saves. Higher engagement rates indicate stronger audience connection and content quality.">
+                  <HelpCircle className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
+                </Tooltip>
+              </div>
               <p className="text-2xl font-bold text-green-600">{profile.engagement_rate.toFixed(2)}%</p>
               <span className={`text-xs px-2 py-1 rounded-full ${getEngagementLevel(profile.engagement_rate).bg} ${getEngagementLevel(profile.engagement_rate).color}`}>
                 {getEngagementLevel(profile.engagement_rate).level}
@@ -78,7 +328,12 @@ const OverviewSection: React.FC<OverviewSectionProps> = ({
         <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-600 text-sm">Avg. Likes</p>
+              <div className="flex items-center space-x-2">
+                <p className="text-gray-600 text-sm">Avg. Likes</p>
+                <Tooltip content="The average number of likes received per post. This metric helps understand the typical reach and appreciation for content. Higher numbers indicate strong content resonance with the audience.">
+                  <HelpCircle className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
+                </Tooltip>
+              </div>
               <p className="text-2xl font-bold text-pink-600">{formatNumber(profile.average_likes)}</p>
               <p className="text-xs text-gray-500">per post</p>
             </div>
@@ -91,7 +346,12 @@ const OverviewSection: React.FC<OverviewSectionProps> = ({
         <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-600 text-sm">Avg. Comments</p>
+              <div className="flex items-center space-x-2">
+                <p className="text-gray-600 text-sm">Avg. Comments</p>
+                <Tooltip content="The average number of comments received per post. Comments represent deeper engagement and community interaction. Higher comment rates indicate strong audience involvement and conversation generation.">
+                  <HelpCircle className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
+                </Tooltip>
+              </div>
               <p className="text-2xl font-bold text-blue-600">{formatNumber(profile.average_comments)}</p>
               <p className="text-xs text-gray-500">per post</p>
             </div>
@@ -104,7 +364,12 @@ const OverviewSection: React.FC<OverviewSectionProps> = ({
         <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-600 text-sm">Reels Views</p>
+              <div className="flex items-center space-x-2">
+                <p className="text-gray-600 text-sm">Reels Views</p>
+                <Tooltip content="The average number of views received per Instagram Reel. Reels typically have higher reach potential than regular posts, making this metric crucial for understanding video content performance and viral potential.">
+                  <HelpCircle className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
+                </Tooltip>
+              </div>
               <p className="text-2xl font-bold text-purple-600">{formatNumber(profile.average_reels_views)}</p>
               <p className="text-xs text-gray-500">avg per reel</p>
             </div>
@@ -117,67 +382,67 @@ const OverviewSection: React.FC<OverviewSectionProps> = ({
 
       {/* Advanced Analytics */}
       <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-        <h3 className="text-xl font-semibold mb-6 flex items-center">
-          <BarChart3 className="w-5 h-5 mr-2" />
-          Advanced Analytics
-        </h3>
+        <div className="flex items-center space-x-2 mb-6">
+          <h3 className="text-xl font-semibold flex items-center">
+            <BarChart3 className="w-5 h-5 mr-2" />
+            Advanced Analytics
+          </h3>
+          <Tooltip content="Comprehensive performance metrics that provide deeper insights into account health, audience quality, and content effectiveness beyond basic engagement statistics.">
+            <HelpCircle className="w-5 h-5 text-gray-400 hover:text-gray-600 cursor-help" />
+          </Tooltip>
+        </div>
         
         {/* Key Performance Indicators */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="text-center p-4 bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg">
-            <div className="text-2xl font-bold text-purple-600">
-              {((profile.average_likes + profile.average_comments) / profile.follower_count * 100).toFixed(2)}%
+            <div className="flex items-center justify-center space-x-2 mb-2">
+              <div className="text-2xl font-bold text-purple-600">
+                {((profile.average_likes + profile.average_comments) / profile.follower_count * 100).toFixed(2)}%
+              </div>
+              <Tooltip content="True engagement rate calculated using total interactions (likes + comments) divided by follower count. This metric excludes inflated metrics and shows genuine audience interaction levels.">
+                <HelpCircle className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
+              </Tooltip>
             </div>
             <div className="text-sm text-gray-600">True Engagement</div>
           </div>
           <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-lg">
-            <div className="text-2xl font-bold text-blue-600">
-              {(profile.average_reels_views / profile.follower_count).toFixed(1)}x
+            <div className="flex items-center justify-center space-x-2 mb-2">
+              <div className="text-2xl font-bold text-blue-600">
+                {(profile.average_reels_views / profile.follower_count).toFixed(1)}x
+              </div>
+              <Tooltip content="The multiplier showing how many times content reaches beyond the follower base. Values above 1.0x indicate content is reaching non-followers, suggesting good algorithmic distribution and viral potential.">
+                <HelpCircle className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
+              </Tooltip>
             </div>
             <div className="text-sm text-gray-600">Reach Multiplier</div>
           </div>
           <div className="text-center p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg">
-            <div className="text-2xl font-bold text-green-600">
-              {(credibilityScore * 100).toFixed(0)}%
+            <div className="flex items-center justify-center space-x-2 mb-2">
+              <div className="text-2xl font-bold text-green-600">
+                {(credibilityScore * 100).toFixed(0)}%
+              </div>
+              <Tooltip content="A composite score measuring the authenticity and quality of the follower base. Higher scores indicate more real, active followers and fewer bots or inactive accounts, making the audience more valuable for brands.">
+                <HelpCircle className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
+              </Tooltip>
             </div>
             <div className="text-sm text-gray-600">Audience Quality</div>
           </div>
           <div className="text-center p-4 bg-gradient-to-br from-orange-50 to-red-50 rounded-lg">
-            <div className="text-2xl font-bold text-orange-600">
-              {significantFollowersPercentage ? 
-                significantFollowersPercentage.toFixed(1) : '0'}%
+            <div className="flex items-center justify-center space-x-2 mb-2">
+              <div className="text-2xl font-bold text-orange-600">
+                {significantFollowersPercentage ? 
+                  significantFollowersPercentage.toFixed(1) : '0'}%
+              </div>
+              <Tooltip content="Percentage of followers who are themselves influencers or have significant followings. Higher percentages indicate network effects and potential for increased reach through influential connections.">
+                <HelpCircle className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
+              </Tooltip>
             </div>
             <div className="text-sm text-gray-600">Influential Followers</div>
           </div>
         </div>
 
-        {/* Content Performance Breakdown */}
-        <div className="mb-8">
-          <h4 className="text-lg font-medium mb-4">Content Type Performance</h4>
-          <div className="space-y-4">
-            {['REELS', 'VIDEO', 'IMAGE'].map((type) => {
-              const typeContents = topContents.filter(content => content.type === type);
-              const avgEngagement = typeContents.length > 0 
-                ? typeContents.reduce((sum, content) => sum + (content.engagement?.like_count || 0) + (content.engagement?.comment_count || 0), 0) / typeContents.length
-                : 0;
-              
-              return (
-                <div key={type} className="flex items-center space-x-4">
-                  <div className="w-20 text-sm font-medium">{type}</div>
-                  <div className="flex-1 bg-gray-200 rounded-full h-4">
-                    <div
-                      className="bg-gradient-to-r from-purple-500 to-pink-500 h-4 rounded-full"
-                      style={{ width: `${Math.min((avgEngagement / 200000) * 100, 100)}%` }}
-                    ></div>
-                  </div>
-                  <div className="w-24 text-sm text-right">
-                    {formatNumber(avgEngagement)} avg
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        {/* Content Performance Breakdown - Replace with new cards */}
+        <ContentTypePerformanceCards topContents={topContents} formatNumber={formatNumber} />
       </div>
 
       {/* Follower Growth Trajectory and Engagement Rate Benchmark - Side by Side */}
@@ -187,7 +452,12 @@ const OverviewSection: React.FC<OverviewSectionProps> = ({
           <div className="border-b border-gray-100 p-6">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-bold text-gray-900">Follower Growth Trajectory</h2>
+                <div className="flex items-center space-x-2">
+                  <h2 className="text-xl font-bold text-gray-900">Follower Growth Trajectory</h2>
+                  <Tooltip content="Historical follower count progression showing growth patterns over the past 6 months. Consistent upward trends indicate healthy account growth and effective content strategy.">
+                    <HelpCircle className="w-5 h-5 text-gray-400 hover:text-gray-600 cursor-help" />
+                  </Tooltip>
+                </div>
                 <p className="text-gray-600 mt-1">Monthly progression over past 6 months</p>
               </div>
               <div className="text-right">
@@ -264,7 +534,12 @@ const OverviewSection: React.FC<OverviewSectionProps> = ({
         {/* Engagement Rate Benchmark */}
         <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
           <div className="border-b border-gray-100 p-6">
-            <h2 className="text-xl font-bold text-gray-900">Engagement Rate Benchmark</h2>
+            <div className="flex items-center space-x-2">
+              <h2 className="text-xl font-bold text-gray-900">Engagement Rate Benchmark</h2>
+              <Tooltip content="Comparison of engagement rate against industry standards. This helps understand performance relative to other creators and identifies areas for improvement or competitive advantages.">
+                <HelpCircle className="w-5 h-5 text-gray-400 hover:text-gray-600 cursor-help" />
+              </Tooltip>
+            </div>
             <p className="text-gray-600 mt-1">Your performance vs. industry standards</p>
           </div>
           <div className="p-6">
@@ -328,10 +603,15 @@ const OverviewSection: React.FC<OverviewSectionProps> = ({
       {/* Account Info & Top Interests */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-          <h3 className="text-lg font-semibold mb-4 flex items-center">
-            <Users className="w-5 h-5 mr-2 text-purple-600" />
-            Account Details
-          </h3>
+          <div className="flex items-center space-x-2 mb-4">
+            <h3 className="text-lg font-semibold flex items-center">
+              <Users className="w-5 h-5 mr-2 text-purple-600" />
+              Account Details
+            </h3>
+            <Tooltip content="Essential account information including verification status, account type, and content statistics. These factors influence credibility, reach potential, and brand partnership opportunities.">
+              <HelpCircle className="w-5 h-5 text-gray-400 hover:text-gray-600 cursor-help" />
+            </Tooltip>
+          </div>
           <div className="space-y-3">
             <div className="flex justify-between">
               <span className="text-gray-600">Account Type</span>
@@ -355,18 +635,28 @@ const OverviewSection: React.FC<OverviewSectionProps> = ({
                 {profile.is_verified ? 'Yes' : 'No'}
               </span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Hidden Likes</span>
+            <div className="flex justify-between items-center">
+              <div className="flex items-center space-x-2">
+                <span className="text-gray-600">Hidden Likes</span>
+                <Tooltip content="Percentage of posts with hidden like counts. Higher percentages may indicate focus on content quality over vanity metrics, but can also limit engagement transparency for brand partnerships.">
+                  <HelpCircle className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
+                </Tooltip>
+              </div>
               <span className="font-medium">{(profile.posts_hidden_likes_percentage_value * 100).toFixed(1)}%</span>
             </div>
           </div>
         </div>
 
         <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-          <h3 className="text-lg font-semibold mb-4 flex items-center">
-            <Crown className="w-5 h-5 mr-2 text-yellow-600" />
-            Top Interests
-          </h3>
+          <div className="flex items-center space-x-2 mb-4">
+            <h3 className="text-lg font-semibold flex items-center">
+              <Crown className="w-5 h-5 mr-2 text-yellow-600" />
+              Top Interests
+            </h3>
+            <Tooltip content="Primary interest categories that define the audience and content focus. These interests help brands identify alignment opportunities and understand the creator's niche and expertise areas.">
+              <HelpCircle className="w-5 h-5 text-gray-400 hover:text-gray-600 cursor-help" />
+            </Tooltip>
+          </div>
           <div className="space-y-3">
             {profile.top_interests && profile.top_interests.length > 0 ? (
               profile.top_interests.slice(0, 8).map((interest, index) => (
@@ -387,10 +677,15 @@ const OverviewSection: React.FC<OverviewSectionProps> = ({
       {/* Brand Affinity */}
       {profile.brand_affinity && profile.brand_affinity.length > 0 && (
         <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-          <h3 className="text-lg font-semibold mb-4 flex items-center">
-            <Crown className="w-5 h-5 mr-2 text-indigo-600" />
-            Brand Affinity
-          </h3>
+          <div className="flex items-center space-x-2 mb-4">
+            <h3 className="text-lg font-semibold flex items-center">
+              <Crown className="w-5 h-5 mr-2 text-indigo-600" />
+              Brand Affinity
+            </h3>
+            <Tooltip content="Brands that the audience shows strong affinity towards based on engagement patterns and interests. This data helps identify potential brand partnership opportunities and audience purchasing preferences.">
+              <HelpCircle className="w-5 h-5 text-gray-400 hover:text-gray-600 cursor-help" />
+            </Tooltip>
+          </div>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
             {profile.brand_affinity.map((brand, index) => (
               <div key={index} className="text-center p-3 bg-gray-50 rounded-lg hover:shadow-md transition-shadow">

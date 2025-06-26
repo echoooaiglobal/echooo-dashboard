@@ -13,13 +13,29 @@ import {
   AtSign,
   DollarSign,
   ExternalLink,
-  BarChart3
+  BarChart3,
+  HelpCircle
 } from 'lucide-react';
 import { ResponsiveBar } from '@nivo/bar';
 import { Profile } from '@/types/insightiq/profile-analytics';
 import { BaseSectionProps, validateSectionProps, safeProfileAccess } from '@/types/section-component-types';
 
 interface ContentSectionProps extends BaseSectionProps {}
+
+// Tooltip Component
+const Tooltip = ({ children, content }: { children: React.ReactNode; content: string }) => {
+  return (
+    <div className="group relative inline-block">
+      {children}
+      <div className="invisible group-hover:visible absolute z-50 w-64 p-3 mt-2 text-sm bg-gray-900 text-white rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-200 transform group-hover:translate-y-0 translate-y-1">
+        <div className="relative">
+          {content}
+          <div className="absolute -top-1 left-4 w-2 h-2 bg-gray-900 transform rotate-45"></div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const ContentSection: React.FC<ContentSectionProps> = ({
   profile,
@@ -95,10 +111,15 @@ const ContentSection: React.FC<ContentSectionProps> = ({
     <div className="space-y-8">
       {/* Top Content - Updated to 6 items per row */}
       <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-        <h3 className="text-xl font-semibold mb-6 flex items-center">
-          <Star className="w-5 h-5 mr-2" />
-          Top Performing Content
-        </h3>
+        <div className="flex items-center space-x-2 mb-6">
+          <h3 className="text-xl font-semibold flex items-center">
+            <Star className="w-5 h-5 mr-2" />
+            Top Performing Content
+          </h3>
+          <Tooltip content="The highest-performing posts based on engagement metrics (likes, comments, shares). These posts represent the content that resonates most with the audience and can serve as templates for future successful content.">
+            <HelpCircle className="w-5 h-5 text-gray-400 hover:text-gray-600 cursor-help" />
+          </Tooltip>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
           {topContents.slice(0, 12).map((content, index) => (
             <div 
@@ -166,10 +187,15 @@ const ContentSection: React.FC<ContentSectionProps> = ({
 
       {/* Recent Content - Updated to 6 items per row */}
       <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-        <h3 className="text-xl font-semibold mb-6 flex items-center">
-          <Calendar className="w-5 h-5 mr-2" />
-          Recent Content
-        </h3>
+        <div className="flex items-center space-x-2 mb-6">
+          <h3 className="text-xl font-semibold flex items-center">
+            <Calendar className="w-5 h-5 mr-2" />
+            Recent Content
+          </h3>
+          <Tooltip content="The most recently published content, providing insights into current content strategy, posting frequency, and recent performance trends. This helps assess content consistency and current audience engagement levels.">
+            <HelpCircle className="w-5 h-5 text-gray-400 hover:text-gray-600 cursor-help" />
+          </Tooltip>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
           {recentContents.slice(0, 18).map((content, index) => (
             <div 
@@ -242,10 +268,15 @@ const ContentSection: React.FC<ContentSectionProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Top Hashtags */}
         <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-          <h3 className="text-lg font-semibold mb-4 flex items-center">
-            <Hash className="w-5 h-5 mr-2" />
-            Top Hashtags
-          </h3>
+          <div className="flex items-center space-x-2 mb-4">
+            <h3 className="text-lg font-semibold flex items-center">
+              <Hash className="w-5 h-5 mr-2" />
+              Top Hashtags
+            </h3>
+            <Tooltip content="Most frequently used hashtags in content, ranked by usage frequency. These hashtags help understand content categorization, niche focus, and discoverability strategy. Essential for content planning and SEO optimization.">
+              <HelpCircle className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
+            </Tooltip>
+          </div>
           <div className="flex flex-wrap gap-2 max-h-80 overflow-y-auto">
             {topHashtags.slice(0, 20).map((hashtag, index) => (
               <span
@@ -261,10 +292,15 @@ const ContentSection: React.FC<ContentSectionProps> = ({
 
         {/* Top Mentions */}
         <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-          <h3 className="text-lg font-semibold mb-4 flex items-center">
-            <AtSign className="w-5 h-5 mr-2" />
-            Top Mentions
-          </h3>
+          <div className="flex items-center space-x-2 mb-4">
+            <h3 className="text-lg font-semibold flex items-center">
+              <AtSign className="w-5 h-5 mr-2" />
+              Top Mentions
+            </h3>
+            <Tooltip content="Most frequently mentioned accounts, showing collaboration patterns, brand partnerships, and network connections. High mention frequencies indicate strong relationships and potential future collaboration opportunities.">
+              <HelpCircle className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
+            </Tooltip>
+          </div>
           <div className="space-y-2 max-h-80 overflow-y-auto">
             {topMentions.slice(0, 15).map((mention, index) => (
               <div key={index} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors">
@@ -278,10 +314,15 @@ const ContentSection: React.FC<ContentSectionProps> = ({
         {/* Average Likes per Post Chart - Compact Version */}
         <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
           <div className="border-b border-gray-100 p-4">
-            <h3 className="text-lg font-bold text-gray-900 flex items-center">
-              <BarChart3 className="w-5 h-5 mr-2" />
-              Average Likes
-            </h3>
+            <div className="flex items-center space-x-2">
+              <h3 className="text-lg font-bold text-gray-900 flex items-center">
+                <BarChart3 className="w-5 h-5 mr-2" />
+                Average Likes
+              </h3>
+              <Tooltip content="Monthly trend of average likes per post over the past 6 months. This metric helps identify performance patterns, seasonal trends, and the effectiveness of content strategy changes over time.">
+                <HelpCircle className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
+              </Tooltip>
+            </div>
             <p className="text-gray-600 text-sm mt-1">Monthly performance</p>
           </div>
           <div className="p-4">
@@ -353,10 +394,15 @@ const ContentSection: React.FC<ContentSectionProps> = ({
       {/* Sponsored Content History - Updated to 6 items per row */}
       {sponsoredContents.length > 0 && (
         <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-          <h3 className="text-xl font-semibold mb-6 flex items-center">
-            <DollarSign className="w-5 h-5 mr-2" />
-            Sponsored Content History
-          </h3>
+          <div className="flex items-center space-x-2 mb-6">
+            <h3 className="text-xl font-semibold flex items-center">
+              <DollarSign className="w-5 h-5 mr-2" />
+              Sponsored Content History
+            </h3>
+            <Tooltip content="Historical sponsored and paid partnership content, showing monetization patterns, brand collaboration frequency, and commercial content performance. This data helps assess the creator's commercial viability and partnership history.">
+              <HelpCircle className="w-5 h-5 text-gray-400 hover:text-gray-600 cursor-help" />
+            </Tooltip>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
             {sponsoredContents.map((content, index) => (
               <div 

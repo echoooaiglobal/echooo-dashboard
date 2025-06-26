@@ -325,9 +325,11 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
                 }
               }}
               tooltip={({ datum }) => (
-                <div className="bg-gray-800 text-white p-4 rounded-lg shadow-lg">
-                  <div className="font-bold text-xl">{datum.label}</div>
-                  <div className="text-blue-300 font-bold text-xl">{datum.value.toFixed(1)}%</div>
+                <div className="bg-gray-800 text-white p-3 rounded-lg shadow-lg">
+                  <div className="flex items-center space-x-3">
+                    <div className="font-bold text-sm">{datum.label}</div>
+                    <div className="text-blue-300 font-bold text-sm">{datum.value.toFixed(1)}%</div>
+                  </div>
                 </div>
               )}
             />
@@ -406,9 +408,11 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
                 }
               }}
               tooltip={({ datum }) => (
-                <div className="bg-gray-800 text-white p-4 rounded-lg shadow-lg">
-                  <div className="font-bold text-xl">{datum.label}</div>
-                  <div className="text-blue-300 font-bold text-xl">{datum.value.toFixed(1)}%</div>
+                <div className="bg-gray-800 text-white p-3 rounded-lg shadow-lg">
+                  <div className="flex items-center space-x-3">
+                    <div className="font-bold text-sm">{datum.label}</div>
+                    <div className="text-blue-300 font-bold text-sm">{datum.value.toFixed(1)}%</div>
+                  </div>
                 </div>
               )}
             />
@@ -457,7 +461,7 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
               keys={['Male', 'Female']}
               indexBy="ageRange"
               margin={{ top: 50, right: 130, bottom: 50, left: 80 }}
-              padding={0.3}
+              padding={0.2}
               groupMode="grouped"
               innerPadding={3}
               valueScale={{ type: 'linear' }}
@@ -591,10 +595,11 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
                 }
               }}
               tooltip={({ id, value, indexValue }) => (
-                <div className="bg-gray-800 text-white p-4 rounded-lg shadow-lg">
-                  <div className="font-bold text-xl mb-2">{indexValue} years</div>
-                  <div className="font-bold text-lg">{id}</div>
-                  <div className="text-blue-300 font-bold text-xl">{value.toFixed(1)}%</div>
+                <div className="bg-gray-800 text-white p-3 rounded-lg shadow-lg">
+                  <div className="flex items-center space-x-3">
+                    <div className="font-bold text-sm">{indexValue} years - {id}</div>
+                    <div className="text-blue-300 font-bold text-sm">{value.toFixed(1)}%</div>
+                  </div>
                 </div>
               )}
             />
@@ -904,13 +909,15 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
               }}
               tooltip={({ value, data }) => (
                 <div className="bg-gray-800 text-white p-3 rounded-lg shadow-lg">
-                  <div className="font-semibold">Score Range: {data.scoreRange}</div>
-                  <div className="text-blue-300">Profiles: {formatNumber(Number(value))}</div>
+                  <div className="flex items-center space-x-3">
+                    <div className="font-semibold text-sm">Score Range: {data.scoreRange}</div>
+                    <div className="text-blue-300 text-sm">Profiles: {formatNumber(Number(value))}</div>
+                  </div>
                   {data.userRange === 1 && (
-                    <div className="text-orange-300 text-xs mt-1 font-bold">🎯 YOUR RANGE</div>
+                    <div className="text-orange-300 text-xs mt-2 font-bold text-center">🎯 YOUR RANGE</div>
                   )}
                   {data.median === 1 && data.userRange !== 1 && (
-                    <div className="text-purple-300 text-xs mt-1">📊 Median Range</div>
+                    <div className="text-purple-300 text-xs mt-2 text-center">📊 Median Range</div>
                   )}
                 </div>
               )}
