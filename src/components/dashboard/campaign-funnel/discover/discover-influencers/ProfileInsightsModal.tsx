@@ -92,7 +92,7 @@ console.log('influencerinfluencerinfluencer: ', influencer)
     if (influencer.url) {
       window.open(influencer.url, '_blank', 'noopener,noreferrer');
     }
-  };
+  }; 
 
   // Updated handleProfileAnalytics to open in new tab
   const handleProfileAnalytics = () => { 
