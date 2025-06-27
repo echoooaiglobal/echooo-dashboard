@@ -343,22 +343,8 @@ const InfluencerProfileReport: React.FC<InfluencerProfileReportProps> = ({
             </div>
           </div>
           <div className="flex-1 flex justify-between items-start">
-            {/* Profile Highlights - Left aligned with margin */}
-            <div className="bg-white/10 rounded-xl p-4 min-w-[280px] max-w-[320px] ml-110">
-              <h4 className="font-medium mb-3 text-white/90">Profile Highlights</h4>
-              <ul className="space-y-2 text-xs text-white/80">
-                <li>• {getInfluencerTier(profile.follower_count)} with {formatNumber(profile.follower_count)} followers</li>
-                <li>• {getEngagementLevel(profile.engagement_rate).level} engagement rate ({profile.engagement_rate.toFixed(2)}%)</li>
-                <li>• Audience primarily from {audienceCountries.length > 0 ? audienceCountries[0].code : 'NA'} ({audienceCountries.length > 0 ? audienceCountries[0].value.toFixed(1) : '0'}%)</li>
-                <li>• {(credibilityScore * 100).toFixed(1)}% audience credibility score</li>
-                <li>• Best performing content type: Reels ({formatNumber(profile.average_reels_views)} avg views)</li>
-                <li>• Target audience: {profile.gender || 'Not specified'} {profile.age_group || 'Not specified'}</li>
-                <li>• Brand safety: {profile.is_verified ? 'Verified account' : 'Unverified account'}</li>
-              </ul>
-            </div>
-
-            {/* Right side stats */}
-            <div className="text-right space-y-3">
+            {/* Right side stats - Moved to middle position */}
+            <div className="text-right space-y-3 ml-110">
               {/* Refresh Icon */}
               <div className="flex justify-end">
                 <button
@@ -382,6 +368,20 @@ const InfluencerProfileReport: React.FC<InfluencerProfileReportProps> = ({
               <div className="text-xs opacity-90">
                 Last updated: {new Date(profile.updated_at).toLocaleDateString()}
               </div>
+            </div>
+
+            {/* Profile Highlights - Moved to the end */}
+            <div className="bg-white/10 rounded-xl p-4 min-w-[280px] max-w-[320px]">
+              <h4 className="font-medium mb-3 text-white/90">Profile Highlights</h4>
+              <ul className="space-y-2 text-xs text-white/80">
+                <li>• {getInfluencerTier(profile.follower_count)} with {formatNumber(profile.follower_count)} followers</li>
+                <li>• {getEngagementLevel(profile.engagement_rate).level} engagement rate ({profile.engagement_rate.toFixed(2)}%)</li>
+                <li>• Audience primarily from {audienceCountries.length > 0 ? audienceCountries[0].code : 'NA'} ({audienceCountries.length > 0 ? audienceCountries[0].value.toFixed(1) : '0'}%)</li>
+                <li>• {(credibilityScore * 100).toFixed(1)}% audience credibility score</li>
+                <li>• Best performing content type: Reels ({formatNumber(profile.average_reels_views)} avg views)</li>
+                <li>• Target audience: {profile.gender || 'Not specified'} {profile.age_group || 'Not specified'}</li>
+                <li>• Brand safety: {profile.is_verified ? 'Verified account' : 'Unverified account'}</li>
+              </ul>
             </div>
           </div>
         </div>

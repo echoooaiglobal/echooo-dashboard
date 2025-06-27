@@ -1,6 +1,7 @@
 // src/components/dashboard/profile-analytics/sections/ContentSection.tsx
 'use client';
 
+import { useState } from 'react';
 import { 
   Star,
   Calendar,
@@ -13,7 +14,8 @@ import {
   AtSign,
   DollarSign,
   ExternalLink,
-  BarChart3
+  BarChart3,
+  HelpCircle
 } from 'lucide-react';
 import { ResponsiveBar } from '@nivo/bar';
 import { Profile } from '@/types/insightiq/profile-analytics';
@@ -21,10 +23,27 @@ import { BaseSectionProps, validateSectionProps, safeProfileAccess } from '@/typ
 
 interface ContentSectionProps extends BaseSectionProps {}
 
+// Tooltip Component
+const Tooltip = ({ children, content }: { children: React.ReactNode; content: string }) => {
+  return (
+    <div className="group relative inline-block">
+      {children}
+      <div className="invisible group-hover:visible absolute z-50 w-64 p-3 mt-2 text-sm bg-gray-900 text-white rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-200 transform group-hover:translate-y-0 translate-y-1">
+        <div className="relative">
+          {content}
+          <div className="absolute -top-1 left-4 w-2 h-2 bg-gray-900 transform rotate-45"></div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const ContentSection: React.FC<ContentSectionProps> = ({
   profile,
   formatNumber
 }) => {
+  const [activeTab, setActiveTab] = useState('top');
+
   // Validate props
   const validation = validateSectionProps(profile);
   if (!validation.isValid) {
@@ -55,6 +74,28 @@ const ContentSection: React.FC<ContentSectionProps> = ({
   };
 
   const likesBarData = prepareLikesBarData();
+
+  // Tab configuration
+  const tabs = [
+    {
+      id: 'top',
+      label: 'Top Performing',
+      icon: Star,
+      count: formatNumber(topContents.length)
+    },
+    {
+      id: 'recent',
+      label: 'Recent Content',
+      icon: Calendar,
+      count: formatNumber(recentContents.length)
+    },
+    {
+      id: 'sponsored',
+      label: 'Sponsored Content',
+      icon: DollarSign,
+      count: formatNumber(sponsoredContents.length)
+    }
+  ];
 
   // Helper function to handle content click
   const handleContentClick = (content: any) => {
@@ -91,342 +132,320 @@ const ContentSection: React.FC<ContentSectionProps> = ({
     }
   };
 
-  return (
-    <div className="space-y-8">
-      {/* Top Content - Updated to 6 items per row */}
-      <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-        <h3 className="text-xl font-semibold mb-6 flex items-center">
-          <Star className="w-5 h-5 mr-2" />
-          Top Performing Content
-        </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
-          {topContents.slice(0, 12).map((content, index) => (
-            <div 
-              key={index} 
-              className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-all duration-200 cursor-pointer group"
-              onClick={() => handleContentClick(content)}
-            >
-              <div className="relative">
-                {content.thumbnail_url ? (
-                  <img
-                    src={content.thumbnail_url}
-                    alt="Content thumbnail"
-                    className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-200"
-                  />
-                ) : (
-                  <div className="w-full h-32 bg-gray-100 flex items-center justify-center">
-                    {getContentTypeIcon(content.type)}
-                  </div>
-                )}
-                {content.url && (
-                  <div className="absolute top-1 right-1 bg-black/70 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <ExternalLink className="w-3 h-3 text-white" />
-                  </div>
-                )}
-              </div>
-              <div className="p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getContentTypeStyle(content.type)}`}>
-                    {content.type || 'POST'}
-                  </span>
-                  <span className="text-xs text-gray-500">
-                    {content.published_at ? new Date(content.published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'}
-                  </span>
-                </div>
-                <p className="text-xs text-gray-800 mb-2 line-clamp-2">
-                  {content.description || 'No description available'}
-                </p>
-                <div className="flex items-center justify-between text-xs text-gray-500">
-                  <span className="flex items-center space-x-1">
-                    <Heart className="w-3 h-3" />
-                    <span>{formatNumber(content.engagement?.like_count || 0)}</span>
-                  </span>
-                  <span className="flex items-center space-x-1">
-                    <MessageCircle className="w-3 h-3" />
-                    <span>{formatNumber(content.engagement?.comment_count || 0)}</span>
-                  </span>
-                  {content.engagement?.share_count && (
-                    <span className="flex items-center space-x-1">
-                      <Share className="w-3 h-3" />
-                      <span>{formatNumber(content.engagement.share_count)}</span>
-                    </span>
-                  )}
-                  {content.engagement?.play_count && (
-                    <span className="flex items-center space-x-1">
-                      <Play className="w-3 h-3" />
-                      <span>{formatNumber(content.engagement.play_count)}</span>
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Recent Content - Updated to 6 items per row */}
-      <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-        <h3 className="text-xl font-semibold mb-6 flex items-center">
-          <Calendar className="w-5 h-5 mr-2" />
-          Recent Content
-        </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
-          {recentContents.slice(0, 18).map((content, index) => (
-            <div 
-              key={index} 
-              className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-all duration-200 cursor-pointer group"
-              onClick={() => handleContentClick(content)}
-            >
-              <div className="relative">
-                {content.thumbnail_url ? (
-                  <img
-                    src={content.thumbnail_url}
-                    alt="Recent content thumbnail"
-                    className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-200"
-                  />
-                ) : (
-                  <div className="w-full h-32 bg-gray-100 flex items-center justify-center text-gray-400">
-                    {getContentTypeIcon(content.type)}
-                  </div>
-                )}
-                {content.url && (
-                  <div className="absolute top-1 right-1 bg-black/70 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <ExternalLink className="w-3 h-3 text-white" />
-                  </div>
-                )}
-                <div className="absolute top-1 left-1">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getContentTypeStyle(content.type)}`}>
-                    {content.type || 'POST'}
-                  </span>
-                </div>
-              </div>
-              <div className="p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-gray-500 font-medium">
-                    {content.published_at ? new Date(content.published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'}
-                  </span>
-                  <span className="text-xs text-blue-600 font-medium">Recent</span>
-                </div>
-                <p className="text-xs text-gray-800 mb-2 line-clamp-2">
-                  {content.description || 'No description available'}
-                </p>
-                <div className="flex items-center justify-between text-xs text-gray-500">
-                  <span className="flex items-center space-x-1">
-                    <Heart className="w-3 h-3" />
-                    <span>{formatNumber(content.engagement?.like_count || 0)}</span>
-                  </span>
-                  <span className="flex items-center space-x-1">
-                    <MessageCircle className="w-3 h-3" />
-                    <span>{formatNumber(content.engagement?.comment_count || 0)}</span>
-                  </span>
-                  {content.engagement?.share_count && (
-                    <span className="flex items-center space-x-1">
-                      <Share className="w-3 h-3" />
-                      <span>{formatNumber(content.engagement.share_count)}</span>
-                    </span>
-                  )}
-                  {content.engagement?.play_count && (
-                    <span className="flex items-center space-x-1">
-                      <Play className="w-3 h-3" />
-                      <span>{formatNumber(content.engagement.play_count)}</span>
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Hashtags, Mentions & Average Likes - Three Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Top Hashtags */}
-        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-          <h3 className="text-lg font-semibold mb-4 flex items-center">
-            <Hash className="w-5 h-5 mr-2" />
-            Top Hashtags
-          </h3>
-          <div className="flex flex-wrap gap-2 max-h-80 overflow-y-auto">
-            {topHashtags.slice(0, 20).map((hashtag, index) => (
-              <span
-                key={index}
-                className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium hover:bg-purple-200 transition-colors cursor-default"
-                title={`Used ${hashtag.value || 0}% of the time`}
-              >
-                #{hashtag.name}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        {/* Top Mentions */}
-        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-          <h3 className="text-lg font-semibold mb-4 flex items-center">
-            <AtSign className="w-5 h-5 mr-2" />
-            Top Mentions
-          </h3>
-          <div className="space-y-2 max-h-80 overflow-y-auto">
-            {topMentions.slice(0, 15).map((mention, index) => (
-              <div key={index} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors">
-                <span className="text-gray-800 font-medium text-sm">@{mention.name}</span>
-                <span className="text-purple-600 font-bold text-sm">{(mention.value || 0).toFixed(1)}%</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Average Likes per Post Chart - Compact Version */}
-        <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
-          <div className="border-b border-gray-100 p-4">
-            <h3 className="text-lg font-bold text-gray-900 flex items-center">
-              <BarChart3 className="w-5 h-5 mr-2" />
-              Average Likes
-            </h3>
-            <p className="text-gray-600 text-sm mt-1">Monthly performance</p>
-          </div>
-          <div className="p-4">
-            <div style={{ height: '280px' }}>
-              <ResponsiveBar
-                data={likesBarData}
-                keys={['likes']}
-                indexBy="month"
-                margin={{ top: 10, right: 15, bottom: 50, left: 50 }}
-                padding={0.3}
-                valueScale={{ type: 'linear' }}
-                indexScale={{ type: 'band', round: true }}
-                colors={['#EC4899']}
-                borderRadius={6}
-                axisTop={null}
-                axisRight={null}
-                axisBottom={{
-                  tickSize: 0,
-                  tickPadding: 12,
-                  tickRotation: -45,
-                  format: value => {
-                    const date = new Date(value + '-01');
-                    return date.toLocaleDateString('en-US', { month: 'short' });
-                  }
-                }}
-                axisLeft={{
-                  tickSize: 0,
-                  tickPadding: 8,
-                  tickRotation: 0,
-                  format: value => {
-                    if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
-                    if (value >= 1000) return `${(value / 1000).toFixed(1)}K`;
-                    return value.toString();
-                  }
-                }}
-                enableGridY={true}
-                gridYValues={4}
-                animate={true}
-                motionConfig="gentle"
-                theme={{
-                  axis: {
-                    ticks: {
-                      text: {
-                        fontSize: 11,
-                        fontWeight: 500,
-                        fill: '#6B7280'
-                      }
-                    }
-                  },
-                  grid: {
-                    line: {
-                      stroke: '#F3F4F6',
-                      strokeWidth: 1
-                    }
-                  }
-                }}
-                tooltip={({ id, value, indexValue }) => (
-                  <div className="bg-white p-3 shadow-xl rounded-lg border border-gray-200">
-                    <div className="text-xs font-medium text-gray-600">{indexValue}</div>
-                    <div className="text-sm font-bold text-pink-600">{formatNumber(value)} likes</div>
-                  </div>
-                )}
+  // Content grid component for reusability
+  const ContentGrid = ({ 
+    contents, 
+    isSponsored = false, 
+    maxItems = 12 
+  }: { 
+    contents: any[], 
+    isSponsored?: boolean, 
+    maxItems?: number 
+  }) => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+      {contents.slice(0, maxItems).map((content, index) => (
+        <div 
+          key={index} 
+          className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-all duration-200 cursor-pointer group"
+          onClick={() => handleContentClick(content)}
+        >
+          <div className="relative">
+            {content.thumbnail_url ? (
+              <img
+                src={content.thumbnail_url}
+                alt="Content thumbnail"
+                className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-200"
               />
+            ) : (
+              <div className="w-full h-32 bg-gray-100 flex items-center justify-center">
+                {getContentTypeIcon(content.type)}
+              </div>
+            )}
+            {content.url && (
+              <div className="absolute top-1 right-1 bg-black/70 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <ExternalLink className="w-3 h-3 text-white" />
+              </div>
+            )}
+            <div className="absolute top-1 left-1">
+              {isSponsored ? (
+                <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-medium border border-green-200">
+                  Sponsored
+                </span>
+              ) : (
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getContentTypeStyle(content.type)}`}>
+                  {content.type || 'POST'}
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="p-3">
+            <div className="flex items-center justify-between mb-2">
+              {!isSponsored && (
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getContentTypeStyle(content.type)}`}>
+                  {content.type || 'POST'}
+                </span>
+              )}
+              <span className="text-xs text-gray-500">
+                {content.published_at ? new Date(content.published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'}
+              </span>
+            </div>
+            <p className="text-xs text-gray-800 mb-2 line-clamp-2">
+              {content.description || 'No description available'}
+            </p>
+            <div className="flex items-center justify-between text-xs text-gray-500">
+              <span className="flex items-center space-x-1">
+                <Heart className="w-3 h-3" />
+                <span>{formatNumber(content.engagement?.like_count || 0)}</span>
+              </span>
+              <span className="flex items-center space-x-1">
+                <MessageCircle className="w-3 h-3" />
+                <span>{formatNumber(content.engagement?.comment_count || 0)}</span>
+              </span>
+              {content.engagement?.share_count && (
+                <span className="flex items-center space-x-1">
+                  <Share className="w-3 h-3" />
+                  <span>{formatNumber(content.engagement.share_count)}</span>
+                </span>
+              )}
+              {content.engagement?.play_count && (
+                <span className="flex items-center space-x-1">
+                  <Play className="w-3 h-3" />
+                  <span>{formatNumber(content.engagement.play_count)}</span>
+                </span>
+              )}
             </div>
           </div>
         </div>
+      ))}
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      {/* Tab Navigation */}
+      <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+        <h2 className="text-2xl font-bold mb-6 text-gray-800">Content Analytics</h2>
+        
+        <div className="border-b border-gray-200">
+          <nav className="flex space-x-8">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center space-x-2 py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    activeTab === tab.id
+                      ? 'border-purple-500 text-purple-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <Icon className="w-5 h-5" />
+                  <span>{tab.label}</span>
+                  {tab.count && (
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      activeTab === tab.id
+                        ? 'bg-purple-100 text-purple-800'
+                        : 'bg-gray-100 text-gray-600'
+                    }`}>
+                      {tab.count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+        </div>
       </div>
 
-      {/* Sponsored Content History - Updated to 6 items per row */}
-      {sponsoredContents.length > 0 && (
-        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-          <h3 className="text-xl font-semibold mb-6 flex items-center">
-            <DollarSign className="w-5 h-5 mr-2" />
-            Sponsored Content History
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
-            {sponsoredContents.map((content, index) => (
-              <div 
-                key={index} 
-                className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-all duration-200 cursor-pointer group"
-                onClick={() => handleContentClick(content)}
-              >
-                <div className="relative">
-                  {content.thumbnail_url ? (
-                    <img
-                      src={content.thumbnail_url}
-                      alt="Sponsored content"
-                      className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-200"
-                    />
-                  ) : (
-                    <div className="w-full h-32 bg-gray-100 flex items-center justify-center text-gray-400">
-                      {getContentTypeIcon(content.type)}
-                    </div>
-                  )}
-                  {content.url && (
-                    <div className="absolute top-1 right-1 bg-black/70 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <ExternalLink className="w-3 h-3 text-white" />
-                    </div>
-                  )}
-                  <div className="absolute top-1 left-1">
-                    <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-medium border border-green-200">
-                      Sponsored
-                    </span>
-                  </div>
+      {/* Tab Content */}
+      <div className="tab-content">
+        {/* Top Performing Content Tab */}
+        {activeTab === 'top' && (
+          <div className="space-y-8">
+            {/* Hashtags, Mentions & Average Likes - Three Column Layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Top Hashtags */}
+              <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+                <div className="flex items-center space-x-2 mb-4">
+                  <h3 className="text-lg font-semibold flex items-center">
+                    <Hash className="w-5 h-5 mr-2" />
+                    Top Hashtags
+                  </h3>
+                  <Tooltip content="Most frequently used hashtags in content, ranked by usage frequency. These hashtags help understand content categorization, niche focus, and discoverability strategy. Essential for content planning and SEO optimization.">
+                    <HelpCircle className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
+                  </Tooltip>
                 </div>
-                <div className="p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getContentTypeStyle(content.type)}`}>
-                      {content.type || 'POST'}
+                <div className="flex flex-wrap gap-2 max-h-80 overflow-y-auto">
+                  {topHashtags.slice(0, 20).map((hashtag, index) => (
+                    <span
+                      key={index}
+                      className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium hover:bg-purple-200 transition-colors cursor-default"
+                      title={`Used ${hashtag.value || 0}% of the time`}
+                    >
+                      #{hashtag.name}
                     </span>
-                    <span className="text-xs text-gray-500">
-                      {content.published_at ? new Date(content.published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'}
-                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Top Mentions */}
+              <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+                <div className="flex items-center space-x-2 mb-4">
+                  <h3 className="text-lg font-semibold flex items-center">
+                    <AtSign className="w-5 h-5 mr-2" />
+                    Top Mentions
+                  </h3>
+                  <Tooltip content="Most frequently mentioned accounts, showing collaboration patterns, brand partnerships, and network connections. High mention frequencies indicate strong relationships and potential future collaboration opportunities.">
+                    <HelpCircle className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
+                  </Tooltip>
+                </div>
+                <div className="space-y-2 max-h-80 overflow-y-auto">
+                  {topMentions.slice(0, 15).map((mention, index) => (
+                    <div key={index} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors">
+                      <span className="text-gray-800 font-medium text-sm">@{mention.name}</span>
+                      <span className="text-purple-600 font-bold text-sm">{(mention.value || 0).toFixed(1)}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Average Likes per Post Chart - Compact Version */}
+              <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
+                <div className="border-b border-gray-100 p-4">
+                  <div className="flex items-center space-x-2">
+                    <h3 className="text-lg font-bold text-gray-900 flex items-center">
+                      <BarChart3 className="w-5 h-5 mr-2" />
+                      Average Likes
+                    </h3>
+                    <Tooltip content="Monthly trend of average likes per post over the past 6 months. This metric helps identify performance patterns, seasonal trends, and the effectiveness of content strategy changes over time.">
+                      <HelpCircle className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
+                    </Tooltip>
                   </div>
-                  <p className="text-xs text-gray-800 mb-2 line-clamp-2">
-                    {content.description || 'No description available'}
-                  </p>
-                  <div className="flex items-center justify-between text-xs text-gray-500">
-                    <span className="flex items-center space-x-1">
-                      <Heart className="w-3 h-3" />
-                      <span>{content.engagement?.like_count ? formatNumber(content.engagement.like_count) : 'N/A'}</span>
-                    </span>
-                    <span className="flex items-center space-x-1">
-                      <MessageCircle className="w-3 h-3" />
-                      <span>{formatNumber(content.engagement?.comment_count || 0)}</span>
-                    </span>
-                    {content.engagement?.share_count && (
-                      <span className="flex items-center space-x-1">
-                        <Share className="w-3 h-3" />
-                        <span>{formatNumber(content.engagement.share_count)}</span>
-                      </span>
-                    )}
-                    {content.engagement?.play_count && (
-                      <span className="flex items-center space-x-1">
-                        <Play className="w-3 h-3" />
-                        <span>{formatNumber(content.engagement.play_count)}</span>
-                      </span>
-                    )}
+                  <p className="text-gray-600 text-sm mt-1">Monthly performance</p>
+                </div>
+                <div className="p-4">
+                  <div style={{ height: '280px' }}>
+                    <ResponsiveBar
+                      data={likesBarData}
+                      keys={['likes']}
+                      indexBy="month"
+                      margin={{ top: 10, right: 15, bottom: 50, left: 50 }}
+                      padding={0.3}
+                      valueScale={{ type: 'linear' }}
+                      indexScale={{ type: 'band', round: true }}
+                      colors={['#EC4899']}
+                      borderRadius={6}
+                      axisTop={null}
+                      axisRight={null}
+                      axisBottom={{
+                        tickSize: 0,
+                        tickPadding: 12,
+                        tickRotation: -45,
+                        format: value => {
+                          const date = new Date(value + '-01');
+                          return date.toLocaleDateString('en-US', { month: 'short' });
+                        }
+                      }}
+                      axisLeft={{
+                        tickSize: 0,
+                        tickPadding: 8,
+                        tickRotation: 0,
+                        format: value => {
+                          if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+                          if (value >= 1000) return `${(value / 1000).toFixed(1)}K`;
+                          return value.toString();
+                        }
+                      }}
+                      enableGridY={true}
+                      gridYValues={4}
+                      animate={true}
+                      motionConfig="gentle"
+                      theme={{
+                        axis: {
+                          ticks: {
+                            text: {
+                              fontSize: 11,
+                              fontWeight: 500,
+                              fill: '#6B7280'
+                            }
+                          }
+                        },
+                        grid: {
+                          line: {
+                            stroke: '#F3F4F6',
+                            strokeWidth: 1
+                          }
+                        }
+                      }}
+                      tooltip={({ id, value, indexValue }) => (
+                        <div className="bg-white p-3 shadow-xl rounded-lg border border-gray-200">
+                          <div className="text-xs font-medium text-gray-600">{indexValue}</div>
+                          <div className="text-sm font-bold text-pink-600">{formatNumber(value)} likes</div>
+                        </div>
+                      )}
+                    />
                   </div>
                 </div>
               </div>
-            ))}
+            </div>
+
+            {/* Top Content Grid */}
+            <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+              <div className="flex items-center space-x-2 mb-6">
+                <h3 className="text-xl font-semibold flex items-center">
+                  <Star className="w-5 h-5 mr-2" />
+                  Top Performing Content
+                </h3>
+                <Tooltip content="The highest-performing posts based on engagement metrics (likes, comments, shares). These posts represent the content that resonates most with the audience and can serve as templates for future successful content.">
+                  <HelpCircle className="w-5 h-5 text-gray-400 hover:text-gray-600 cursor-help" />
+                </Tooltip>
+              </div>
+              <ContentGrid contents={topContents} maxItems={12} />
+            </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* Recent Content Tab */}
+        {activeTab === 'recent' && (
+          <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+            <div className="flex items-center space-x-2 mb-6">
+              <h3 className="text-xl font-semibold flex items-center">
+                <Calendar className="w-5 h-5 mr-2" />
+                Recent Content
+              </h3>
+              <Tooltip content="The most recently published content, providing insights into current content strategy, posting frequency, and recent performance trends. This helps assess content consistency and current audience engagement levels.">
+                <HelpCircle className="w-5 h-5 text-gray-400 hover:text-gray-600 cursor-help" />
+              </Tooltip>
+            </div>
+            <ContentGrid contents={recentContents} maxItems={18} />
+          </div>
+        )}
+
+        {/* Sponsored Content Tab */}
+        {activeTab === 'sponsored' && (
+          <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+            <div className="flex items-center space-x-2 mb-6">
+              <h3 className="text-xl font-semibold flex items-center">
+                <DollarSign className="w-5 h-5 mr-2" />
+                Sponsored Content History
+              </h3>
+              <Tooltip content="Historical sponsored and paid partnership content, showing monetization patterns, brand collaboration frequency, and commercial content performance. This data helps assess the creator's commercial viability and partnership history.">
+                <HelpCircle className="w-5 h-5 text-gray-400 hover:text-gray-600 cursor-help" />
+              </Tooltip>
+            </div>
+            {sponsoredContents.length > 0 ? (
+              <ContentGrid contents={sponsoredContents} isSponsored={true} maxItems={18} />
+            ) : (
+              <div className="text-center py-12">
+                <DollarSign className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500 text-lg">No sponsored content found</p>
+                <p className="text-gray-400 text-sm">This profile hasn't published any sponsored content yet.</p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
