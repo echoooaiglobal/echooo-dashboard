@@ -15,7 +15,10 @@ import {
   DollarSign,
   ExternalLink,
   BarChart3,
-  HelpCircle
+  HelpCircle,
+  Video,
+  Image as ImageIcon,
+  Eye
 } from 'lucide-react';
 import { ResponsiveBar } from '@nivo/bar';
 import { Profile } from '@/types/insightiq/profile-analytics';
@@ -34,6 +37,184 @@ const Tooltip = ({ children, content }: { children: React.ReactNode; content: st
           <div className="absolute -top-1 left-4 w-2 h-2 bg-gray-900 transform rotate-45"></div>
         </div>
       </div>
+    </div>
+  );
+};
+
+// Overall Content Summary Cards Component
+const OverallContentSummaryCards = ({ 
+  topContents, 
+  recentContents, 
+  sponsoredContents,
+  formatNumber 
+}: { 
+  topContents: any[], 
+  recentContents: any[], 
+  sponsoredContents: any[],
+  formatNumber: (num: number) => string
+}) => {
+  // Calculate totals for each content type
+  const calculateTotals = (contents: any[]) => {
+    const totals = { count: 0, likes: 0, comments: 0, views: 0, shares: 0, plays: 0 };
+
+    contents.forEach(content => {
+      const engagement = content.engagement || {};
+      
+      totals.count++;
+      totals.likes += engagement.like_count || 0;
+      totals.comments += engagement.comment_count || 0;
+      totals.views += engagement.view_count || 0;
+      totals.shares += engagement.share_count || 0;
+      totals.plays += engagement.play_count || 0;
+    });
+
+    return totals;
+  };
+
+  const topTotals = calculateTotals(topContents);
+  const recentTotals = calculateTotals(recentContents);
+  const sponsoredTotals = calculateTotals(sponsoredContents);
+
+  const cardConfigs = [
+    {
+      type: 'top',
+      label: 'Top Performing',
+      description: 'Best performing content',
+      icon: Star,
+      data: topTotals,
+      bgGradient: 'from-purple-50 via-purple-100 to-purple-200',
+      hoverGradient: 'hover:from-purple-100 hover:via-purple-200 hover:to-purple-300',
+      iconBg: 'bg-gradient-to-br from-purple-500 to-purple-600',
+      iconHover: 'group-hover:from-purple-600 group-hover:to-purple-700',
+      iconColor: 'text-white',
+      textColor: 'text-purple-700',
+      borderColor: 'border-purple-200',
+      shadowColor: 'shadow-purple-100'
+    },
+    {
+      type: 'recent',
+      label: 'Recent Content',
+      description: 'Latest published posts',
+      icon: Calendar,
+      data: recentTotals,
+      bgGradient: 'from-blue-50 via-blue-100 to-blue-200',
+      hoverGradient: 'hover:from-blue-100 hover:via-blue-200 hover:to-blue-300',
+      iconBg: 'bg-gradient-to-br from-blue-500 to-blue-600',
+      iconHover: 'group-hover:from-blue-600 group-hover:to-blue-700',
+      iconColor: 'text-white',
+      textColor: 'text-blue-700',
+      borderColor: 'border-blue-200',
+      shadowColor: 'shadow-blue-100'
+    },
+    {
+      type: 'sponsored',
+      label: 'Sponsored Content',
+      description: 'Paid partnerships',
+      icon: DollarSign,
+      data: sponsoredTotals,
+      bgGradient: 'from-emerald-50 via-emerald-100 to-emerald-200',
+      hoverGradient: 'hover:from-emerald-100 hover:via-emerald-200 hover:to-emerald-300',
+      iconBg: 'bg-gradient-to-br from-emerald-500 to-emerald-600',
+      iconHover: 'group-hover:from-emerald-600 group-hover:to-emerald-700',
+      iconColor: 'text-white',
+      textColor: 'text-emerald-700',
+      borderColor: 'border-emerald-200',
+      shadowColor: 'shadow-emerald-100'
+    }
+  ];
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+      {cardConfigs.map((config) => {
+        const Icon = config.icon;
+        const data = config.data;
+        
+        return (
+          <div 
+            key={config.type} 
+            className={`group relative bg-gradient-to-br ${config.bgGradient} ${config.hoverGradient} 
+              rounded-2xl p-6 border ${config.borderColor} transition-all duration-300 
+              hover:shadow-xl hover:shadow-${config.shadowColor} hover:scale-105 
+              cursor-pointer transform-gpu`}
+          >
+            {/* Subtle shine effect on hover */}
+            <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-transparent via-white/10 to-transparent 
+              opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform 
+              -skew-x-12 translate-x-[-200%] group-hover:translate-x-[200%] group-hover:duration-700"></div>
+            
+            <div className="relative">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <p className="text-gray-600 text-sm font-semibold uppercase tracking-wide">{config.label}</p>
+                  <p className="text-gray-500 text-xs mb-2">{config.description}</p>
+                  <p className={`text-2xl font-bold ${config.textColor} group-hover:scale-110 transition-transform duration-200`}>
+                    {data.count}
+                  </p>
+                  <p className="text-xs text-gray-500">total posts</p>
+                </div>
+                <div className={`${config.iconBg} ${config.iconHover} p-3 rounded-xl shadow-lg 
+                  transition-all duration-300 group-hover:scale-110 group-hover:rotate-3`}>
+                  <Icon className={`w-6 h-6 ${config.iconColor}`} />
+                </div>
+              </div>
+              
+              {data.count > 0 ? (
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Likes */}
+                  <div className="bg-white/40 backdrop-blur-sm rounded-lg p-3 
+                    group-hover:bg-white/60 transition-all duration-200">
+                    <div className="flex items-center space-x-2 mb-1">
+                      <Heart className="w-4 h-4 text-red-500 group-hover:scale-110 transition-transform duration-200" />
+                      <span className="text-xs text-gray-600 font-medium">Total Likes</span>
+                    </div>
+                    <span className={`text-sm font-bold ${config.textColor}`}>{formatNumber(data.likes)}</span>
+                  </div>
+                  
+                  {/* Comments */}
+                  <div className="bg-white/40 backdrop-blur-sm rounded-lg p-3 
+                    group-hover:bg-white/60 transition-all duration-200">
+                    <div className="flex items-center space-x-2 mb-1">
+                      <MessageCircle className="w-4 h-4 text-blue-500 group-hover:scale-110 transition-transform duration-200" />
+                      <span className="text-xs text-gray-600 font-medium">Comments</span>
+                    </div>
+                    <span className={`text-sm font-bold ${config.textColor}`}>{formatNumber(data.comments)}</span>
+                  </div>
+                  
+                  {/* Views/Plays */}
+                  {(data.views > 0 || data.plays > 0) && (
+                    <div className="bg-white/40 backdrop-blur-sm rounded-lg p-3 
+                      group-hover:bg-white/60 transition-all duration-200">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <Eye className="w-4 h-4 text-green-500 group-hover:scale-110 transition-transform duration-200" />
+                        <span className="text-xs text-gray-600 font-medium">Views</span>
+                      </div>
+                      <span className={`text-sm font-bold ${config.textColor}`}>
+                        {formatNumber(Math.max(data.views, data.plays))}
+                      </span>
+                    </div>
+                  )}
+                  
+                  {/* Shares */}
+                  {data.shares > 0 && (
+                    <div className="bg-white/40 backdrop-blur-sm rounded-lg p-3 
+                      group-hover:bg-white/60 transition-all duration-200">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <Share className="w-4 h-4 text-purple-500 group-hover:scale-110 transition-transform duration-200" />
+                        <span className="text-xs text-gray-600 font-medium">Shares</span>
+                      </div>
+                      <span className={`text-sm font-bold ${config.textColor}`}>{formatNumber(data.shares)}</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-4 bg-white/30 rounded-lg">
+                  <p className="text-xs text-gray-500 font-medium">No content available</p>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 };
@@ -222,10 +403,149 @@ const ContentSection: React.FC<ContentSectionProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* Section Title */}
+      <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+        <h2 className="text-2xl font-bold text-gray-800">Content Analytics</h2>
+        <p className="text-gray-600 mt-2">Performance insights and content analysis</p>
+      </div>
+
+      {/* Hashtags, Mentions & Average Likes - Three Column Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Top Hashtags */}
+        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+          <div className="flex items-center space-x-2 mb-4">
+            <h3 className="text-lg font-semibold flex items-center">
+              <Hash className="w-5 h-5 mr-2" />
+              Top Hashtags
+            </h3>
+            <Tooltip content="Most frequently used hashtags in content, ranked by usage frequency. These hashtags help understand content categorization, niche focus, and discoverability strategy. Essential for content planning and SEO optimization.">
+              <HelpCircle className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
+            </Tooltip>
+          </div>
+          <div className="flex flex-wrap gap-2 max-h-80 overflow-y-auto">
+            {topHashtags.slice(0, 20).map((hashtag, index) => (
+              <span
+                key={index}
+                className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium hover:bg-purple-200 transition-colors cursor-default"
+                title={`Used ${hashtag.value || 0}% of the time`}
+              >
+                #{hashtag.name}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Top Mentions */}
+        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+          <div className="flex items-center space-x-2 mb-4">
+            <h3 className="text-lg font-semibold flex items-center">
+              <AtSign className="w-5 h-5 mr-2" />
+              Top Mentions
+            </h3>
+            <Tooltip content="Most frequently mentioned accounts, showing collaboration patterns, brand partnerships, and network connections. High mention frequencies indicate strong relationships and potential future collaboration opportunities.">
+              <HelpCircle className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
+            </Tooltip>
+          </div>
+          <div className="space-y-2 max-h-80 overflow-y-auto">
+            {topMentions.slice(0, 15).map((mention, index) => (
+              <div key={index} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors">
+                <span className="text-gray-800 font-medium text-sm">@{mention.name}</span>
+                <span className="text-purple-600 font-bold text-sm">{(mention.value || 0).toFixed(1)}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Average Likes per Post Chart */}
+        <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
+          <div className="border-b border-gray-100 p-4">
+            <div className="flex items-center space-x-2">
+              <h3 className="text-lg font-bold text-gray-900 flex items-center">
+                <BarChart3 className="w-5 h-5 mr-2" />
+                Average Likes
+              </h3>
+              <Tooltip content="Monthly trend of average likes per post over the past 6 months. This metric helps identify performance patterns, seasonal trends, and the effectiveness of content strategy changes over time.">
+                <HelpCircle className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
+              </Tooltip>
+            </div>
+            <p className="text-gray-600 text-sm mt-1">Monthly performance</p>
+          </div>
+          <div className="p-4">
+            <div style={{ height: '280px' }}>
+              <ResponsiveBar
+                data={likesBarData}
+                keys={['likes']}
+                indexBy="month"
+                margin={{ top: 10, right: 15, bottom: 50, left: 50 }}
+                padding={0.3}
+                valueScale={{ type: 'linear' }}
+                indexScale={{ type: 'band', round: true }}
+                colors={['#EC4899']}
+                borderRadius={6}
+                axisTop={null}
+                axisRight={null}
+                axisBottom={{
+                  tickSize: 0,
+                  tickPadding: 12,
+                  tickRotation: -45,
+                  format: value => {
+                    const date = new Date(value + '-01');
+                    return date.toLocaleDateString('en-US', { month: 'short' });
+                  }
+                }}
+                axisLeft={{
+                  tickSize: 0,
+                  tickPadding: 8,
+                  tickRotation: 0,
+                  format: value => {
+                    if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+                    if (value >= 1000) return `${(value / 1000).toFixed(1)}K`;
+                    return value.toString();
+                  }
+                }}
+                enableGridY={true}
+                gridYValues={4}
+                animate={true}
+                motionConfig="gentle"
+                theme={{
+                  axis: {
+                    ticks: {
+                      text: {
+                        fontSize: 11,
+                        fontWeight: 500,
+                        fill: '#6B7280'
+                      }
+                    }
+                  },
+                  grid: {
+                    line: {
+                      stroke: '#F3F4F6',
+                      strokeWidth: 1
+                    }
+                  }
+                }}
+                tooltip={({ id, value, indexValue }) => (
+                  <div className="bg-white p-3 shadow-xl rounded-lg border border-gray-200">
+                    <div className="text-xs font-medium text-gray-600">{indexValue}</div>
+                    <div className="text-sm font-bold text-pink-600">{formatNumber(value)} likes</div>
+                  </div>
+                )}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Overall Content Summary Cards - New section above tabs */}
+      <OverallContentSummaryCards 
+        topContents={topContents}
+        recentContents={recentContents}
+        sponsoredContents={sponsoredContents}
+        formatNumber={formatNumber}
+      />
+
       {/* Tab Navigation */}
       <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-        <h2 className="text-2xl font-bold mb-6 text-gray-800">Content Analytics</h2>
-        
         <div className="border-b border-gray-200">
           <nav className="flex space-x-8">
             {tabs.map((tab) => {
@@ -262,147 +582,17 @@ const ContentSection: React.FC<ContentSectionProps> = ({
       <div className="tab-content">
         {/* Top Performing Content Tab */}
         {activeTab === 'top' && (
-          <div className="space-y-8">
-            {/* Hashtags, Mentions & Average Likes - Three Column Layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Top Hashtags */}
-              <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-                <div className="flex items-center space-x-2 mb-4">
-                  <h3 className="text-lg font-semibold flex items-center">
-                    <Hash className="w-5 h-5 mr-2" />
-                    Top Hashtags
-                  </h3>
-                  <Tooltip content="Most frequently used hashtags in content, ranked by usage frequency. These hashtags help understand content categorization, niche focus, and discoverability strategy. Essential for content planning and SEO optimization.">
-                    <HelpCircle className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
-                  </Tooltip>
-                </div>
-                <div className="flex flex-wrap gap-2 max-h-80 overflow-y-auto">
-                  {topHashtags.slice(0, 20).map((hashtag, index) => (
-                    <span
-                      key={index}
-                      className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium hover:bg-purple-200 transition-colors cursor-default"
-                      title={`Used ${hashtag.value || 0}% of the time`}
-                    >
-                      #{hashtag.name}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* Top Mentions */}
-              <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-                <div className="flex items-center space-x-2 mb-4">
-                  <h3 className="text-lg font-semibold flex items-center">
-                    <AtSign className="w-5 h-5 mr-2" />
-                    Top Mentions
-                  </h3>
-                  <Tooltip content="Most frequently mentioned accounts, showing collaboration patterns, brand partnerships, and network connections. High mention frequencies indicate strong relationships and potential future collaboration opportunities.">
-                    <HelpCircle className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
-                  </Tooltip>
-                </div>
-                <div className="space-y-2 max-h-80 overflow-y-auto">
-                  {topMentions.slice(0, 15).map((mention, index) => (
-                    <div key={index} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors">
-                      <span className="text-gray-800 font-medium text-sm">@{mention.name}</span>
-                      <span className="text-purple-600 font-bold text-sm">{(mention.value || 0).toFixed(1)}%</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Average Likes per Post Chart - Compact Version */}
-              <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
-                <div className="border-b border-gray-100 p-4">
-                  <div className="flex items-center space-x-2">
-                    <h3 className="text-lg font-bold text-gray-900 flex items-center">
-                      <BarChart3 className="w-5 h-5 mr-2" />
-                      Average Likes
-                    </h3>
-                    <Tooltip content="Monthly trend of average likes per post over the past 6 months. This metric helps identify performance patterns, seasonal trends, and the effectiveness of content strategy changes over time.">
-                      <HelpCircle className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
-                    </Tooltip>
-                  </div>
-                  <p className="text-gray-600 text-sm mt-1">Monthly performance</p>
-                </div>
-                <div className="p-4">
-                  <div style={{ height: '280px' }}>
-                    <ResponsiveBar
-                      data={likesBarData}
-                      keys={['likes']}
-                      indexBy="month"
-                      margin={{ top: 10, right: 15, bottom: 50, left: 50 }}
-                      padding={0.3}
-                      valueScale={{ type: 'linear' }}
-                      indexScale={{ type: 'band', round: true }}
-                      colors={['#EC4899']}
-                      borderRadius={6}
-                      axisTop={null}
-                      axisRight={null}
-                      axisBottom={{
-                        tickSize: 0,
-                        tickPadding: 12,
-                        tickRotation: -45,
-                        format: value => {
-                          const date = new Date(value + '-01');
-                          return date.toLocaleDateString('en-US', { month: 'short' });
-                        }
-                      }}
-                      axisLeft={{
-                        tickSize: 0,
-                        tickPadding: 8,
-                        tickRotation: 0,
-                        format: value => {
-                          if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
-                          if (value >= 1000) return `${(value / 1000).toFixed(1)}K`;
-                          return value.toString();
-                        }
-                      }}
-                      enableGridY={true}
-                      gridYValues={4}
-                      animate={true}
-                      motionConfig="gentle"
-                      theme={{
-                        axis: {
-                          ticks: {
-                            text: {
-                              fontSize: 11,
-                              fontWeight: 500,
-                              fill: '#6B7280'
-                            }
-                          }
-                        },
-                        grid: {
-                          line: {
-                            stroke: '#F3F4F6',
-                            strokeWidth: 1
-                          }
-                        }
-                      }}
-                      tooltip={({ id, value, indexValue }) => (
-                        <div className="bg-white p-3 shadow-xl rounded-lg border border-gray-200">
-                          <div className="text-xs font-medium text-gray-600">{indexValue}</div>
-                          <div className="text-sm font-bold text-pink-600">{formatNumber(value)} likes</div>
-                        </div>
-                      )}
-                    />
-                  </div>
-                </div>
-              </div>
+          <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+            <div className="flex items-center space-x-2 mb-6">
+              <h3 className="text-xl font-semibold flex items-center">
+                <Star className="w-5 h-5 mr-2" />
+                Top Performing Content
+              </h3>
+              <Tooltip content="The highest-performing posts based on engagement metrics (likes, comments, shares). These posts represent the content that resonates most with the audience and can serve as templates for future successful content.">
+                <HelpCircle className="w-5 h-5 text-gray-400 hover:text-gray-600 cursor-help" />
+              </Tooltip>
             </div>
-
-            {/* Top Content Grid */}
-            <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-              <div className="flex items-center space-x-2 mb-6">
-                <h3 className="text-xl font-semibold flex items-center">
-                  <Star className="w-5 h-5 mr-2" />
-                  Top Performing Content
-                </h3>
-                <Tooltip content="The highest-performing posts based on engagement metrics (likes, comments, shares). These posts represent the content that resonates most with the audience and can serve as templates for future successful content.">
-                  <HelpCircle className="w-5 h-5 text-gray-400 hover:text-gray-600 cursor-help" />
-                </Tooltip>
-              </div>
-              <ContentGrid contents={topContents} maxItems={12} />
-            </div>
+            <ContentGrid contents={topContents} maxItems={12} />
           </div>
         )}
 

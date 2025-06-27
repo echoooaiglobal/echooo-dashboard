@@ -130,6 +130,17 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
     return 'text-red-600 bg-red-50';
   };
 
+  // Calculate percentage for audience interests
+  const calculateInterestPercentages = () => {
+    const interests = profile?.audience?.interests || [];
+    const totalSum = interests.reduce((sum, interest) => sum + (interest.value || 0), 0);
+    
+    return interests.map(interest => ({
+      ...interest,
+      percentage: totalSum > 0 ? ((interest.value || 0) / totalSum) * 100 : 0
+    }));
+  };
+
   // Filter states with 10% or higher percentage
   const getFilteredStates = () => {
     return profile?.audience?.states?.filter(state => (state.value || 0) >= 10) || [];
@@ -209,6 +220,53 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
       return userScorePercent >= min;
     }
     return userScorePercent >= min && userScorePercent <= max;
+  };
+
+  // Prepare credibility score data with proper sorting (left to right)
+  const prepareCredibilityScoreData = () => {
+    if (!profile?.audience?.credibility_score_band) {
+      console.log('No credibility score band data available');
+      return [];
+    }
+    
+    const userScore = profile?.audience?.credibility_score || 0;
+    console.log('User credibility score:', userScore, 'as percentage:', userScore * 100);
+    
+    // Sort the data by minimum score to ensure left-to-right ordering
+    const sortedData = profile.audience.credibility_score_band
+      .map((band, index) => {
+        const minScore = band.min ?? 0;
+        const maxScore = band.max ?? 100;
+        const isUserRange = isUserScoreRange(band.min, band.max, userScore);
+        
+        console.log(`Band ${index}: ${minScore}-${maxScore}, User in range: ${isUserRange}, Profile count: ${band.total_profile_count}`);
+        
+        return {
+          id: `range-${index}`,
+          scoreRange: minScore === 0 && band.min === null 
+            ? `0-${maxScore.toFixed(0)}%` 
+            : maxScore === 100 && band.max === null 
+            ? `${minScore.toFixed(0)}%+` 
+            : `${minScore.toFixed(0)}-${maxScore.toFixed(0)}%`,
+          profileCount: band.total_profile_count,
+          median: (band as any).is_median === 'True' || (band as any).is_median === true ? 1 : 0,
+          userRange: isUserRange ? 1 : 0,
+          minScore: minScore,
+          maxScore: maxScore,
+          sortOrder: minScore, // Use minimum score for sorting
+          rawBand: band // Keep original for debugging
+        };
+      })
+      .sort((a, b) => {
+        // Sort by minimum score (ascending) to get left-to-right order
+        if (a.sortOrder === b.sortOrder) {
+          return a.maxScore - b.maxScore;
+        }
+        return a.sortOrder - b.sortOrder;
+      });
+    
+    console.log('Sorted credibility data:', sortedData);
+    return sortedData;
   };
 
   return (
@@ -461,7 +519,7 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
               keys={['Male', 'Female']}
               indexBy="ageRange"
               margin={{ top: 50, right: 130, bottom: 50, left: 80 }}
-              padding={0.2}
+              padding={0.02}
               groupMode="grouped"
               innerPadding={3}
               valueScale={{ type: 'linear' }}
@@ -683,7 +741,7 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
           </div>
         </div>
 
-        {/* Audience Interests */}
+        {/* Audience Interests - Updated with percentage calculation */}
         <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
           <h3 className="text-lg font-semibold mb-4 flex items-center group">
             <Target className="w-5 h-5 mr-2" />
@@ -694,17 +752,17 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
               </div>
               <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
                 <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
-                  Topics and categories your audience is most interested in
+                  Topics and categories your audience is most interested in (calculated as percentage of total)
                   <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
                 </div>
               </div>
             </div>
           </h3>
           <div className="space-y-2 max-h-96 overflow-y-auto">
-            {profile?.audience?.interests?.map((interest, index) => (
+            {calculateInterestPercentages().map((interest, index) => (
               <div key={index} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
                 <span className="text-gray-700 text-sm">{interest.name}</span>
-                <span className="font-medium text-sm">{interest.value?.toFixed(1) || '0.0'}%</span>
+                <span className="font-medium text-sm">{interest.percentage.toFixed(1)}%</span>
               </div>
             ))}
           </div>
@@ -713,7 +771,7 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
 
       {/* Credibility Score Distribution and Follower Reachability */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Credibility Score Distribution - Enhanced User Score Highlighting */}
+        {/* Credibility Score Distribution - Fixed to display left to right with user score highlighting */}
         <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
           <h3 className="text-lg font-semibold mb-6 flex items-center group">
             <Shield className="w-5 h-5 mr-2" />
@@ -750,35 +808,29 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
             </div>
           </div>
           
-          {/* Nivo Bar Chart with Enhanced User Score Highlighting */}
+          {/* Enhanced Nivo Bar Chart with fixed left-to-right ordering */}
           <div className="h-64 w-full">
             <ResponsiveBar
-              data={
-                profile?.audience?.credibility_score_band?.map((band) => {
-                  const userScore = profile?.audience?.credibility_score || 0;
-                  const isUserRange = isUserScoreRange(band.min, band.max, userScore);
-                  
-                  return {
-                    id: `${band.min ?? 0}-${band.max ?? 100}`,
-                    scoreRange:
-                      band.min !== null && band.min !== undefined
-                        ? `${band.min.toFixed(0)}-${band.max?.toFixed(0) ?? '100'}%`
-                        : `0-${band.max?.toFixed(0) ?? '100'}%`,
-                    profileCount: band.total_profile_count,
-                    median: (band as any).is_median === 'True' ? 1 : 0,
-                    userRange: isUserRange ? 1 : 0,
-                  };
-                }) || []
-              }
+              data={prepareCredibilityScoreData()}
               keys={['profileCount']}
               indexBy="scoreRange"
               margin={{ top: 20, right: 30, bottom: 70, left: 60 }}
               padding={0.15}
               valueScale={{ type: 'linear' }}
               indexScale={{ type: 'band', round: true }}
-              colors={(bar) => {
-                if (bar.data.userRange === 1) return '#f97316'; // Orange for user's range
-                if (bar.data.median === 1) return '#8b5cf6'; // Purple for median
+              colors={({ data }) => {
+                // Debug logging
+                console.log('Bar data:', data, 'userRange:', data.userRange, 'median:', data.median);
+                
+                if (data.userRange === 1) {
+                  console.log('Applying orange color for user range');
+                  return '#f97316'; // Orange for user's range
+                }
+                if (data.median === 1) {
+                  console.log('Applying purple color for median');
+                  return '#8b5cf6'; // Purple for median
+                }
+                console.log('Applying blue color for regular');
                 return '#3b82f6'; // Blue for regular
               }}
               defs={[
@@ -805,24 +857,23 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
                     { offset: 0, color: '#8b5cf6' },
                     { offset: 100, color: '#7c3aed' }
                   ]
-                },
-                {
-                  id: 'userRangePattern',
-                  type: 'patternLines',
-                  background: '#f97316',
-                  color: '#ffffff',
-                  rotation: -45,
-                  lineWidth: 3,
-                  spacing: 8
                 }
               ]}
               fill={[
                 {
-                  match: (d) => (d.data as any).userRange === 1,
+                  match: (d) => {
+                    const isUserRange = (d.data as any).userRange === 1;
+                    console.log('Fill match for user range:', isUserRange, d.data);
+                    return isUserRange;
+                  },
                   id: 'gradientOrange'
                 },
                 {
-                  match: (d) => (d.data as any).median === 1,
+                  match: (d) => {
+                    const isMedian = (d.data as any).median === 1;
+                    console.log('Fill match for median:', isMedian, d.data);
+                    return isMedian;
+                  },
                   id: 'gradientPurple'
                 },
                 {
@@ -831,15 +882,22 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
                 }
               ]}
               borderRadius={4}
-              borderWidth={(bar) => (bar.data as any).userRange === 1 ? 3 : 0}
-              borderColor={(bar) => (bar.data as any).userRange === 1 ? '#ea580c' : 'transparent'}
+              borderWidth={(bar) => {
+                const isUserRange = (bar.data as any).userRange === 1;
+                console.log('Border width for user range:', isUserRange, bar.data);
+                return isUserRange ? 4 : 1;
+              }}
+              borderColor={(bar) => {
+                const isUserRange = (bar.data as any).userRange === 1;
+                return isUserRange ? '#ea580c' : '#1e293b';
+              }}
               axisTop={null}
               axisRight={null}
               axisBottom={{
                 tickSize: 5,
                 tickPadding: 8,
                 tickRotation: -35,
-                legend: 'Credibility Score Range',
+                legend: 'Credibility Score Range (Low → High)',
                 legendPosition: 'middle',
                 legendOffset: 55,
                 format: (value) => value
@@ -848,7 +906,7 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
                 tickSize: 5,
                 tickPadding: 5,
                 tickRotation: 0,
-                legend: 'Profiles',
+                legend: 'Number of Profiles',
                 legendPosition: 'middle',
                 legendOffset: -50,
                 format: (value) => formatNumber(Number(value))
@@ -907,22 +965,25 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
                   }
                 }
               }}
-              tooltip={({ value, data }) => (
-                <div className="bg-gray-800 text-white p-3 rounded-lg shadow-lg">
-                  <div className="flex items-center space-x-3">
-                    <div className="font-semibold text-sm">Score Range: {data.scoreRange}</div>
-                    <div className="text-blue-300 text-sm">Profiles: {formatNumber(Number(value))}</div>
+              tooltip={({ value, data }) => {
+                console.log('Tooltip data:', data);
+                return (
+                  <div className="bg-gray-800 text-white p-3 rounded-lg shadow-lg">
+                    <div className="flex items-center space-x-3">
+                      <div className="font-semibold text-sm">Range: {data.scoreRange}</div>
+                      <div className="text-blue-300 text-sm">Profiles: {formatNumber(Number(value))}</div>
+                    </div>
+                    {data.userRange === 1 && (
+                      <div className="text-orange-300 text-xs mt-2 font-bold text-center">🎯 YOUR SCORE RANGE</div>
+                    )}
+                    {data.median === 1 && data.userRange !== 1 && (
+                      <div className="text-purple-300 text-xs mt-2 text-center">📊 Median Range</div>
+                    )}
                   </div>
-                  {data.userRange === 1 && (
-                    <div className="text-orange-300 text-xs mt-2 font-bold text-center">🎯 YOUR RANGE</div>
-                  )}
-                  {data.median === 1 && data.userRange !== 1 && (
-                    <div className="text-purple-300 text-xs mt-2 text-center">📊 Median Range</div>
-                  )}
-                </div>
-              )}
+                );
+              }}
               role="application"
-              ariaLabel="Credibility score distribution chart"
+              ariaLabel="Credibility score distribution chart showing score ranges from low to high"
             />
           </div>
           
