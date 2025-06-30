@@ -17,6 +17,15 @@ import {
 } from '@/types/insightiq/profile-analytics';
 import { SaveAnalyticsRequest } from '@/types/profile-analytics';
 
+// Professional loading messages
+const LOADING_MESSAGES = {
+  RETRIEVING_DATA: 'Retrieving profile data...',
+  PROCESSING_ANALYTICS: 'Processing analytics data...',
+  FINALIZING_RESULTS: 'Finalizing results...',
+  REFRESHING: 'Updating analytics data...',
+  LOADING_ANALYTICS: 'Loading comprehensive analytics...',
+};
+
 interface LoadingState {
   isLoading: boolean;
   message: string;
@@ -66,7 +75,7 @@ function ProfileAnalyticsContent() {
         return;
       }
 
-      updateLoadingState(1, 'Checking for existing analytics...');
+      updateLoadingState(1, LOADING_MESSAGES.RETRIEVING_DATA);
 
       // Step 1: Check backend for existing analytics
       try {
@@ -110,17 +119,17 @@ function ProfileAnalyticsContent() {
    
     if (!username || !platformId) return;
 
-    updateLoadingState(2, 'Fetching analytics from InsightIQ...');
+    updateLoadingState(2, LOADING_MESSAGES.PROCESSING_ANALYTICS);
 
-    // Fetch from InsightIQ
+    // Fetch from external analytics service
     const insightIqResult = await profileAnalyticsService.getProfileAnalytics(username, platformId);
     if (!insightIqResult.success || !insightIqResult.data) {
-      throw new Error(insightIqResult.error?.message || 'Failed to fetch analytics from InsightIQ');
+      throw new Error(insightIqResult.error?.message || 'Failed to fetch analytics data');
     }
 
-    updateLoadingState(3, 'Saving analytics...');
+    updateLoadingState(3, LOADING_MESSAGES.FINALIZING_RESULTS);
 
-    // Transform and save to backend
+    // Transform and store analytics data
     const socialAccountData = transformToSocialAccountData(insightIqResult.data, platformId);
     
     await saveProfileAnalyticsWithSocialAccount({
@@ -152,7 +161,7 @@ function ProfileAnalyticsContent() {
             <div className="w-full max-w-md mb-4">
               <div className="flex justify-between mb-2">
                 <span className="text-sm font-medium text-gray-700">
-                  {isRefreshing ? 'Refreshing analytics...' : loading.message}
+                  {isRefreshing ? LOADING_MESSAGES.REFRESHING : loading.message}
                 </span>
                 <span className="text-sm text-gray-500">
                   {isRefreshing ? '' : `${loading.step}/${loading.totalSteps}`}
@@ -170,8 +179,8 @@ function ProfileAnalyticsContent() {
 
             <p className="text-gray-600 text-center max-w-md">
               {isRefreshing 
-                ? 'Getting the latest analytics data...'
-                : 'We\'re gathering comprehensive analytics data for this profile. This may take a moment.'
+                ? 'Fetching the latest performance data and insights...'
+                : 'We\'re compiling comprehensive analytics and performance metrics. This process may take a few moments.'
               }
             </p>
           </div>
