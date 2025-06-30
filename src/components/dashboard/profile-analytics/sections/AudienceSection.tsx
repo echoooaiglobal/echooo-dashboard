@@ -253,8 +253,7 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
           userRange: isUserRange ? 1 : 0,
           minScore: minScore,
           maxScore: maxScore,
-          sortOrder: minScore, // Use minimum score for sorting
-          rawBand: band // Keep original for debugging
+          sortOrder: minScore // Use minimum score for sorting
         };
       })
       .sort((a, b) => {
@@ -882,11 +881,7 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
                 }
               ]}
               borderRadius={4}
-              borderWidth={(bar) => {
-                const isUserRange = (bar.data as any).userRange === 1;
-                console.log('Border width for user range:', isUserRange, bar.data);
-                return isUserRange ? 4 : 1;
-              }}
+              borderWidth={1}
               borderColor={(bar) => {
                 const isUserRange = (bar.data as any).userRange === 1;
                 return isUserRange ? '#ea580c' : '#1e293b';
