@@ -595,7 +595,6 @@ const ContentSection: React.FC<ContentSectionProps> = ({
             <ContentGrid contents={topContents} maxItems={12} />
           </div>
         )}
-
         {/* Recent Content Tab */}
         {activeTab === 'recent' && (
           <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
