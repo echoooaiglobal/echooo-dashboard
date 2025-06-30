@@ -3,7 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { 
   createCampaignServer, 
-  getCampaignsServer 
+  // getCampaignsServer 
 } from '@/services/campaign/campaign.server';
 import { extractBearerToken } from '@/lib/auth-utils';
 import { 
@@ -67,18 +67,18 @@ export async function GET(request: NextRequest) {
 
     console.log('📞 API Route: Calling FastAPI backend...');
     // Call FastAPI backend through server-side service with auth token
-    const campaigns = await getCampaignsServer(filters, authToken);
+    // const campaigns = await getCampaignsServer(filters, authToken);
     
-    console.log(`✅ API Route: Successfully fetchedddd: ${campaigns}`);
-    return NextResponse.json({
-      success: true,
-      data: campaigns,
-      pagination: {
-        page: filters.page || 1,
-        limit: filters.limit || 50,
-        total: campaigns.length
-      }
-    });
+    // console.log(`✅ API Route: Successfully fetchedddd: ${campaigns}`);
+    // return NextResponse.json({
+    //   success: true,
+    //   data: campaigns,
+    //   pagination: {
+    //     page: filters.page || 1,
+    //     limit: filters.limit || 50,
+    //     total: campaigns.length
+    //   }
+    // });
   } catch (error) {
     console.error('💥 API Route Errorrrr:', error);
     

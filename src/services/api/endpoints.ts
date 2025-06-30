@@ -8,6 +8,17 @@ export const ENDPOINTS = {
     RESET_PASSWORD: '/auth/reset-password',
     VERIFY_EMAIL: '/auth/verify-email',
   },
+  
+  OAUTH: {
+    PROVIDERS: '/auth/oauth/providers',
+    LOGIN: (provider: string) => `/auth/oauth/${provider}/login`,
+    LINK: (provider: string) => `/auth/oauth/${provider}/link`,
+    CALLBACK: (provider: string) => `/auth/oauth/callback/${provider}`,
+    ACCOUNTS: '/auth/oauth/accounts',
+    UNLINK: (accountId: string) => `/auth/oauth/accounts/${accountId}`,
+    REFRESH: (accountId: string) => `/auth/oauth/refresh/${accountId}`,
+    HEALTH: '/auth/oauth/health',
+  },
   CAMPAIGNS: {
     LIST: '/campaigns',
     CREATE: '/campaigns',

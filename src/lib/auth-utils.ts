@@ -1,47 +1,44 @@
-// src/lib/auth-utils.ts
-// Utility functions for handling authentication in API routes
-
+// src/lib/auth-utils.ts - Utility for extracting Bearer tokens (if not already exists)
 import { NextRequest } from 'next/server';
 
 /**
- * Extract Bearer token from request headers
- * @param request Next.js request object
- * @returns Bearer token or null if not found
+ * Extract Bearer token from Authorization header
  */
 export function extractBearerToken(request: NextRequest): string | null {
-  const authHeader = request.headers.get('authorization');
+  const authorization = request.headers.get('authorization');
   
-  console.log('Auth header received:', authHeader ? 'Header present' : 'No auth header');
-  
-  if (!authHeader) {
+  if (!authorization) {
     return null;
   }
   
-  // Check if it's a Bearer token
-  if (!authHeader.startsWith('Bearer ')) {
-    console.log('Auth header does not start with "Bearer "');
+  // Check if it starts with 'Bearer '
+  if (!authorization.startsWith('Bearer ')) {
     return null;
   }
   
-  // Extract the token part
-  const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+  // Extract the token part (remove 'Bearer ' prefix)
+  const token = authorization.substring(7);
   
-  console.log('Extracted token:', token ? 'Token extracted successfully' : 'Empty token');
-  
-  return token || null;
-}
-
-/**
- * Validate that a Bearer token is present
- * @param request Next.js request object
- * @returns Bearer token or throws error if not found
- */
-export function requireBearerToken(request: NextRequest): string {
-  const token = extractBearerToken(request);
-  
-  if (!token) {
-    throw new Error('Bearer token is required');
+  // Basic validation - token should not be empty
+  if (!token.trim()) {
+    return null;
   }
   
   return token;
+}
+
+/**
+ * Create Authorization header with Bearer token
+ */
+export function createBearerHeader(token: string): string {
+  return `Bearer ${token}`;
+}
+
+/**
+ * Validate Bearer token format (basic validation)
+ */
+export function isValidBearerToken(token: string): boolean {
+  // Basic validation - should be a non-empty string
+  // You can add more sophisticated validation here
+  return typeof token === 'string' && token.trim().length > 0;
 }

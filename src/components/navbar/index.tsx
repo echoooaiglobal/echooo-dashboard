@@ -1,4 +1,4 @@
-// src/components/navbar/index.tsx - Fixed authentication flash
+// src/components/navbar/index.tsx - Updated with SafeImage support
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -8,6 +8,7 @@ import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { User, Settings, LogOut, Bell, Menu, X } from 'react-feather';
 import CampaignsDropdown from './CampaignsDropdown';
+import { UserAvatar } from '@/components/ui/SafeImage'; // ADDED: Import SafeImage component
 import { DetailedRole } from '@/types/auth';
 
 export default function EnhancedNavbar() {
@@ -35,6 +36,34 @@ export default function EnhancedNavbar() {
   // Check if we're on the landing page
   const isLandingPage = pathname === '/';
 
+  // ADDED: Helper function to get user initials
+  const getUserInitials = (user: any) => {
+    if (!user) return '';
+    
+    const firstName = user.first_name || user.full_name?.split(' ')[0] || '';
+    const lastName = user.last_name || user.full_name?.split(' ')[1] || '';
+    
+    if (firstName && lastName) {
+      return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+    } else if (firstName) {
+      return firstName.charAt(0).toUpperCase();
+    } else if (user.email) {
+      return user.email.charAt(0).toUpperCase();
+    }
+    
+    return 'U';
+  };
+
+  // ADDED: Helper function to get user profile image URL
+  const getUserProfileImage = (user: any) => {
+    // Check various possible fields for profile image
+    return user?.profile_image_url || 
+           user?.avatar_url || 
+           user?.picture || 
+           user?.profile_picture_url ||
+           null;
+  };
+
   // Track scroll position for navbar styling
   useEffect(() => {
     const handleScroll = () => {
@@ -51,82 +80,65 @@ export default function EnhancedNavbar() {
 
   // Close dropdowns when clicking outside
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
+    const handleClickOutside = (event: MouseEvent) => {
       if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
         setIsProfileMenuOpen(false);
       }
-      
       if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
         setIsNotificationsOpen(false);
       }
-      
       if (campaignsRef.current && !campaignsRef.current.contains(event.target as Node)) {
         setIsCampaignsOpen(false);
       }
-    }
+    };
 
     document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Toggle functions
+  // Navigation handlers
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
-
-  const toggleProfileMenu = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsProfileMenuOpen(!isProfileMenuOpen);
-    if (isNotificationsOpen) setIsNotificationsOpen(false);
-    if (isCampaignsOpen) setIsCampaignsOpen(false);
-  };
-
-  const toggleNotifications = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsNotificationsOpen(!isNotificationsOpen);
-    if (isProfileMenuOpen) setIsProfileMenuOpen(false);
-    if (isCampaignsOpen) setIsCampaignsOpen(false);
-  };
-
+  const toggleProfile = () => setIsProfileMenuOpen(!isProfileMenuOpen);
+  const toggleNotifications = () => setIsNotificationsOpen(!isNotificationsOpen);
   const toggleCampaigns = (e: React.MouseEvent) => {
-    e.stopPropagation();
+    e.preventDefault();
     setIsCampaignsOpen(!isCampaignsOpen);
-    if (isProfileMenuOpen) setIsProfileMenuOpen(false);
-    if (isNotificationsOpen) setIsNotificationsOpen(false);
   };
-
   const closeCampaigns = () => setIsCampaignsOpen(false);
 
   const handleLogout = async () => {
-    await logout();
-    setIsProfileMenuOpen(false);
-    setIsNotificationsOpen(false);
-    setIsMenuOpen(false);
-    router.push('/login');
+    try {
+      await logout();
+      setIsProfileMenuOpen(false);
+      router.push('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
 
-  // Get role-specific navigation items
+  // Navigation items for different user types
+  const landingNavItems = [
+    { name: 'Features', href: '/#features' },
+    { name: 'Pricing', href: '/#pricing' },
+    { name: 'About', href: '/#about' },
+    { name: 'Contact', href: '/#contact' },
+  ];
+
   const getDashboardNavItems = () => {
     const baseItems = [
-      { name: 'Dashboard', href: '/dashboard' }
+      { name: 'Dashboard', href: '/dashboard' },
     ];
 
-    if (!primaryRole) return baseItems;
-
+    // Add role-specific navigation items
     switch (primaryRole) {
       case 'platform_admin':
+      case 'platform_manager':
         return [
           ...baseItems,
-          { name: 'Users', href: '/users' },
-          { name: 'Companies', href: '/companies' },
-          { name: 'Analytics', href: '/analytics' }
-        ];
-      
-      case 'platform_agent':
-        return [
-          ...baseItems,
-          // { name: 'Assigned Lists', href: '/assigned-lists' },
-          // { name: 'Messages', href: '/messages' }
+          { name: 'Companies', href: '/platform/companies' },
+          { name: 'Influencers', href: '/platform/influencers' },
+          { name: 'Campaigns', href: '/platform/campaigns' },
+          { name: 'Analytics', href: '/platform/analytics' },
         ];
       
       case 'company_admin':
@@ -134,9 +146,18 @@ export default function EnhancedNavbar() {
       case 'company_marketer':
         return [
           ...baseItems,
-          // { name: 'Campaigns', href: '/campaigns' },
-          // { name: 'Discover', href: '/discover' },
-          // { name: 'Campaigns', href: '/campaigns' }
+          { name: 'Campaigns', href: '/campaigns' },
+          { name: 'Influencers', href: '/influencers' },
+          { name: 'Analytics', href: '/analytics' },
+        ];
+      
+      case 'influencer':
+      case 'influencer_manager':
+        return [
+          ...baseItems,
+          { name: 'Campaigns', href: '/influencer/campaigns' },
+          { name: 'Applications', href: '/influencer/applications' },
+          { name: 'Earnings', href: '/influencer/earnings' },
         ];
       
       default:
@@ -144,29 +165,28 @@ export default function EnhancedNavbar() {
     }
   };
 
-  const landingNavItems = [
-    { name: 'Features', href: '#features' },
-    { name: 'Testimonials', href: '#testimonials' },
-    { name: 'Pricing', href: '#pricing' },
-    { name: 'Contact', href: '#contact' },
-  ];
-
   const getRoleColor = (role: DetailedRole) => {
-    if (role.startsWith('platform_')) return 'text-indigo-600';
-    if (role.startsWith('company_')) return 'text-blue-600';
-    if (role.startsWith('influencer')) return 'text-purple-600';
+    if (role?.startsWith('platform_')) return 'text-indigo-600';
+    if (role?.startsWith('company_')) return 'text-blue-600';
+    if (role?.startsWith('influencer')) return 'text-purple-600';
     return 'text-gray-600';
   };
 
   const getRoleSpecificNotifications = () => {
     const baseNotifications = [
-      { title: 'System update available', time: '5 minutes ago', read: false, type: 'system' }
+      { title: 'Welcome to Echooo!', time: '1 day ago', read: true, type: 'welcome' },
+      { title: 'System maintenance scheduled', time: '2 days ago', read: true, type: 'system' },
     ];
 
-    if (!primaryRole) return baseNotifications;
-
     switch (primaryRole) {
-      case 'platform_agent':
+      case 'platform_admin':
+        return [
+          { title: 'New company registration pending', time: '30 minutes ago', read: false, type: 'admin' },
+          { title: 'System performance alert', time: '1 hour ago', read: false, type: 'system' },
+          ...baseNotifications
+        ];
+      
+      case 'company_marketer':
         return [
           { title: 'New list assignment received', time: '2 hours ago', read: false, type: 'assignment' },
           { title: 'Influencer responded to outreach', time: '4 hours ago', read: false, type: 'response' },
@@ -244,23 +264,6 @@ export default function EnhancedNavbar() {
                 />
               </Link>
             </div>
-            
-            {/* Desktop navigation */}
-            {/* <div className="hidden md:ml-6 md:flex md:space-x-8">
-              {navItems.map((item) => (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={`${
-                    pathname === item.href
-                      ? `border-${userType === 'platform' ? 'indigo' : userType === 'company' ? 'blue' : 'purple'}-500 text-gray-900`
-                      : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                  } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium h-16`}
-                >
-                  {item.name}
-                </Link>
-              ))}
-            </div> */}
           </div>
 
           {/* Right navigation */}
@@ -303,59 +306,61 @@ export default function EnhancedNavbar() {
                             href="#"
                             className={`block px-4 py-3 hover:bg-gray-50 ${notification.read ? '' : 'bg-purple-50'}`}
                           >
-                            <p className={`text-sm font-medium ${notification.read ? 'text-gray-700' : 'text-purple-600'}`}>
+                            <p className={`text-sm font-medium ${notification.read ? 'text-gray-700' : 'text-gray-900'}`}>
                               {notification.title}
                             </p>
-                            <p className="text-xs text-gray-500 mt-1">{notification.time}</p>
+                            <p className="text-xs text-gray-500">{notification.time}</p>
                           </a>
                         ))}
                       </div>
-                      <a 
-                        href="#" 
-                        className="block text-center text-sm font-medium text-purple-600 hover:text-purple-800 py-2 border-t border-gray-100"
-                      >
-                        View all notifications
-                      </a>
+                      <div className="px-4 py-2 border-t border-gray-100">
+                        <Link
+                          href="/notifications"
+                          className="text-sm text-purple-600 hover:text-purple-800"
+                          onClick={() => setIsNotificationsOpen(false)}
+                        >
+                          View all notifications
+                        </Link>
+                      </div>
                     </div>
                   )}
                 </div>
 
                 {/* Profile dropdown */}
-                <div className="ml-3 relative" ref={profileRef}>
-                  <div>
-                    <button
-                      onClick={toggleProfileMenu}
-                      className="max-w-xs bg-white flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
-                    >
-                      <span className="sr-only">Open user menu</span>
-                      {user?.profile_image_url ? (
-                        <Image
-                          className="h-8 w-8 rounded-full"
-                          src={user.profile_image_url}
-                          alt={user.full_name}
-                          width={32}
-                          height={32}
-                        />
-                      ) : (
-                        <div className={`h-8 w-8 rounded-full bg-gradient-to-r ${
-                          userType === 'platform' ? 'from-indigo-600 to-purple-600' :
-                          userType === 'company' ? 'from-blue-600 to-purple-600' :
-                          'from-purple-600 to-pink-600'
-                        } flex items-center justify-center text-white font-medium`}>
-                          {user?.full_name?.charAt(0) || 'U'}
-                        </div>
-                      )}
-                    </button>
+                <div className="relative" ref={profileRef}>
+                  {/* UPDATED: Use UserAvatar component with proper error handling */}
+                  <div onClick={toggleProfile} style={{ cursor: 'pointer' }}>
+                    <UserAvatar
+                      src={getUserProfileImage(user)}
+                      alt={user?.full_name || user?.email || 'User avatar'}
+                      size={32}
+                      fallbackInitials={getUserInitials(user)}
+                      className="ring-2 ring-transparent hover:ring-purple-500"
+                    />
                   </div>
-                  
+
                   {/* Profile dropdown menu */}
                   {isProfileMenuOpen && (
-                    <div className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 divide-y divide-gray-100 focus:outline-none z-10">
-                      <div className="px-4 py-3">
-                        <p className="text-sm font-medium text-gray-900 truncate">{user?.full_name}</p>
-                        <p className="text-sm text-gray-500 truncate">{user?.email}</p>
+                    <div className="origin-top-right absolute right-0 mt-2 w-64 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
+                      <div className="px-4 py-3 border-b border-gray-100">
+                        <div className="flex items-center">
+                          {/* UPDATED: Use UserAvatar component in dropdown too */}
+                          <UserAvatar
+                            src={getUserProfileImage(user)}
+                            alt={user?.full_name || user?.email || 'User avatar'}
+                            size={40}
+                            fallbackInitials={getUserInitials(user)}
+                            className="mr-3"
+                          />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-gray-900 truncate">
+                              {user?.full_name || user?.email}
+                            </p>
+                            <p className="text-sm text-gray-500 truncate">{user?.email}</p>
+                          </div>
+                        </div>
                         {primaryRole && (
-                          <p className={`text-xs font-medium mt-1 ${getRoleColor(primaryRole)}`}>
+                          <p className={`text-xs font-medium mt-2 ${getRoleColor(primaryRole)}`}>
                             {primaryRole.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
                           </p>
                         )}
@@ -454,6 +459,52 @@ export default function EnhancedNavbar() {
               </Link>
             ))}
           </div>
+          
+          {/* Mobile authenticated user section */}
+          {isAuthenticated && user && (
+            <div className="pt-4 pb-3 border-t border-gray-200">
+              <div className="flex items-center px-4">
+                <UserAvatar
+                  src={getUserProfileImage(user)}
+                  alt={user?.full_name || user?.email || 'User avatar'}
+                  size={40}
+                  fallbackInitials={getUserInitials(user)}
+                  className="mr-3"
+                />
+                <div className="flex-1">
+                  <div className="text-base font-medium text-gray-800">
+                    {user?.full_name || user?.email}
+                  </div>
+                  <div className="text-sm text-gray-500">{user?.email}</div>
+                </div>
+              </div>
+              <div className="mt-3 space-y-1">
+                <Link
+                  href="/profile"
+                  className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Your Profile
+                </Link>
+                <Link
+                  href="/settings"
+                  className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Settings
+                </Link>
+                <button
+                  onClick={() => {
+                    handleLogout();
+                    setIsMenuOpen(false);
+                  }}
+                  className="block w-full text-left px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
+                >
+                  Sign out
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </nav>

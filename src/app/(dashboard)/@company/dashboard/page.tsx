@@ -1,8 +1,8 @@
-// src/app/(dashboard)/@company/dashboard/page.tsx - Enhanced with role support
+// src/app/(dashboard)/@company/dashboard/page.tsx - FIXED redirect loop
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { CompanyDashboard } from '@/components/dashboard';
 import { getCompanyCampaigns } from '@/services/campaign/campaign.service';
@@ -10,13 +10,29 @@ import { getStoredCompany } from '@/services/auth/auth.utils';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 export default function CompanyDashboardPage() {
-  const { getPrimaryRole } = useAuth();
+  const { getPrimaryRole, isAuthenticated, user } = useAuth();
   const router = useRouter();
-  const [isRedirecting, setIsRedirecting] = useState(true);
+  const pathname = usePathname();
+  const [isRedirecting, setIsRedirecting] = useState(false);
+  const [hasCheckedRedirect, setHasCheckedRedirect] = useState(false);
   const primaryRole = getPrimaryRole();
   
   useEffect(() => {
+    // FIXED: Only run redirect logic once when component mounts
+    // and only if we haven't already checked
+    if (hasCheckedRedirect || !isAuthenticated || !user) {
+      return;
+    }
+
+    // FIXED: Only redirect if we're specifically on /dashboard, not on /campaigns or other routes
+    if (pathname !== '/dashboard') {
+      setHasCheckedRedirect(true);
+      return;
+    }
+
     const redirectToCompanyCampaign = async () => {
+      setIsRedirecting(true);
+      
       try {
         // Different behavior based on company role
         switch (primaryRole) {
@@ -24,22 +40,30 @@ export default function CompanyDashboardPage() {
           case 'company_manager':
           case 'company_marketer':
             // These roles should redirect to campaigns
+            console.log('🔄 Company Dashboard: Redirecting marketing roles to campaigns');
             const company = getStoredCompany();
+            
             if (company && company.id) {
-              const campaigns = await getCompanyCampaigns(company.id);
-              
-              if (campaigns && campaigns.length > 0) {
-                // Navigate to the most recent campaign
-                const mostRecentCampaign = campaigns.sort((a, b) => 
-                  new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-                )[0];
+              try {
+                const campaigns = await getCompanyCampaigns(company.id);
                 
-                router.push(`/campaigns/${mostRecentCampaign.id}`);
-              } else {
-                router.push('/campaigns/new');
+                if (campaigns && campaigns.length > 0) {
+                  // Navigate to campaigns list page, not a specific campaign
+                  console.log('✅ Company Dashboard: Found campaigns, redirecting to /campaigns');
+                  router.push('/campaigns');
+                } else {
+                  // No campaigns, redirect to create new campaign
+                  console.log('📝 Company Dashboard: No campaigns found, redirecting to /campaigns/new');
+                  router.push('/campaigns/new');
+                }
+              } catch (campaignError) {
+                console.error('❌ Company Dashboard: Error fetching campaigns:', campaignError);
+                // If there's an error fetching campaigns, just go to campaigns page
+                router.push('/campaigns');
               }
             } else {
-              setIsRedirecting(false); // Stay on dashboard if no company data
+              console.warn('⚠️ Company Dashboard: No company data found, staying on dashboard');
+              setIsRedirecting(false);
             }
             break;
             
@@ -48,21 +72,33 @@ export default function CompanyDashboardPage() {
           case 'company_user':
           default:
             // These roles stay on the dashboard
+            console.log('🏠 Company Dashboard: Non-marketing role, staying on dashboard');
             setIsRedirecting(false);
             break;
         }
       } catch (error) {
-        console.error('Error redirecting company user:', error);
-        setIsRedirecting(false); // Stay on dashboard if error
+        console.error('💥 Company Dashboard: Error in redirect logic:', error);
+        setIsRedirecting(false);
+      } finally {
+        setHasCheckedRedirect(true);
       }
     };
     
-    redirectToCompanyCampaign();
-  }, [router, primaryRole]);
+    // Add a small delay to prevent immediate redirects that might cause loops
+    const timeoutId = setTimeout(() => {
+      redirectToCompanyCampaign();
+    }, 100);
+
+    return () => clearTimeout(timeoutId);
+  }, [router, primaryRole, pathname, isAuthenticated, user, hasCheckedRedirect]);
   
   // Show loading while redirecting
   if (isRedirecting) {
-    return <LoadingSpinner />;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <LoadingSpinner message="Setting up your dashboard..." />
+      </div>
+    );
   }
   
   // Show dashboard with role-specific welcome message

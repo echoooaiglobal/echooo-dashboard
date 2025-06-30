@@ -1,4 +1,4 @@
-// src/components/auth/LoginForm.tsx
+// src/components/auth/LoginForm.tsx - Updated to include OAuth
 'use client';
 
 import { useState } from 'react';
@@ -7,6 +7,7 @@ import { LoginCredentials } from '@/types/auth';
 import { AtSign, Lock, AlertCircle, Eye, EyeOff } from 'react-feather';
 import { useLogin } from '@/hooks/useLogin';
 import { AccountInactiveError, isAuthError } from '@/services/auth/auth.errors';
+import OAuthButtons from './OAuthButtons';
 
 interface LoginFormProps {
   onSuccess?: (redirectPath?: string) => void;
@@ -21,6 +22,7 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const { loginWithRedirect, isLoading, error: hookError } = useLogin();
   const [error, setError] = useState<string | null>(null);
+  const [oauthError, setOAuthError] = useState<string | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -37,6 +39,7 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setOAuthError(null);
     
     try {
       // The hook will handle login and appropriate routing
@@ -65,15 +68,38 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
     }
   };
 
+  const handleOAuthError = (errorMessage: string) => {
+    setOAuthError(errorMessage);
+    setError(null); // Clear regular login errors
+  };
+
   return (
     <div>
-      {(error || hookError) && (
+      {(error || hookError || oauthError) && (
         <div className="bg-red-50 text-red-700 p-4 rounded-lg mb-6 flex items-start">
           <AlertCircle className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
-          <span className="text-sm">{error || hookError}</span>
+          <span className="text-sm">{error || hookError || oauthError}</span>
         </div>
       )}
 
+      {/* OAuth Login Options */}
+      <div className="mb-8">
+        <OAuthButtons 
+          onError={handleOAuthError}
+          className="mb-6"
+        />
+        
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-300" />
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="px-2 bg-white text-gray-500">Or continue with email</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Regular Login Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
           <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">

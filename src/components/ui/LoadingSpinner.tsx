@@ -14,7 +14,7 @@ export default function LoadingSpinner({
   color = 'purple',
   fullScreen = false,
   message = 'Loading...',
-  variant = 'neural'
+  variant = 'echo'
 }: LoadingSpinnerProps) {
   // Size mapping
   const sizeMap = {
@@ -152,37 +152,11 @@ export default function LoadingSpinner({
   // Echo Logo Loader (Based on your image)
   const EchoLoader = () => (
     <div className="relative flex flex-col items-center">
-      <div className={`relative ${sizes.container} flex items-center justify-center`}>
-        {/* Echo 'e' letter */}
-        <div className="relative">
-          {/* Main 'e' shape */}
-          <div className="relative w-20 h-20">
-            {/* Outer circle */}
-            <div className="absolute inset-0 border-8 border-black rounded-full"></div>
-            
-            {/* Inner white circle */}
-            <div className="absolute top-2 left-2 right-2 bottom-2 bg-white rounded-full"></div>
-            
-            {/* Animated gradient bar */}
-            <div className="absolute top-1/2 left-0 right-4 h-3 transform -translate-y-1/2 overflow-hidden">
-              <div 
-                className="h-full bg-gradient-to-r from-blue-600 via-purple-500 to-red-500 animate-pulse"
-                style={{
-                  animation: 'slideBar 2s ease-in-out infinite'
-                }}
-              ></div>
-            </div>
-            
-            {/* Bottom gap for 'e' */}
-            <div className="absolute bottom-0 right-0 w-4 h-4 bg-white"></div>
-          </div>
-        </div>
-      </div>
-      
+    
       <div className={`${sizes.spacing} text-center`}>
         <p className={`${sizes.text} font-medium text-gray-700`}>{message}</p>
         <div className="flex justify-center mt-2">
-          <div className="w-12 h-1 bg-gray-200 rounded-full overflow-hidden">
+          <div className="w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
             <div className="h-full w-1/3 bg-gradient-to-r from-blue-600 via-purple-500 to-red-500 rounded-full animate-pulse"></div>
           </div>
         </div>

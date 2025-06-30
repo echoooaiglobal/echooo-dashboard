@@ -1,4 +1,4 @@
-// src/app/api/v0/campaigns/company/[companyId]/route.ts
+// src/app/api/v0/campaigns/company/[companyId]/route.ts - FIXED
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getCompanyCampaignsServer } from '@/services/campaign/campaign.server';
@@ -11,14 +11,15 @@ import {
 /**
  * GET /api/v0/campaigns/company/[companyId]
  * Get all campaigns for a specific company
+ * FIXED: Added async/await for params as required by Next.js 15
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { companyId: string } }
+  { params }: { params: Promise<{ companyId: string }> }
 ) {
   try {
-    const { companyId } = params;
-    
+    // FIXED: Await params before using its properties
+    const { companyId } = await params;
     
     // Basic UUID validation for company ID
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
