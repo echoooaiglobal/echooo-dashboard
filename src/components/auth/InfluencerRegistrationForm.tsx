@@ -1,4 +1,4 @@
-// src/components/auth/InfluencerRegistrationForm.tsx
+// src/components/auth/InfluencerRegistrationForm.tsx - Updated to include OAuth
 'use client';
 
 import { useState } from 'react';
@@ -7,6 +7,7 @@ import { User, Mail, Lock, Phone, Eye, EyeOff, AlertCircle } from 'react-feather
 import { registerUser, RegistrationData } from '@/services/auth/register.service';
 import { validateEmail, validatePassword, validatePhoneNumber } from '@/utils/validation';
 import SuccessMessage  from '@/components/ui/SuccessMessage';
+import OAuthButtons from './OAuthButtons';
 
 interface InfluencerRegistrationFormProps {
   onSuccess?: (redirectPath: string) => void;
@@ -25,6 +26,7 @@ export default function InfluencerRegistrationForm({ onSuccess }: InfluencerRegi
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [oauthError, setOAuthError] = useState<string | null>(null);
   const router = useRouter();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -43,9 +45,15 @@ export default function InfluencerRegistrationForm({ onSuccess }: InfluencerRegi
     setShowConfirmPassword(!showConfirmPassword);
   };
 
+  const handleOAuthError = (errorMessage: string) => {
+    setOAuthError(errorMessage);
+    setError(null); // Clear regular registration errors
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setOAuthError(null);
     setIsSubmitting(true);
     
     // Email validation
@@ -88,7 +96,8 @@ export default function InfluencerRegistrationForm({ onSuccess }: InfluencerRegi
         password: form.password,
         full_name: form.full_name,
         phone_number: form.phone_number || undefined,
-        user_type: 'influencer'
+        user_type: 'influencer',
+        role_name: 'influencer'
         };
         
         // Call the registration service
@@ -125,14 +134,32 @@ export default function InfluencerRegistrationForm({ onSuccess }: InfluencerRegi
         />
       )}
 
-
-      {error && (
+      {(error || oauthError) && (
          <div className="bg-red-50 text-red-700 p-4 rounded-lg mb-6 flex items-start">
             <AlertCircle className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
-            <span className="text-sm">{error}</span>
+            <span className="text-sm">{error || oauthError}</span>
          </div>
       )}
 
+      {/* OAuth Registration Options */}
+      <div className="mb-8">
+        <OAuthButtons 
+          userType="influencer"
+          onError={handleOAuthError}
+          className="mb-6"
+        />
+        
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-300" />
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="px-2 bg-white text-gray-500">Or register with email</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Regular Registration Form */}
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
           <label htmlFor="influencer-name" className="block text-sm font-medium text-gray-700 mb-1">

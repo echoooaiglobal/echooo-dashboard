@@ -114,9 +114,19 @@ export const refreshToken = async (token: string): Promise<AuthResponse> => {
     throw new Error('No data received from server');
   }
   
-  // Update stored auth data
-  const { access_token, refresh_token, expires_in, user, roles } = response.data;
-  storeAuthData(access_token, refresh_token, expires_in, user, roles);
+  // DON'T call storeAuthData here - just update the tokens
+  // The refresh endpoint typically only returns new tokens, not full user data
+  const { access_token, refresh_token, expires_in } = response.data;
+  
+  // Only update the tokens in localStorage, preserve existing user/roles/company data
+  if (typeof window !== 'undefined') {
+    const expiryTime = Date.now() + (expires_in || 3600) * 1000;
+    localStorage.setItem('accessToken', access_token);
+    if (refresh_token) {
+      localStorage.setItem('refreshToken', refresh_token);
+    }
+    localStorage.setItem('tokenExpiry', expiryTime.toString());
+  }
   
   return response.data;
 };

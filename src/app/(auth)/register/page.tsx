@@ -16,7 +16,7 @@ export default function Register() {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
   const [showContent, setShowContent] = useState(false);
-  const [activeTab, setActiveTab] = useState<RegisterTab>('influencer');
+  const [activeTab, setActiveTab] = useState<RegisterTab>('company');
   
   // Redirect if already authenticated
   useEffect(() => {
@@ -61,18 +61,7 @@ export default function Register() {
             </p>
             
             {/* Tabs */}
-            <div className="flex bg-gray-100 p-1 rounded-lg mb-8">
-              <button
-                onClick={() => setActiveTab('influencer')}
-                className={`flex items-center justify-center space-x-2 flex-1 py-2 px-4 rounded-md transition ${
-                  activeTab === 'influencer' 
-                    ? 'bg-white text-purple-600 shadow-sm' 
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                <Users size={18} />
-                <span>Influencer</span>
-              </button>
+            {/* <div className="flex bg-gray-100 p-1 rounded-lg mb-8">
               <button
                 onClick={() => setActiveTab('company')}
                 className={`flex items-center justify-center space-x-2 flex-1 py-2 px-4 rounded-md transition ${
@@ -84,7 +73,18 @@ export default function Register() {
                 <Briefcase size={18} />
                 <span>Company</span>
               </button>
-            </div>
+              <button
+                onClick={() => setActiveTab('influencer')}
+                className={`flex items-center justify-center space-x-2 flex-1 py-2 px-4 rounded-md transition ${
+                  activeTab === 'influencer' 
+                    ? 'bg-white text-purple-600 shadow-sm' 
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <Users size={18} />
+                <span>Influencer</span>
+              </button>
+            </div> */}
           </div>
 
           <div className="bg-white rounded-xl shadow-xl p-8 border border-gray-100">

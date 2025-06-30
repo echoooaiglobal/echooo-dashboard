@@ -1,75 +1,42 @@
-// src/lib/server-api.ts
-// Server-side API client for calling FastAPI backend from Next.js API routes
-
-interface ServerApiRequestOptions extends RequestInit {
-  timeout?: number;
-  baseUrl?: string;
-}
+// src/lib/server-api.ts - Enhanced for OAuth (if not already exists)
+import { API_CONFIG } from '@/services/api/config';
 
 interface ServerApiResponse<T> {
   data: T | null;
   error: Error | null;
   status: number;
 }
- 
+
+interface ServerRequestOptions {
+  auth?: boolean;
+  timeout?: number;
+}
+
 /**
- * Server-side API client for calling FastAPI backend
+ * Server-side API client for making requests to FastAPI from Next.js API routes
+ * This client is designed to work in the server environment (Node.js)
  */
 class ServerApiClient {
-  private static instance: ServerApiClient;
   private baseUrl: string;
 
-  private constructor() {
-    const appEnv = process.env.NEXT_PUBLIC_APP_ENV || 'development';
-    const apiVersion = process.env.NEXT_PUBLIC_API_VERSION || 'v0';             
-
-    let apiUrl = '';
-
-    if (appEnv === 'production') {
-      apiUrl = process.env.NEXT_PUBLIC_FASTAPI_BASE_URL_PRO!;
-    } else if (appEnv === 'development') {
-      apiUrl = process.env.NEXT_PUBLIC_FASTAPI_BASE_URL_DEV!;
-    } else {
-      apiUrl = process.env.NEXT_PUBLIC_FASTAPI_BASE_URL_LOC!;
-    }
-    
-    this.baseUrl = `${apiUrl}/${apiVersion}`;
-
-    // Fallback
-    if (!this.baseUrl) {
-      console.warn('⚠️ No base URL set for environment. Using localhost fallback.');
-      this.baseUrl = 'http://localhost:8000';
-    }
+  constructor() {
+    this.baseUrl = API_CONFIG.baseUrl;
   }
 
   /**
-   * Get the singleton instance
+   * Make a request to FastAPI backend from server-side
    */
-  public static getInstance(): ServerApiClient {
-    if (!ServerApiClient.instance) {
-      ServerApiClient.instance = new ServerApiClient();
-    }
-    return ServerApiClient.instance;
-  }
-
-  /**
-   * Make a request to the FastAPI backend
-   */
-  public async request<T>(
+  private async request<T>(
     endpoint: string,
-    options: ServerApiRequestOptions = {},
-    authToken?: string
+    options: RequestInit & ServerRequestOptions = {}
   ): Promise<ServerApiResponse<T>> {
     const {
-      timeout = 30000,
-      baseUrl,
+      auth = true,
+      timeout = API_CONFIG.timeout,
       ...fetchOptions
     } = options;
 
-    const url = endpoint.startsWith('http') 
-      ? endpoint 
-      : `${baseUrl || this.baseUrl}${endpoint}`;
-    
+    const url = endpoint.startsWith('http') ? endpoint : `${this.baseUrl}${endpoint}`;
     const headers = new Headers(fetchOptions.headers);
 
     // Set content type if not already set and not FormData
@@ -77,17 +44,9 @@ class ServerApiClient {
       headers.set('Content-Type', 'application/json');
     }
 
-    // Add Bearer token if provided
-    if (authToken) {
-      headers.set('Authorization', `Bearer ${authToken}`);
-    }
-
-    // Fallback: Add server-side API key if configured
-    if (!authToken && process.env.FASTAPI_API_KEY) {
-      headers.set('Authorization', `Bearer ${process.env.FASTAPI_API_KEY}`);
-    }
-
     try {
+      console.log(`Server API: Making ${fetchOptions.method || 'GET'} request to ${url}`);
+      
       // Create an AbortController for timeout handling
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -100,6 +59,8 @@ class ServerApiClient {
       
       clearTimeout(timeoutId);
 
+      console.log(`Server API: Response status: ${response.status}`);
+
       // Parse the response
       let data: T | null = null;
       let error: Error | null = null;
@@ -108,17 +69,18 @@ class ServerApiClient {
         try {
           const responseText = await response.text();
           
+          // Only try to parse as JSON if there's actual content
           if (responseText.trim()) {
             try {
               data = JSON.parse(responseText) as T;
             } catch (e) {
-              console.error('Error parsing response as JSON:', e);
-              console.log('Response text that failed to parse:', responseText);
+              console.error('Server API: Error parsing response as JSON:', e);
+              console.log('Server API: Response text that failed to parse:', responseText);
               error = new Error('Failed to parse response');
             }
           }
         } catch (e) {
-          console.error('Error reading response text:', e);
+          console.error('Server API: Error reading response text:', e);
           error = new Error('Failed to read response');
         }
       }
@@ -128,11 +90,9 @@ class ServerApiClient {
         let errorMessage = 'Request failed';
         
         if (data && typeof data === 'object') {
-          // Handle FastAPI error formats
+          // Handle common API error formats
           if ('detail' in data) {
-            errorMessage = Array.isArray(data.detail) 
-              ? (data.detail as any[]).map(err => err.msg || err).join(', ')
-              : data.detail as string;
+            errorMessage = data.detail as string;
           } else if ('message' in data) {
             errorMessage = data.message as string;
           } else if ('error' in data) {
@@ -140,7 +100,12 @@ class ServerApiClient {
           }
         }
         
-        error = new Error(errorMessage);
+        error = new Error(
+          typeof errorMessage === 'string' 
+            ? errorMessage 
+            : JSON.stringify(errorMessage)
+        );
+        
         data = null;
       }
 
@@ -150,13 +115,15 @@ class ServerApiClient {
         status: response.status,
       };
     } catch (error) {
+      console.error('Server API: Request failed:', error);
+      
       // Handle network errors, timeouts, etc.
-      const isAbortError = error instanceof DOMException && error.name === 'AbortError';
+      const isAbortError = error instanceof Error && error.name === 'AbortError';
       
       return {
         data: null,
         error: new Error(isAbortError ? 'Request timeout' : (error as Error).message),
-        status: isAbortError ? 408 : 0,
+        status: isAbortError ? 408 : 0, // 408 Request Timeout
       };
     }
   }
@@ -164,89 +131,114 @@ class ServerApiClient {
   /**
    * Make a GET request
    */
-  public async get<T>(
-    endpoint: string, 
-    options: Omit<ServerApiRequestOptions, 'method' | 'body'> = {},
+  async get<T>(
+    endpoint: string,
+    options: Omit<ServerRequestOptions, 'method' | 'body'> = {},
     authToken?: string
   ): Promise<ServerApiResponse<T>> {
-    return this.request<T>(endpoint, { ...options, method: 'GET' }, authToken);
+    const headers: Record<string, string> = {};
+    
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`;
+    }
+    
+    return this.request<T>(endpoint, {
+      ...options,
+      method: 'GET',
+      headers,
+    });
   }
 
   /**
    * Make a POST request
    */
-  public async post<T>(
+  async post<T>(
     endpoint: string,
     data: unknown,
-    options: Omit<ServerApiRequestOptions, 'method' | 'body'> = {},
+    options: Omit<ServerRequestOptions, 'method' | 'body'> = {},
     authToken?: string
   ): Promise<ServerApiResponse<T>> {
+    const headers: Record<string, string> = {};
+    
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`;
+    }
+    
     return this.request<T>(endpoint, {
       ...options,
       method: 'POST',
+      headers,
       body: data instanceof FormData ? data : JSON.stringify(data),
-    }, authToken);
+    });
   }
 
   /**
    * Make a PUT request
    */
-  public async put<T>(
+  async put<T>(
     endpoint: string,
     data: unknown,
-    options: Omit<ServerApiRequestOptions, 'method' | 'body'> = {},
+    options: Omit<ServerRequestOptions, 'method' | 'body'> = {},
     authToken?: string
   ): Promise<ServerApiResponse<T>> {
+    const headers: Record<string, string> = {};
+    
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`;
+    }
+    
     return this.request<T>(endpoint, {
       ...options,
       method: 'PUT',
+      headers,
       body: data instanceof FormData ? data : JSON.stringify(data),
-    }, authToken);
+    });
   }
 
   /**
    * Make a PATCH request
    */
-  public async patch<T>(
+  async patch<T>(
     endpoint: string,
     data: unknown,
-    options: Omit<ServerApiRequestOptions, 'method' | 'body'> = {},
+    options: Omit<ServerRequestOptions, 'method' | 'body'> = {},
     authToken?: string
   ): Promise<ServerApiResponse<T>> {
+    const headers: Record<string, string> = {};
+    
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`;
+    }
+    
     return this.request<T>(endpoint, {
       ...options,
       method: 'PATCH',
+      headers,
       body: data instanceof FormData ? data : JSON.stringify(data),
-    }, authToken);
+    });
   }
 
   /**
    * Make a DELETE request
    */
-  public async delete<T>(
+  async delete<T>(
     endpoint: string,
-    options: Omit<ServerApiRequestOptions, 'method'> = {},
+    options: Omit<ServerRequestOptions, 'method'> = {},
     authToken?: string
   ): Promise<ServerApiResponse<T>> {
-    return this.request<T>(endpoint, { ...options, method: 'DELETE' }, authToken);
+    const headers: Record<string, string> = {};
+    
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`;
+    }
+    
+    return this.request<T>(endpoint, {
+      ...options,
+      method: 'DELETE',
+      headers,
+    });
   }
 }
 
-// Export singleton instance for server-side use
-export const serverApiClient = ServerApiClient.getInstance();
-
-// Convenience functions for server-side use
-export const serverGet = <T>(endpoint: string, options?: Omit<ServerApiRequestOptions, 'method' | 'body'>, authToken?: string) => 
-  serverApiClient.get<T>(endpoint, options, authToken);
-
-export const serverPost = <T>(endpoint: string, data: unknown, options?: Omit<ServerApiRequestOptions, 'method' | 'body'>, authToken?: string) => 
-  serverApiClient.post<T>(endpoint, data, options, authToken);
-
-export const serverPut = <T>(endpoint: string, data: unknown, options?: Omit<ServerApiRequestOptions, 'method' | 'body'>, authToken?: string) => 
-  serverApiClient.put<T>(endpoint, data, options, authToken);
-
-export const serverPatch = <T>(endpoint: string, data: unknown, options?: Omit<ServerApiRequestOptions, 'method' | 'body'>, authToken?: string) => 
-  serverApiClient.patch<T>(endpoint, data, options, authToken);
-
-export const serverDelete = <T>(endpoint: string, options?: Omit<ServerApiRequestOptions, 'method'>, authToken?: string) => 
-  serverApiClient.delete<T>(endpoint, options, authToken);
+// Export a singleton instance
+export const serverApiClient = new ServerApiClient();
