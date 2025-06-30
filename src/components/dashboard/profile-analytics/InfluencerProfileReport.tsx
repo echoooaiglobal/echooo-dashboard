@@ -288,8 +288,10 @@ const InfluencerProfileReport: React.FC<InfluencerProfileReportProps> = ({
                 </div>
               )}
             </div>
-            <div>
-              <h1 className="text-2xl font-bold">{profile.full_name}</h1>
+            <div className="flex-1">
+              <div className="flex items-center space-x-3">
+                <h1 className="text-2xl font-bold">{profile.full_name}</h1>
+              </div>
               <p className="text-lg opacity-90">@{profile.platform_username}</p>
               <p className="text-sm opacity-80 mt-2 max-w-md">{profile.introduction}</p>
               <div className="flex items-center mt-3 space-x-4 text-sm">
@@ -311,78 +313,102 @@ const InfluencerProfileReport: React.FC<InfluencerProfileReportProps> = ({
                   <span>View Profile</span>
                 </a>
               </div>
-              
-              {/* Contact Details integrated in header */}
-              {profile.contact_details && profile.contact_details.length > 0 && (
-                <div className="flex flex-wrap items-center mt-3 gap-3">
-                  {profile.contact_details.map((contact, index) => {
-                    const contactPlatformInfo = getSocialPlatformIcon(contact.type);
-                    const ContactIcon = contactPlatformInfo.icon;
-                    
-                    return (
-                      <a
-                        key={index}
-                        href={contact.type === 'email' ? `mailto:${contact.value}` : contact.value}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center space-x-2 bg-white/20 hover:bg-white/30 rounded-lg px-3 py-2 transition-all duration-200 text-sm"
-                        title={`${contact.type}: ${contact.value}`}
-                      >
-                        <div className="w-5 h-5 bg-white/20 rounded-full flex items-center justify-center">
-                          <ContactIcon className="w-3 h-3 text-white" />
-                        </div>
-                        <span className="text-white/90 capitalize">{contact.type}</span>
-                        {contact.verified && (
-                          <Verified className="w-3 h-3 text-blue-300" />
-                        )}
-                      </a>
-                    );
-                  })}
+
+              {/* Stats - reduced size */}
+              <div className="flex items-center justify-start mt-4 space-x-4">
+                {/* Followers - reduced size */}
+                <div className="bg-white/20 rounded-lg px-3 py-1.5">
+                  <div className="text-base font-bold">{formatNumber(profile.follower_count)}</div>
+                  <div className="text-xs opacity-80">Followers</div>
                 </div>
-              )}
-            </div>
-          </div>
-          <div className="flex-1 flex justify-between items-start">
-            {/* Right side stats - Moved to middle position */}
-            <div className="text-right space-y-3 ml-110">
-              {/* Refresh Icon */}
-              <div className="flex justify-end">
+                
+                {/* Influencer Tier - reduced size */}
+                <div className="bg-white/20 rounded-lg px-3 py-1.5">
+                  <div className="text-xs font-bold">{getInfluencerTier(profile.follower_count)}</div>
+                  <div className="text-xs opacity-80">Tier</div>
+                </div>
+              </div>
+              
+              {/* Last Updated with Refresh - moved to separate row */}
+              <div className="flex items-center space-x-2 mt-3 text-xs opacity-90">
+                <span>Last updated: {new Date(profile.updated_at).toLocaleDateString()}</span>
                 <button
                   onClick={onRefresh}
                   disabled={isRefreshing}
-                  className="bg-white/20 hover:bg-white/30 rounded-full p-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="bg-white/20 hover:bg-white/30 rounded-full p-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title={isRefreshing ? 'Refreshing data...' : 'Refresh data from source'}
                 >
-                  <RefreshCw className={`w-4 h-4 text-white ${isRefreshing ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`w-3 h-3 text-white ${isRefreshing ? 'animate-spin' : ''}`} />
                 </button>
               </div>
-              
-              <div className="bg-white/20 rounded-xl p-3">
-                <div className="text-xl font-bold">{formatNumber(profile.follower_count)}</div>
-                <div className="text-xs opacity-80">Followers</div>
-              </div>
-              <div className="bg-white/20 rounded-xl p-3">
-                <div className="text-sm font-bold">{getInfluencerTier(profile.follower_count)}</div>
-                <div className="text-xs opacity-80">Tier</div>
-              </div>
-              <div className="text-xs opacity-90">
-                Last updated: {new Date(profile.updated_at).toLocaleDateString()}
-              </div>
             </div>
+          </div>
 
-            {/* Profile Highlights - Moved to the end */}
-            <div className="bg-white/10 rounded-xl p-4 min-w-[280px] max-w-[320px]">
-              <h4 className="font-medium mb-3 text-white/90">Profile Highlights</h4>
-              <ul className="space-y-2 text-xs text-white/80">
-                <li>• {getInfluencerTier(profile.follower_count)} with {formatNumber(profile.follower_count)} followers</li>
-                <li>• {getEngagementLevel(profile.engagement_rate).level} engagement rate ({profile.engagement_rate.toFixed(2)}%)</li>
-                <li>• Audience primarily from {audienceCountries.length > 0 ? audienceCountries[0].code : 'NA'} ({audienceCountries.length > 0 ? audienceCountries[0].value.toFixed(1) : '0'}%)</li>
-                <li>• {(credibilityScore * 100).toFixed(1)}% audience credibility score</li>
-                <li>• Best performing content type: Reels ({formatNumber(profile.average_reels_views)} avg views)</li>
-                <li>• Target audience: {profile.gender || 'Not specified'} {profile.age_group || 'Not specified'}</li>
-                <li>• Brand safety: {profile.is_verified ? 'Verified account' : 'Unverified account'}</li>
-              </ul>
-            </div>
+          {/* Profile Highlights - Removed top margin */}
+          <div className="min-w-[280px] max-w-[320px] ml-6">
+            <h4 className="font-semibold mb-2 text-white text-base border-b border-white/20 pb-1">Profile Highlights</h4>
+            <ul className="space-y-1.5 text-xs text-white">
+              <li className="flex items-start space-x-2">
+                <span className="text-white/60 mt-0.5">•</span>
+                <span className="font-medium">{getInfluencerTier(profile.follower_count)}</span>
+                <span className="text-white/80">with {formatNumber(profile.follower_count)} followers</span>
+              </li>
+              <li className="flex items-start space-x-2">
+                <span className="text-white/60 mt-0.5">•</span>
+                <span className="font-medium">{getEngagementLevel(profile.engagement_rate).level} engagement</span>
+                <span className="text-white/80">({profile.engagement_rate.toFixed(2)}%)</span>
+              </li>
+              <li className="flex items-start space-x-2">
+                <span className="text-white/60 mt-0.5">•</span>
+                <span className="text-white/80">Audience primarily from</span>
+                <span className="font-medium">{audienceCountries.length > 0 ? audienceCountries[0].code : 'NA'}</span>
+                <span className="text-white/80">({audienceCountries.length > 0 ? audienceCountries[0].value.toFixed(1) : '0'}%)</span>
+              </li>
+              <li className="flex items-start space-x-2">
+                <span className="text-white/60 mt-0.5">•</span>
+                <span className="font-medium">{(credibilityScore * 100).toFixed(1)}%</span>
+                <span className="text-white/80">audience credibility</span>
+              </li>
+              <li className="flex items-start space-x-2">
+                <span className="text-white/60 mt-0.5">•</span>
+                <span className="text-white/80">Best content:</span>
+                <span className="font-medium">Reels</span>
+                <span className="text-white/80">({formatNumber(profile.average_reels_views)} avg views)</span>
+              </li>
+              <li className="flex items-start space-x-2">
+                <span className="text-white/60 mt-0.5">•</span>
+                <span className="text-white/80">Target:</span>
+                <span className="font-medium">{profile.gender || 'Not specified'} {profile.age_group || 'Not specified'}</span>
+              </li>
+            </ul>
+            
+            {/* Contact Details - Positioned directly below Profile Highlights */}
+            {profile.contact_details && profile.contact_details.length > 0 && (
+              <div className="flex items-center mt-3 gap-2">
+                {profile.contact_details.map((contact, index) => {
+                  const contactPlatformInfo = getSocialPlatformIcon(contact.type);
+                  const ContactIcon = contactPlatformInfo.icon;
+                  
+                  return (
+                    <a
+                      key={index}
+                      href={contact.type === 'email' ? `mailto:${contact.value}` : contact.value}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="relative group bg-white/20 hover:bg-white/30 rounded-lg p-2.5 transition-all duration-200"
+                      title={`${contact.type}: ${contact.value}`}
+                    >
+                      <ContactIcon className="w-5 h-5 text-white" />
+                      {contact.verified && (
+                        <div className="absolute -top-1 -right-1 bg-blue-500 rounded-full p-0.5">
+                          <Verified className="w-2.5 h-2.5 text-white" />
+                        </div>
+                      )}
+                    </a>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       </div>
