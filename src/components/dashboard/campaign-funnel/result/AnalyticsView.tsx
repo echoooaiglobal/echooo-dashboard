@@ -71,6 +71,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
   const [videoResults, setVideoResults] = useState<VideoResult[]>([]);
   
   const exportContentRef = useRef<HTMLDivElement>(null);
@@ -168,6 +169,83 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
     if (base === 0) return '+0%';
     const change = ((current - base) / base) * 100;
     return change >= 0 ? `+${change.toFixed(1)}%` : `${change.toFixed(1)}%`;
+  };
+
+  const handleShareReport = async () => {
+    if (!campaignData?.id || !campaignData?.name) {
+      console.error('No campaign data available for sharing');
+      alert('Campaign data is not available for sharing.');
+      return;
+    }
+    
+    console.log('🚀 Starting share report process...');
+    console.log('Campaign data:', { id: campaignData.id, name: campaignData.name });
+    console.log('Analytics data:', analyticsData);
+    
+    setIsSharing(true);
+    
+    try {
+      // Generate a unique share ID
+      const shareId = `${campaignData.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+      
+      console.log('📝 Generated share ID:', shareId);
+      
+      const requestBody = {
+        shareId,
+        campaignId: campaignData.id,
+        campaignName: campaignData.name,
+        analyticsData,
+        createdAt: new Date().toISOString(),
+        expiresAt
+      };
+      
+      console.log('📤 Sending request to API:', requestBody);
+      
+      // Save the shared report data to the API
+      const response = await fetch('/api/shared-reports', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      console.log('📥 API Response status:', response.status);
+      console.log('📥 API Response headers:', Object.fromEntries(response.headers.entries()));
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('❌ API Error:', errorData);
+        throw new Error(errorData.error || 'Failed to create shared report');
+      }
+
+      const result = await response.json();
+      console.log('✅ API Success:', result);
+      
+      const shareUrl = result.data.shareUrl;
+      console.log('🔗 Generated share URL:', shareUrl);
+      
+      // Copy link to clipboard
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        console.log('📋 Successfully copied to clipboard');
+      } catch (clipboardError) {
+        console.warn('⚠️ Clipboard copy failed:', clipboardError);
+      }
+      
+      // Show success notification
+      alert(`Share link created and copied to clipboard!\n\n${shareUrl}\n\nLink expires: ${new Date(expiresAt).toLocaleDateString()}`);
+      
+      // Open the shared report in a new tab
+      window.open(shareUrl, '_blank');
+      
+    } catch (error) {
+      console.error('💥 Error sharing report:', error);
+      alert(`Failed to generate share link: ${error.message}`);
+    } finally {
+      setIsSharing(false);
+    }
   };
 
   const handleExportPDF = async () => {
@@ -523,6 +601,29 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
         </button>
         
         <div className="flex items-center space-x-3">
+          <button
+            onClick={handleShareReport}
+            disabled={isSharing || !campaignData?.id}
+            className="flex items-center px-6 py-2 bg-gradient-to-r from-blue-100 to-blue-200 text-blue-700 rounded-full hover:from-blue-200 hover:to-blue-300 transition-all duration-200 font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSharing ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-blue-700" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Generating...
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+                </svg>
+                Share Report
+              </>
+            )}
+          </button>
+          
           <button
             onClick={handleExportPDF}
             disabled={isExporting}
