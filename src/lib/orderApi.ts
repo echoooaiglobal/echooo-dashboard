@@ -1,7 +1,7 @@
 // src/lib/orderApi.ts
 // Simple API service to connect your existing frontend to the backend
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const API_BASE_URL = process.env.NEXT_PUBLIC_FASTAPI_BASE_URL_DEV || 'http://localhost:8000'
 
 interface BackendOrder {
   id: string
