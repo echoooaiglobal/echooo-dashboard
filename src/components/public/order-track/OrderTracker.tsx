@@ -1,7 +1,7 @@
 'use client'
 
 // src/components/public/order-track/OrderTracker.tsx
-// Updated design - left-aligned search bar with increased width
+// Updated design - reduced left/right margins
 
 import React, { useState } from 'react'
 import SearchSection from './SearchSection'
@@ -86,7 +86,8 @@ export default function OrderTracker() {
     <div className="min-h-screen flex flex-col bg-gray-50">
       
       <main className="flex-1 py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Reduced margins: px-2 on mobile, px-4 on larger screens */}
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6">
           
           {/* Main Heading */}
           <div className="mb-8">
