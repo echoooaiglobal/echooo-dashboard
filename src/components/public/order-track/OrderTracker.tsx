@@ -1,13 +1,14 @@
 'use client'
 
 // src/components/public/order-track/OrderTracker.tsx
+// Updated design - left-aligned search bar with increased width
+
 import React, { useState } from 'react'
 import SearchSection from './SearchSection'
 import ResultsTable from './ResultsTable'
-import HelpSection from './HelpSection'
 import LoadingSection from './LoadingSection'
 import { Order } from './types'
-import { dummyOrders } from './dummyData'
+import { searchOrdersByDiscountCode } from '@/lib/orderApi'
 
 export default function OrderTracker() {
   const [searchQuery, setSearchQuery] = useState('')
@@ -34,9 +35,8 @@ export default function OrderTracker() {
       // Simulate API call delay
       await new Promise(resolve => setTimeout(resolve, 1000))
       
-      const filteredOrders = dummyOrders.filter(
-        order => order.discount_code.toLowerCase() === discountCode.toLowerCase()
-      )
+      // Use real API instead of dummyOrders
+      const filteredOrders = await searchOrdersByDiscountCode(discountCode)
 
       setOrders(filteredOrders)
 
@@ -88,18 +88,18 @@ export default function OrderTracker() {
       <main className="flex-1 py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
-          {/* Centered Main Heading */}
-          <div className="text-center mb-8">
+          {/* Main Heading */}
+          <div className="mb-8">
             <h1 className="text-4xl font-bold text-gray-900 mb-4 sm:text-3xl">
               Track Your Orders
             </h1>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto sm:text-base">
+            <p className="text-lg text-gray-600 max-w-2xl sm:text-base">
               Enter your discount code to view orders
             </p>
           </div>
 
-          {/* Search Section - Top Left */}
-          <div className="flex justify-start mb-8">
+          {/* Search Section - LEFT ALIGNED */}
+          <div className="mb-8">
             <SearchSection
               onSearch={handleSearch}
               onClear={handleClearSearch}
@@ -160,11 +160,6 @@ export default function OrderTracker() {
 
           {/* Loading Section */}
           {hasSearched && isLoading && <LoadingSection />}
-
-          {/* Help Section - Only show when no search has been performed */}
-          {!hasSearched && (
-            <HelpSection onExampleSearch={handleSearch} />
-          )}
         </div>
       </main>
       
