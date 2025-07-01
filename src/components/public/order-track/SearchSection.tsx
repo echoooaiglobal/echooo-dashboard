@@ -1,5 +1,5 @@
 // src/components/public/order-track/SearchSection.tsx
-// Updated with increased input width and responsive design
+// Fixed version without examples dropdown and consistent input width
 
 import React, { useState } from 'react'
 import { SearchSectionProps } from './types'
@@ -7,7 +7,6 @@ import { SearchSectionProps } from './types'
 export default function SearchSection({ onSearch, onClear, isLoading, searchQuery }: SearchSectionProps) {
   const [inputValue, setInputValue] = useState(searchQuery)
   const [validationError, setValidationError] = useState<string | null>(null)
-  const [showExamples, setShowExamples] = useState(false)
 
   const validateDiscountCode = (code: string): string | null => {
     if (!code.trim()) {
@@ -41,7 +40,6 @@ export default function SearchSection({ onSearch, onClear, isLoading, searchQuer
     }
     
     setValidationError(null)
-    setShowExamples(false)
     onSearch(trimmedValue)
   }
 
@@ -54,22 +52,16 @@ export default function SearchSection({ onSearch, onClear, isLoading, searchQuer
   const handleClear = () => {
     setInputValue('')
     setValidationError(null)
-    setShowExamples(false)
     onClear()
   }
 
-  const handleExampleClick = (code: string) => {
-    setInputValue(code)
-    setValidationError(null)
-    setShowExamples(false)
-    onSearch(code)
-  }
-
   return (
-    <div className="relative max-w-2xl">
-      {/* Main Search Form */}
-      <form onSubmit={handleSubmit} className="flex items-center space-x-3">
-        <div className="relative flex-1">
+    <div className="relative w-full max-w-4xl">
+      {/* Main Search Form - Fixed layout */}
+      <div className="flex items-center space-x-3">
+        
+        {/* Input Field Container - Fixed width */}
+        <div className="relative flex-1 min-w-0">
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
             <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.99 1.99 0 013 12V7a4 4 0 014-4z" />
@@ -80,11 +72,6 @@ export default function SearchSection({ onSearch, onClear, isLoading, searchQuer
             type="text"
             value={inputValue}
             onChange={handleInputChange}
-            onFocus={() => setShowExamples(true)}
-            onBlur={() => {
-              // Delay hiding to allow clicking on examples
-              setTimeout(() => setShowExamples(false), 150)
-            }}
             placeholder="Enter discount code (e.g., SAVE20, WELCOME10)..."
             className={`block w-full pl-12 pr-10 py-3 border rounded-lg text-sm bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
               validationError 
@@ -100,19 +87,21 @@ export default function SearchSection({ onSearch, onClear, isLoading, searchQuer
               onClick={handleClear}
               className="absolute inset-y-0 right-0 pr-4 flex items-center hover:bg-gray-50 rounded-r-lg transition-colors"
               disabled={isLoading}
+              title="Clear input"
             >
               <svg className="h-4 w-4 text-gray-400 hover:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           )}
-
         </div>
 
+        {/* Search Button - Fixed width */}
         <button
           type="submit"
+          onClick={handleSubmit}
           disabled={!inputValue.trim() || isLoading || !!validationError}
-          className="inline-flex items-center px-6 py-3 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+          className="flex-shrink-0 inline-flex items-center justify-center px-6 py-3 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap min-w-[120px]"
         >
           {isLoading ? (
             <>
@@ -127,26 +116,28 @@ export default function SearchSection({ onSearch, onClear, isLoading, searchQuer
               <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
-              Search Orders
+              Search
             </>
           )}
         </button>
 
-        {/* Clear Button - Only show when there's an active search */}
-        {(inputValue || searchQuery) && (
-          <button
-            type="button"
-            onClick={handleClear}
-            disabled={isLoading}
-            className="inline-flex items-center px-4 py-3 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
-          >
-            <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-            Clear
-          </button>
-        )}
-      </form>
+        {/* Clear Button - Fixed width container */}
+        <div className="flex-shrink-0 w-[90px]">
+          {(inputValue || searchQuery) && (
+            <button
+              type="button"
+              onClick={handleClear}
+              disabled={isLoading}
+              className="w-full inline-flex items-center justify-center px-4 py-3 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+            >
+              <svg className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Clear
+            </button>
+          )}
+        </div>
+      </div>
 
       {/* Validation Error - Position below the search bar */}
       {validationError && (
