@@ -1,4 +1,6 @@
 // src/services/api/endpoints.ts
+// Updated to include order tracking endpoints
+
 export const ENDPOINTS = {
   AUTH: {
     LOGIN: '/auth/login',
@@ -122,5 +124,21 @@ export const ENDPOINTS = {
     DELETE: (id: string) => `/results/${id}`,
     BY_CAMPAIGN: (campaignId: string) => `/results/campaign/${campaignId}`,
     UPDATE_ALL_BY_CAMPAIGN: (campaignId: string) => `/results/campaign/${campaignId}/update-all`,
+  },
+
+  // 📦 ORDER TRACKING ENDPOINTS - NEW SECTION
+  ORDERS: {
+    // Public endpoints (no authentication required)
+    BY_DISCOUNT_CODE: (discountCode: string) => `/orders/discount/${encodeURIComponent(discountCode)}`,
+    WEBHOOK_SHOPIFY: '/orders/webhooks/shopify',
+    
+    // Protected endpoints (authentication required)
+    LIST: '/orders',
+    DETAIL: (id: string) => `/orders/${id}`,
+    BY_SHOPIFY_ID: (shopifyOrderId: string) => `/orders/shopify/${shopifyOrderId}`,
+    SEARCH: (searchTerm: string) => `/orders/search/${encodeURIComponent(searchTerm)}`,
+    BY_CUSTOMER_EMAIL: (email: string) => `/orders/customer/${encodeURIComponent(email)}`,
+    RECENT_WEEK: '/orders/recent/week',
+    ANALYTICS_STATS: '/orders/analytics/stats',
   },
 };

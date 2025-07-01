@@ -1,6 +1,7 @@
 // src/components/public/order-track/types.ts
 
 export interface Order {
+  quantity: number
   id: number
   shopify_order_id: string
   order_number: string
