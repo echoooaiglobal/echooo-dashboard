@@ -1,4 +1,5 @@
-// src/context/AuthContext.tsx - ENHANCED VERSION with OAuth support
+
+// src/context/AuthContext.tsx - Enhanced with detailed role support
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
@@ -20,11 +21,9 @@ import {
 import { 
   getStoredUser,
   getStoredRoles,
-  getStoredCompany,
   isTokenExpired,
   isTokenExpiringSoon,
-  clearAuthData,
-  validateAuthData 
+  clearAuthData 
 } from '@/services/auth/auth.utils';
 import { 
   isAuthError, 
@@ -45,14 +44,16 @@ interface AuthContextType extends AuthState {
   login: (credentials: LoginCredentials) => Promise<void>;
   logout: () => Promise<void>;
   refreshUserSession: () => Promise<boolean>;
-  loadAuthFromStorage: () => void;
   
+  // Enhanced role checking methods
   getPrimaryRole: () => DetailedRole | null;
   getUserType: () => UserType | null;
   hasRole: (role: DetailedRole) => boolean;
   hasAnyRole: (roles: DetailedRole[]) => boolean;
   checkRoleAccess: () => RoleCheckResult;
   canAccess: (componentName: string, requiredRoles?: DetailedRole[], requiredPermissions?: PermissionCheck[]) => boolean;
+  
+  // Legacy support for existing code
   isUserType: (type: UserType) => boolean;
 }
 
@@ -68,130 +69,102 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [authState, setAuthState] = useState<AuthState>(initialState);
-  const [isClient, setIsClient] = useState(false);
-  const [hasInitialized, setHasInitialized] = useState(false);
   const router = useRouter();
   
+  // Initialize auth state from localStorage on mount
   useEffect(() => {
-    setIsClient(true);
-  }, []);
-  
-  // ENHANCED: loadAuthFromStorage with better logging and OAuth support
-  const loadAuthFromStorage = () => {
-    if (!isClient) {
-      console.log('🚫 AuthContext: Not in client environment, skipping loadAuthFromStorage');
-      return false;
-    }
-    
-    try {
-      console.log('🔄 AuthContext: Loading auth data from localStorage...');
-      
-      const user = getStoredUser();
-      const roles = getStoredRoles();
-      const token = localStorage.getItem('accessToken');
-      
-      console.log('📊 AuthContext: Auth data check:', {
-        hasUser: !!user,
-        hasRoles: !!(roles && roles.length > 0),
-        hasToken: !!token,
-        tokenExpired: isTokenExpired()
-      });
-      
-      if (user && roles && roles.length > 0 && token && !isTokenExpired()) {
-        console.log('✅ AuthContext: Valid auth data found, updating state', {
-          userId: user.id,
-          userType: user.user_type,
-          rolesCount: roles.length,
-          primaryRole: roles[0]?.name
-        });
+    const initializeAuth = async () => {
+      try {
+        const storedToken = localStorage.getItem('accessToken');
         
-        const newAuthState = {
-          user,
-          roles,
-          isAuthenticated: true,
+        if (storedToken) {
+          // Check if token is expired
+          if (isTokenExpired()) {
+            console.log('Found expired token on initialization');
+            // Token is expired, try to refresh
+            const success = await refreshUserSession();
+            if (!success) {
+              // Unable to refresh, ensure auth data is cleared
+              console.log('Token refresh failed during initialization');
+              clearAuthData();
+              setAuthState({
+                user: null,
+                roles: [],
+                isAuthenticated: false,
+                isLoading: false,
+                error: null,
+              });
+            }
+          } else {
+            // Valid token exists
+            const user = getStoredUser();
+            const roles = getStoredRoles();
+            
+            if (user) {
+              setAuthState({
+                user,
+                roles,
+                isAuthenticated: true,
+                isLoading: false,
+                error: null,
+              });
+            } else {
+              // User data missing, clear everything
+              console.log('User data missing despite having token');
+              clearAuthData();
+              setAuthState({
+                user: null,
+                roles: [],
+                isAuthenticated: false,
+                isLoading: false,
+                error: null,
+              });
+            }
+          }
+        } else {
+          // No stored credentials
+          console.log('No stored credentials found');
+          setAuthState(prev => ({ ...prev, isLoading: false }));
+        }
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+        // Clear any invalid auth data
+        clearAuthData();
+        setAuthState({
+          user: null,
+          roles: [],
+          isAuthenticated: false,
           isLoading: false,
-          error: null,
-        };
-        
-        setAuthState(newAuthState);
-        setHasInitialized(true);
-        return true;
+          error: 'Error initializing authentication',
+        });
       }
-      
-      console.log('❌ AuthContext: Invalid or missing auth data, clearing');
-      clearAuthData();
-      setAuthState({
-        user: null,
-        roles: [],
-        isAuthenticated: false,
-        isLoading: false,
-        error: null,
-      });
-      setHasInitialized(true);
-      return false;
-    } catch (error) {
-      console.error('💥 AuthContext: Error loading auth from storage:', error);
-      clearAuthData();
-      setAuthState({
-        user: null,
-        roles: [],
-        isAuthenticated: false,
-        isLoading: false,
-        error: null,
-      });
-      setHasInitialized(true);
-      return false;
-    }
-  };
+    };
   
-  useEffect(() => {
-    if (!isClient) return;
-    
-    console.log('🚀 AuthContext: Initializing auth state...');
-    const success = loadAuthFromStorage();
-    
-    if (!success) {
-      console.log('🔄 AuthContext: No valid auth data on initialization');
-      setHasInitialized(true);
-    }
-    
-    // Listen for storage changes (for multi-tab support)
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'accessToken' || e.key === 'user' || e.key === 'roles') {
-        console.log('🔄 AuthContext: Storage change detected, reloading auth data');
-        loadAuthFromStorage();
-      }
-    };
-    
-    window.addEventListener('storage', handleStorageChange);
-    
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, [isClient]);
+    initializeAuth();
+  }, []);
 
-  // Token refresh interval
+  // Set up token refresh interval
   useEffect(() => {
-    if (!authState.isAuthenticated || !isClient) return;
+    if (!authState.isAuthenticated) return;
     
+    // Check token every minute
     const intervalId = setInterval(async () => {
+      // Refresh if token will expire in less than 5 minutes
       if (isTokenExpiringSoon(5)) {
-        console.log('⏰ AuthContext: Token expiring soon, refreshing...');
         await refreshUserSession();
       }
     }, 60000);
     
     return () => clearInterval(intervalId);
-  }, [authState.isAuthenticated, isClient]);
+  }, [authState.isAuthenticated]);
 
   const handleLogout = async (callApi = true) => {
     try {
-      console.log('🚪 AuthContext: Logging out...');
-      if (callApi && isClient) {
+      if (callApi) {
         await logoutService();
       }
     } catch (error) {
-      console.error('⚠️ AuthContext: Logout API call failed:', error);
+      console.error('Error during logout:', error);
     } finally {
       setAuthState({ 
         user: null, 
@@ -200,23 +173,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isLoading: false, 
         error: null 
       });
-      setHasInitialized(true);
       
-      if (isClient) {
-        clearAuthData();
-        router.push('/login');
-      }
+      router.push('/login');
     }
   };
 
   const login = async (credentials: LoginCredentials): Promise<void> => {
     try {
-      console.log('🔑 AuthContext: Starting login process...');
       setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
       
+      // Call the login service
       const authData = await loginService(credentials);
       
-      console.log('✅ AuthContext: Login successful');
+      // Update auth state only if login was successful
       setAuthState({
         user: authData.user,
         roles: authData.roles,
@@ -224,28 +193,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isLoading: false,
         error: null,
       });
-      setHasInitialized(true);
       
     } catch (error) {
-      console.error('❌ AuthContext: Login failed:', error);
+      // Clear any existing auth data to prevent invalid redirects
+      clearAuthData();
       
-      if (isClient) {
-        clearAuthData();
-      }
-      
+      // Handle different types of auth errors
       let errorMessage: string;
       
       if (isAuthError(error)) {
+        // Use the error message directly from our custom errors
         errorMessage = error.message;
+        
+        // Special handling for different error types if needed
         if (error instanceof AccountInactiveError) {
+          // Maybe add additional context for inactive accounts
           errorMessage = `${error.message}. Please contact your administrator.`;
+        } else if (error instanceof InvalidCredentialsError) {
+          // Keep the standard message for invalid credentials
+          errorMessage = error.message;
         }
       } else if (error instanceof Error) {
+        // Generic Error object
         errorMessage = error.message;
       } else {
+        // Unknown error type
         errorMessage = 'Login failed. Please check your credentials.';
       }
       
+      // Set error state
       setAuthState(prev => ({ 
         ...prev, 
         user: null,
@@ -254,30 +230,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isLoading: false, 
         error: errorMessage
       }));
-      setHasInitialized(true);
       
+      // Re-throw the error so the login form can handle it
       throw error;
     }
   };
 
   const refreshUserSession = async (): Promise<boolean> => {
-    if (!isClient) {
-      console.log('🚫 AuthContext: Not in client environment, cannot refresh');
-      return false;
-    }
-    
     try {
-      console.log('🔄 AuthContext: Refreshing user session...');
       const storedRefreshToken = localStorage.getItem('refreshToken');
       
       if (!storedRefreshToken) {
-        console.log('❌ AuthContext: No refresh token available');
+        console.log('No refresh token available');
         return false;
       }
       
+      // Call the refresh token service
       const authData = await refreshTokenService(storedRefreshToken);
       
-      console.log('✅ AuthContext: Session refreshed successfully');
+      // Update auth state
       setAuthState({
         user: authData.user,
         roles: authData.roles,
@@ -285,13 +256,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isLoading: false,
         error: null,
       });
-      setHasInitialized(true);
       
       return true;
     } catch (error) {
-      console.error('❌ AuthContext: Session refresh failed:', error);
+      // console.error('Token refresh failed:', error);
+      // Clear auth data on failure
       clearAuthData();
       
+      // Update auth state
       setAuthState({
         user: null,
         roles: [],
@@ -299,43 +271,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isLoading: false,
         error: 'Your session has expired. Please log in again.',
       });
-      setHasInitialized(true);
       
       return false;
     }
   };
 
-  // Role checking methods
+  // Enhanced role checking methods
   const getPrimaryRoleMethod = (): DetailedRole | null => {
-    if (!isClient || !hasInitialized) return null;
     return getPrimaryRole(authState.roles);
   };
 
   const getUserTypeMethod = (): UserType | null => {
-    if (!isClient || !hasInitialized) return null;
     const primaryRole = getPrimaryRole(authState.roles);
     return primaryRole ? getUserTypeFromRole(primaryRole) : null;
   };
 
   const hasRoleMethod = (role: DetailedRole): boolean => {
-    if (!isClient || !hasInitialized) return false;
     return hasDetailedRole(authState.roles, role);
   };
 
   const hasAnyRoleMethod = (roles: DetailedRole[]): boolean => {
-    if (!isClient || !hasInitialized) return false;
     return hasAnyDetailedRole(authState.roles, roles);
   };
 
   const checkRoleAccessMethod = (): RoleCheckResult => {
-    if (!isClient || !hasInitialized) {
-      return {
-        hasRole: false,
-        userType: null,
-        detailedRole: null,
-        dashboardRoute: '/login'
-      };
-    }
     return checkRoleAccess(authState.user, authState.roles);
   };
 
@@ -344,34 +303,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     requiredRoles?: DetailedRole[], 
     requiredPermissions?: PermissionCheck[]
   ): boolean => {
-    if (!isClient || !hasInitialized) return false;
     return canAccessComponent(authState.roles, componentName, requiredRoles, requiredPermissions);
   };
 
+  // Legacy support method
   const isUserTypeMethod = (type: UserType): boolean => {
-    if (!isClient || !hasInitialized) return false;
     const userType = getUserTypeMethod();
     return userType === type;
   };
 
-  // ENHANCED: Better state management for SSR/hydration
-  const safeAuthState = isClient && hasInitialized ? authState : {
-    ...initialState,
-    isLoading: !hasInitialized
-  };
-
   const value = {
-    ...safeAuthState,
+    ...authState,
     login,
     logout: () => handleLogout(true),
     refreshUserSession,
-    loadAuthFromStorage, // This is the key method for OAuth callback
+    
+    // Enhanced role methods
     getPrimaryRole: getPrimaryRoleMethod,
     getUserType: getUserTypeMethod,
     hasRole: hasRoleMethod,
     hasAnyRole: hasAnyRoleMethod,
     checkRoleAccess: checkRoleAccessMethod,
     canAccess: canAccessMethod,
+    
+    // Legacy support
     isUserType: isUserTypeMethod,
   };
 

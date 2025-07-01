@@ -1,9 +1,9 @@
-// src/services/auth/auth.utils.ts - HYDRATION-SAFE VERSION
+
+// src/services/auth/auth.utils.ts
 import { User, Role, Company, DetailedRole } from '@/types/auth';
 
 /**
  * Safely access localStorage (handles SSR and browser cases)
- * HYDRATION FIX: Always check window availability and handle gracefully
  */
 const safeLocalStorage = {
   getItem: (key: string): string | null => {
@@ -35,7 +35,6 @@ const safeLocalStorage = {
 
 /**
  * Get the stored auth token
- * HYDRATION FIX: Returns null during SSR
  */
 export const getAuthToken = (): string | null => {
   return safeLocalStorage.getItem('accessToken');
@@ -52,8 +51,6 @@ export const storeAuthData = (
   roles: Role[],
   company?: Company[]  
 ): void => {
-  if (typeof window === 'undefined') return; // HYDRATION FIX
-  
   const expiryTime = Date.now() + expiresIn * 1000;
 
   safeLocalStorage.setItem('accessToken', accessToken);
@@ -75,28 +72,24 @@ export const storeAuthData = (
 
 /**
  * Clears all auth data from local storage
- * HYDRATION FIX: Safe during SSR
  */
 export const clearAuthData = () => {
   if (typeof window === 'undefined') return;
   
-  safeLocalStorage.removeItem('user');
-  safeLocalStorage.removeItem('roles');
-  safeLocalStorage.removeItem('accessToken');
-  safeLocalStorage.removeItem('refreshToken');
-  safeLocalStorage.removeItem('tokenExpiry');
-  safeLocalStorage.removeItem('company');
-  safeLocalStorage.removeItem('primaryRole');
-  safeLocalStorage.removeItem('userType');
+  localStorage.removeItem('user');
+  localStorage.removeItem('roles');
+  localStorage.removeItem('accessToken');
+  localStorage.removeItem('refreshToken');
+  localStorage.removeItem('tokenExpiry');
+  localStorage.removeItem('company');
+  localStorage.removeItem('primaryRole');
+  localStorage.removeItem('userType');
 };
 
 /**
  * Check if the auth token is expired
- * HYDRATION FIX: Returns true during SSR to be safe
  */
 export const isTokenExpired = (): boolean => {
-  if (typeof window === 'undefined') return true; // HYDRATION FIX: Safe default during SSR
-  
   const expiry = safeLocalStorage.getItem('tokenExpiry');
   if (!expiry) return true;
   
@@ -112,11 +105,10 @@ export const isTokenExpired = (): boolean => {
 
 /**
  * Checks if the token will expire soon
- * HYDRATION FIX: Returns true during SSR to be safe
  * @param minutesThreshold Number of minutes before expiry to consider "soon"
  */
 export const isTokenExpiringSoon = (minutesThreshold: number = 5): boolean => {
-  if (typeof window === 'undefined') return true; // HYDRATION FIX: Safe default during SSR
+  if (typeof window === 'undefined') return true;
   
   const expiry = localStorage.getItem('tokenExpiry');
   if (!expiry) return true;
@@ -129,12 +121,11 @@ export const isTokenExpiringSoon = (minutesThreshold: number = 5): boolean => {
 
 /**
  * Get the stored user data
- * HYDRATION FIX: Returns null during SSR
  */
 export const getStoredUser = (): User | null => {
   const userData = safeLocalStorage.getItem('user');
   if (!userData) return null;
-  if (userData === 'undefined') return null; // Handle case where userData is 'undefined' string
+  if(userData === 'undefined') return null; // Handle case where userData is 'undefined' string
   
   try {
     return JSON.parse(userData);
@@ -146,12 +137,11 @@ export const getStoredUser = (): User | null => {
 
 /**
  * Get the stored company data
- * HYDRATION FIX: Returns null during SSR
  */
 export const getStoredCompany = (): Company | null => {
   const companyData = safeLocalStorage.getItem('company');
   if (!companyData) return null;
-  if (companyData === 'undefined') return null; // Handle case where companyData is 'undefined' string
+  if(companyData === 'undefined') return null; // Handle case where companyData is 'undefined' string
   
   try {
     const parsed = JSON.parse(companyData);
@@ -165,10 +155,9 @@ export const getStoredCompany = (): Company | null => {
 
 /**
  * Gets the stored roles from local storage
- * HYDRATION FIX: Returns empty array during SSR
  */
 export const getStoredRoles = (): Role[] => {
-  if (typeof window === 'undefined') return []; // HYDRATION FIX: Safe default during SSR
+  if (typeof window === 'undefined') return [];
   
   const rolesString = localStorage.getItem('roles');
   if (!rolesString) return [];
@@ -185,7 +174,6 @@ export const getStoredRoles = (): Role[] => {
 
 /**
  * Get the primary role from localStorage (quick access)
- * HYDRATION FIX: Returns null during SSR
  */
 export const getStoredPrimaryRole = (): DetailedRole | null => {
   const primaryRole = safeLocalStorage.getItem('primaryRole');
@@ -194,7 +182,6 @@ export const getStoredPrimaryRole = (): DetailedRole | null => {
 
 /**
  * Get the user type from localStorage (quick access)
- * HYDRATION FIX: Returns null during SSR
  */
 export const getStoredUserType = (): 'platform' | 'company' | 'influencer' | null => {
   const userType = safeLocalStorage.getItem('userType');
@@ -213,7 +200,6 @@ export const getUserTypeFromRole = (detailedRole: DetailedRole): 'platform' | 'c
 
 /**
  * Check if the user has a specific role (legacy support)
- * HYDRATION FIX: Returns false during SSR
  */
 export const hasRole = (roleName: string): boolean => {
   const roles = getStoredRoles();
@@ -222,7 +208,6 @@ export const hasRole = (roleName: string): boolean => {
 
 /**
  * Check if the user has a specific detailed role
- * HYDRATION FIX: Returns false during SSR
  */
 export const hasDetailedRole = (roleName: DetailedRole): boolean => {
   const roles = getStoredRoles();
@@ -231,12 +216,9 @@ export const hasDetailedRole = (roleName: DetailedRole): boolean => {
 
 /**
  * Checks if the user has any of the specified roles
- * HYDRATION FIX: Returns false during SSR
  * @param requiredRoles Array of detailed role names to check
  */
 export const hasAnyRole = (requiredRoles: DetailedRole[]): boolean => {
-  if (typeof window === 'undefined') return false; // HYDRATION FIX
-  
   const roles = getStoredRoles();
   if (!roles.length) return false;
   
@@ -246,12 +228,9 @@ export const hasAnyRole = (requiredRoles: DetailedRole[]): boolean => {
 
 /**
  * Checks if the user has any of the specified detailed roles
- * HYDRATION FIX: Returns false during SSR
  * @param requiredRoles Array of detailed role names to check
  */
 export const hasAnyDetailedRole = (requiredRoles: DetailedRole[]): boolean => {
-  if (typeof window === 'undefined') return false; // HYDRATION FIX
-  
   const roles = getStoredRoles();
   if (!roles.length) return false;
   
@@ -261,7 +240,6 @@ export const hasAnyDetailedRole = (requiredRoles: DetailedRole[]): boolean => {
 
 /**
  * Check if user is platform admin (highest level)
- * HYDRATION FIX: Returns false during SSR
  */
 export const isPlatformAdmin = (): boolean => {
   return hasDetailedRole('platform_admin');
@@ -269,7 +247,6 @@ export const isPlatformAdmin = (): boolean => {
 
 /**
  * Check if user is platform agent
- * HYDRATION FIX: Returns false during SSR
  */
 export const isPlatformAgent = (): boolean => {
   return hasDetailedRole('platform_agent');
@@ -277,7 +254,6 @@ export const isPlatformAgent = (): boolean => {
 
 /**
  * Check if user is company admin
- * HYDRATION FIX: Returns false during SSR
  */
 export const isCompanyAdmin = (): boolean => {
   return hasDetailedRole('company_admin');
@@ -285,44 +261,32 @@ export const isCompanyAdmin = (): boolean => {
 
 /**
  * Check if user has platform-level access
- * HYDRATION FIX: Returns false during SSR
  */
 export const hasPlatformAccess = (): boolean => {
-  if (typeof window === 'undefined') return false; // HYDRATION FIX
-  
   const primaryRole = getStoredPrimaryRole();
   return primaryRole ? primaryRole.startsWith('platform_') : false;
 };
 
 /**
  * Check if user has company-level access
- * HYDRATION FIX: Returns false during SSR
  */
 export const hasCompanyAccess = (): boolean => {
-  if (typeof window === 'undefined') return false; // HYDRATION FIX
-  
   const primaryRole = getStoredPrimaryRole();
   return primaryRole ? primaryRole.startsWith('company_') : false;
 };
 
 /**
  * Check if user has influencer-level access
- * HYDRATION FIX: Returns false during SSR
  */
 export const hasInfluencerAccess = (): boolean => {
-  if (typeof window === 'undefined') return false; // HYDRATION FIX
-  
   const primaryRole = getStoredPrimaryRole();
   return primaryRole ? primaryRole.startsWith('influencer') : false;
 };
 
 /**
  * Get role hierarchy level for permission checking
- * HYDRATION FIX: Returns 0 during SSR
  */
 export const getRoleHierarchyLevel = (): number => {
-  if (typeof window === 'undefined') return 0; // HYDRATION FIX
-  
   const primaryRole = getStoredPrimaryRole();
   if (!primaryRole) return 0;
 
@@ -355,11 +319,8 @@ export const getRoleHierarchyLevel = (): number => {
 
 /**
  * Check if current user has higher hierarchy than target role
- * HYDRATION FIX: Returns false during SSR
  */
 export const hasHigherHierarchyThan = (targetRole: DetailedRole): boolean => {
-  if (typeof window === 'undefined') return false; // HYDRATION FIX
-  
   const currentLevel = getRoleHierarchyLevel();
   const targetHierarchyMap: Record<DetailedRole, number> = {
     // Platform hierarchy
@@ -391,11 +352,8 @@ export const hasHigherHierarchyThan = (targetRole: DetailedRole): boolean => {
 
 /**
  * Get appropriate dashboard route based on stored role
- * HYDRATION FIX: Returns safe default during SSR
  */
 export const getDashboardRoute = (): string => {
-  if (typeof window === 'undefined') return '/login'; // HYDRATION FIX: Safe default during SSR
-  
   const userType = getStoredUserType();
   const primaryRole = getStoredPrimaryRole();
   
@@ -424,11 +382,8 @@ export const setAuthData = (
 
 /**
  * Validate stored auth data integrity
- * HYDRATION FIX: Returns false during SSR
  */
 export const validateAuthData = (): boolean => {
-  if (typeof window === 'undefined') return false; // HYDRATION FIX: Safe default during SSR
-  
   const user = getStoredUser();
   const roles = getStoredRoles();
   const token = getAuthToken();
@@ -465,7 +420,6 @@ export const validateAuthData = (): boolean => {
 
 /**
  * Initialize auth state on app startup
- * HYDRATION FIX: Returns safe defaults during SSR
  */
 export const initializeAuthState = (): {
   isAuthenticated: boolean;
@@ -474,17 +428,6 @@ export const initializeAuthState = (): {
   primaryRole: DetailedRole | null;
   userType: 'platform' | 'company' | 'influencer' | null;
 } => {
-  if (typeof window === 'undefined') {
-    // HYDRATION FIX: Return safe defaults during SSR
-    return {
-      isAuthenticated: false,
-      user: null,
-      roles: [],
-      primaryRole: null,
-      userType: null
-    };
-  }
-  
   const isValid = validateAuthData();
   
   if (!isValid) {
@@ -508,10 +451,9 @@ export const initializeAuthState = (): {
 
 /**
  * Debug function to log current auth state (development only)
- * HYDRATION FIX: Safe during SSR
  */
 export const debugAuthState = () => {
-  if (process.env.NODE_ENV !== 'development' || typeof window === 'undefined') return;
+  if (process.env.NODE_ENV !== 'development') return;
   
   console.group('🔐 Auth State Debug');
   console.log('User:', getStoredUser());
