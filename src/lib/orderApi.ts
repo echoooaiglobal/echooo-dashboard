@@ -87,7 +87,7 @@ export async function searchOrdersByDiscountCode(discountCode: string): Promise<
     console.log('🔍 Searching for discount code:', discountCode)
     
     const response = await fetch(
-      `${API_BASE_URL}/api/v0/orders/discount/${encodeURIComponent(discountCode)}`,
+      `${API_BASE_URL}/v0/orders/discount/${encodeURIComponent(discountCode)}`,
       {
         method: 'GET',
         headers: {
