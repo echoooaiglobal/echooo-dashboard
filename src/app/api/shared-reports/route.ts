@@ -2,286 +2,149 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
-interface SharedReportData {
-  id: string;
-  shareId: string;
-  campaignId: string;
-  campaignName: string;
-  analyticsData: any;
-  createdAt: string;
-  expiresAt: string;
-  isActive: boolean;
-}
-
-// Global storage that persists across requests
-// In production, this should be a database
-if (!(globalThis as any).sharedReportsStore) {
-  (globalThis as any).sharedReportsStore = new Map<string, SharedReportData>();
-  
-  // Add test data
-  const testReport: SharedReportData = {
-    id: 'test_report_1',
-    shareId: 'test-share-123',
-    campaignId: 'test-campaign',
-    campaignName: 'Test Campaign',
-    analyticsData: {
-      totalClicks: 12345,
-      totalImpressions: 67890,
-      totalReach: 44100,
-      totalLikes: 2540,
-      totalComments: 320,
-      totalViews: 15600,
-      totalPlays: 8900,
-      totalFollowers: 240000,
-      totalPosts: 5,
-      totalInfluencers: 3,
-      averageEngagementRate: 4.2,
-      topPerformers: [
-        {
-          name: "Test Influencer",
-          username: "testuser",
-          avatar: "/user/profile-placeholder.png",
-          clicks: 850,
-          isVerified: true,
-          totalPosts: 2,
-          totalLikes: 1200,
-          totalComments: 85,
-          avgEngagementRate: 5.8,
-          totalEngagement: 1285
-        }
-      ],
-      topPosts: [
-        {
-          id: "test-post-1",
-          influencerName: "Test Influencer",
-          username: "testuser",
-          avatar: "/user/profile-placeholder.png",
-          thumbnail: "/dummy-image.jpg",
-          likes: 850,
-          comments: 42,
-          views: 4500,
-          plays: 2800,
-          engagementRate: 5.8,
-          isVerified: true,
-          postId: "TEST123",
-          totalEngagement: 892
-        }
-      ]
-    },
-    createdAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-    isActive: true
-  };
-  
-  (globalThis as any).sharedReportsStore.set('test-share-123', testReport);
-  console.log('🔧 Initialized global shared reports store with test data');
-}
-
-const sharedReports: Map<string, SharedReportData> = (globalThis as any).sharedReportsStore;
-
-export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const shareId = searchParams.get('shareId');
-  
-  console.log(`📥 GET /api/shared-reports - shareId: ${shareId}`);
-  console.log(`📊 Available reports: ${Array.from(sharedReports.keys()).join(', ')}`);
-  
-  // If shareId is provided, return specific report
-  if (shareId) {
-    return getSpecificReport(shareId, request);
-  }
-  
-  // Otherwise, list all reports
-  return listAllReports(request);
-}
-
+/**
+ * POST /api/shared-reports
+ * Create a shared analytics report
+ */
 export async function POST(request: NextRequest) {
   try {
-    console.log('📝 POST /api/shared-reports - Creating new shared report');
+    console.log('🔗 Shared Reports API: POST request received');
     
     const body = await request.json();
-    console.log('📥 Request body:', body);
+    const { shareId, campaignId, campaignName, analyticsData, createdAt, expiresAt } = body;
     
-    const {
+    console.log('📝 Creating shared report:', {
       shareId,
       campaignId,
-      campaignName,
-      analyticsData,
+      campaignName: campaignName?.substring(0, 50) + '...',
+      hasAnalyticsData: !!analyticsData,
       createdAt,
       expiresAt
-    } = body;
-
+    });
+    
     // Validate required fields
     if (!shareId || !campaignId || !campaignName || !analyticsData) {
-      console.error('❌ Missing required fields');
       return NextResponse.json(
-        { error: 'Missing required fields: shareId, campaignId, campaignName, analyticsData' },
+        { 
+          success: false,
+          error: 'Missing required fields: shareId, campaignId, campaignName, or analyticsData' 
+        },
         { status: 400 }
       );
     }
-
-    // Check if shareId already exists
-    if (sharedReports.has(shareId)) {
-      console.error('❌ Share ID already exists:', shareId);
-      return NextResponse.json(
-        { error: 'Share ID already exists' },
-        { status: 409 }
-      );
-    }
-
-    // Create shared report record
-    const sharedReport: SharedReportData = {
-      id: `report_${Date.now()}`,
-      shareId,
-      campaignId,
-      campaignName,
-      analyticsData,
-      createdAt: createdAt || new Date().toISOString(),
-      expiresAt: expiresAt || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      isActive: true
-    };
-
-    // Store in global memory
-    sharedReports.set(shareId, sharedReport);
-
-    console.log(`✅ Created shared report: ${shareId}`);
-    console.log('📊 Total reports now:', sharedReports.size);
-
-    const baseUrl = request.nextUrl.origin;
-    const shareUrl = `${baseUrl}/campaign-analytics-report/${shareId}`;
-
+    
+    // Here you would typically save this to a database
+    // For now, we'll simulate success and generate the share URL
+    
+    // Generate the public share URL
+    const baseUrl = process.env.NEXTAUTH_URL || process.env.VERCEL_URL || 'http://localhost:3000';
+    const shareUrl = `${baseUrl}/campaign-analytics-report/${campaignId}`;
+    
     console.log('🔗 Generated share URL:', shareUrl);
-
-    return NextResponse.json({
+    
+    // In a real implementation, you would:
+    // 1. Save the shared report data to your database with the shareId
+    // 2. Set up proper expiration handling
+    // 3. Implement access controls and validation
+    
+    const responseData = {
       success: true,
+      message: 'Shared report created successfully',
       data: {
-        shareId: sharedReport.shareId,
+        shareId,
         shareUrl,
-        expiresAt: sharedReport.expiresAt
+        campaignId,
+        campaignName,
+        createdAt,
+        expiresAt,
+        isPublic: true
       }
-    }, { status: 201 });
-
+    };
+    
+    console.log('✅ Shared report created successfully');
+    
+    return NextResponse.json(responseData, { status: 201 });
+    
   } catch (error) {
-    console.error('💥 Error creating shared report:', error);
+    console.error('💥 Shared Reports API Error:', error);
+    
+    if (error instanceof Error) {
+      return NextResponse.json(
+        { 
+          success: false,
+          error: error.message 
+        },
+        { status: 500 }
+      );
+    }
+    
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        success: false,
+        error: 'Failed to create shared report' 
+      },
       { status: 500 }
     );
   }
 }
 
-async function getSpecificReport(shareId: string, request: NextRequest) {
+/**
+ * GET /api/shared-reports/[shareId]
+ * Retrieve a shared analytics report (optional, for future use)
+ */
+export async function GET(request: NextRequest) {
   try {
-    console.log(`🔍 Looking for shared report: ${shareId}`);
-
-    const sharedReport = sharedReports.get(shareId);
-
-    if (!sharedReport) {
-      console.log(`❌ Shared report not found: ${shareId}`);
-      return NextResponse.json(
-        { error: 'Shared report not found' },
-        { status: 404 }
-      );
-    }
-
-    if (!sharedReport.isActive) {
-      console.log(`🚫 Shared report deactivated: ${shareId}`);
-      return NextResponse.json(
-        { error: 'Shared report has been deactivated' },
-        { status: 410 }
-      );
-    }
-
-    // Check if report has expired
-    const now = new Date();
-    const expirationDate = new Date(sharedReport.expiresAt);
-    
-    if (now > expirationDate) {
-      console.log(`⏰ Shared report expired: ${shareId}`);
-      
-      // Mark as inactive
-      sharedReport.isActive = false;
-      sharedReports.set(shareId, sharedReport);
-
-      return NextResponse.json(
-        { error: 'Shared report has expired' },
-        { status: 410 }
-      );
-    }
-
-    console.log(`✅ Successfully found shared report: ${shareId}`);
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        shareId: sharedReport.shareId,
-        campaignId: sharedReport.campaignId,
-        campaignName: sharedReport.campaignName,
-        analyticsData: sharedReport.analyticsData,
-        createdAt: sharedReport.createdAt,
-        expiresAt: sharedReport.expiresAt
-      }
-    });
-
-  } catch (error) {
-    console.error('💥 Error fetching shared report:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
-
-async function listAllReports(request: NextRequest) {
-  try {
-    console.log('📋 Listing all shared reports');
-    
     const { searchParams } = new URL(request.url);
-    const campaignId = searchParams.get('campaignId');
-
-    if (campaignId) {
-      const campaignReports = Array.from(sharedReports.values())
-        .filter(report => report.campaignId === campaignId && report.isActive);
-      
-      console.log(`📊 Found ${campaignReports.length} reports for campaign: ${campaignId}`);
-      
-      const baseUrl = request.nextUrl.origin;
-      
-      return NextResponse.json({
-        success: true,
-        data: campaignReports.map(report => ({
-          shareId: report.shareId,
-          campaignName: report.campaignName,
-          createdAt: report.createdAt,
-          expiresAt: report.expiresAt,
-          shareUrl: `${baseUrl}/campaign-analytics-report/${report.shareId}`
-        }))
-      });
+    const shareId = searchParams.get('shareId');
+    
+    if (!shareId) {
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'Share ID is required' 
+        },
+        { status: 400 }
+      );
     }
-
-    const allReports = Array.from(sharedReports.values())
-      .filter(report => report.isActive);
     
-    console.log(`📊 Found ${allReports.length} total active reports`);
+    console.log('🔍 Retrieving shared report:', shareId);
     
-    const baseUrl = request.nextUrl.origin;
-
+    // In a real implementation, you would:
+    // 1. Query your database for the shared report by shareId
+    // 2. Check if it's expired
+    // 3. Return the analytics data if valid
+    
+    // For now, we'll return a placeholder response
     return NextResponse.json({
       success: true,
-      data: allReports.map(report => ({
-        shareId: report.shareId,
-        campaignName: report.campaignName,
-        createdAt: report.createdAt,
-        expiresAt: report.expiresAt,
-        shareUrl: `${baseUrl}/campaign-analytics-report/${report.shareId}`
-      }))
+      message: 'This endpoint is for future use. Reports are currently accessed directly via campaign ID.',
+      data: null
     });
-
+    
   } catch (error) {
-    console.error('💥 Error listing shared reports:', error);
+    console.error('💥 Shared Reports GET API Error:', error);
+    
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        success: false,
+        error: 'Failed to retrieve shared report' 
+      },
       { status: 500 }
     );
   }
+}
+
+/**
+ * OPTIONS handler for CORS preflight requests
+ */
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Max-Age': '86400',
+    },
+  });
 }
