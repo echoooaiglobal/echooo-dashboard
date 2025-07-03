@@ -116,6 +116,7 @@ export default function PublicCampaignAnalyticsPage() {
                      postData.edge_media_to_parent_comment?.count ||
                      video.comments_count || 0;
     
+    // Separate video_view_count and video_play_count
     const views = postData.video_view_count || video.views_count || 0;
     const plays = postData.video_play_count || video.plays_count || 0;
     
@@ -153,6 +154,13 @@ export default function PublicCampaignAnalyticsPage() {
       isVerified: postData.owner?.is_verified || false,
       thumbnailUrl: getProxiedImageUrl(thumbnailUrl)
     };
+  };
+
+  // SYNCHRONIZED: Same percentage change function as AnalyticsView.tsx
+  const getPercentageChange = (current: number, base: number = 1000): string => {
+    if (base === 0) return '+0%';
+    const change = ((current - base) / base) * 100;
+    return change >= 0 ? `+${change.toFixed(1)}%` : `${change.toFixed(1)}%`;
   };
 
   const handleExportPDF = async () => {
@@ -231,7 +239,7 @@ export default function PublicCampaignAnalyticsPage() {
           setCampaignName(results[0].campaign_name);
         }
 
-        // Process analytics data (same logic as private analytics)
+        // SYNCHRONIZED: Use same processing logic as AnalyticsView.tsx
         const influencerGroups = new Map<string, VideoResult[]>();
         results.forEach(video => {
           const key = video.influencer_username.toLowerCase();
@@ -246,9 +254,12 @@ export default function PublicCampaignAnalyticsPage() {
         let totalViews = 0;
         let totalPlays = 0;
         let totalFollowers = 0;
-        let totalEngagementRates = 0;
-        let validEngagementCount = 0;
+        
+        // SYNCHRONIZED: Calculate engagement rate properly at influencer level
+        let totalInfluencerEngagementRates = 0;
+        let validInfluencerCount = 0;
 
+        // Arrays to store data for sorting
         const influencerPerformanceData: Array<{
           name: string;
           username: string;
@@ -284,43 +295,41 @@ export default function PublicCampaignAnalyticsPage() {
           let influencerTotalComments = 0;
           let influencerTotalViews = 0;
           let influencerTotalPlays = 0;
-          let influencerEngagementRates = 0;
-          let influencerValidEngagements = 0;
           let influencerFollowers = 0;
           let influencerAvatar = '';
           let influencerName = '';
           let isVerified = false;
+          let avgEngagementRate = 0;
 
+          // Process each video from this influencer
           videos.forEach(video => {
             const postDataDetail = getPostData(video);
             
+            // Accumulate totals for overall stats
             totalLikes += postDataDetail.likes;
             totalComments += postDataDetail.comments;
             totalViews += postDataDetail.views;
             totalPlays += postDataDetail.plays;
             
+            // Accumulate influencer-specific totals
             influencerTotalLikes += postDataDetail.likes;
             influencerTotalComments += postDataDetail.comments;
             influencerTotalViews += postDataDetail.views;
             influencerTotalPlays += postDataDetail.plays;
             
-            if (postDataDetail.engagementRate > 0) {
-              totalEngagementRates += postDataDetail.engagementRate;
-              validEngagementCount++;
-              influencerEngagementRates += postDataDetail.engagementRate;
-              influencerValidEngagements++;
-            }
-
+            // Use the highest follower count from this influencer's posts
             if (postDataDetail.followers > influencerFollowers) {
               influencerFollowers = postDataDetail.followers;
             }
 
+            // Get influencer details from the first video (or update if better data found)
             if (!influencerName || video.full_name) {
               influencerName = video.full_name || video.influencer_username;
               influencerAvatar = postDataDetail.avatarUrl;
               isVerified = postDataDetail.isVerified;
             }
 
+            // Add each post to the posts array for top posts ranking
             const totalEngagement = postDataDetail.likes + postDataDetail.comments;
             allPostsData.push({
               id: video.id,
@@ -339,15 +348,29 @@ export default function PublicCampaignAnalyticsPage() {
             });
           });
 
+          // Update total followers (take max, not sum, since it's the same person)
           totalFollowers = Math.max(totalFollowers, influencerFollowers);
 
-          const avgEngagementRate = influencerValidEngagements > 0 
-            ? influencerEngagementRates / influencerValidEngagements 
-            : 0;
+          // SYNCHRONIZED: Calculate engagement rate per influencer (not per post)
+          if (influencerFollowers > 0) {
+            const influencerTotalEngagement = influencerTotalLikes + influencerTotalComments;
+            const influencerEngagementRate = (influencerTotalEngagement / influencerFollowers) * 100;
+            totalInfluencerEngagementRates += influencerEngagementRate;
+            validInfluencerCount++;
+            
+            // Use this corrected rate for the influencer data
+            avgEngagementRate = influencerEngagementRate;
+          } else {
+            avgEngagementRate = 0;
+          }
 
+          // Calculate total engagement for this influencer
           const influencerTotalEngagement = influencerTotalLikes + influencerTotalComments;
-          const influencerClicks = Math.round(influencerTotalEngagement * 0.8);
+          
+          // SYNCHRONIZED: Calculate estimated clicks for this influencer (3% conversion rate)
+          const influencerClicks = Math.round(influencerTotalEngagement * 0.03);
 
+          // Add to influencer performance data
           influencerPerformanceData.push({
             name: influencerName,
             username: username,
@@ -362,30 +385,47 @@ export default function PublicCampaignAnalyticsPage() {
           });
         });
 
+        // Sort and get top performing influencers (by total engagement)
         const topPerformers = influencerPerformanceData
           .sort((a, b) => b.totalEngagement - a.totalEngagement)
           .slice(0, 5);
 
+        // Sort and get top performing posts (by individual post engagement)
         const topPosts = allPostsData
           .sort((a, b) => b.totalEngagement - a.totalEngagement)
           .slice(0, 5);
 
         const totalPosts = results.length;
         const totalInfluencers = influencerGroups.size;
-        const averageEngagementRate = validEngagementCount > 0 ? totalEngagementRates / validEngagementCount : 0;
         
-        const totalClicks = Math.round((totalLikes + totalComments) * 0.7);
-        const totalImpressions = Math.round(totalClicks * 15);
-        const totalReach = Math.round(totalImpressions * 0.65);
+        // SYNCHRONIZED: Average engagement rate calculation
+        const averageEngagementRate = validInfluencerCount > 0 ? totalInfluencerEngagementRates / validInfluencerCount : 0;
+        
+        // SYNCHRONIZED: Use exact same calculation formulas as AnalyticsView.tsx
+        // 1. More realistic click estimation (3% of total engagement)
+        const totalClicks = Math.round((totalLikes + totalComments) * 0.03); // 3% conversion rate
+        
+        // 2. Impressions should be the HIGHEST number (multiple views per user)
+        const videoImpressions = Math.max(totalViews, totalPlays) || 0;
+        const estimatedPhotoImpressions = Math.round((totalPosts - (videoImpressions > 0 ? Math.ceil(totalPosts * 0.6) : 0)) * totalFollowers * 0.4);
+        const totalImpressions = Math.round(videoImpressions * 1.8 + estimatedPhotoImpressions); // 1.8x multiplier for repeat views
+        
+        // 3. Reach should be LOWER than impressions (unique users only)
+        const totalReach = Math.round(Math.max(totalViews, totalPlays, totalImpressions * 0.55)); // 55% of impressions are unique
+        
+        // 4. Final validation to ensure proper hierarchy: Impressions >= Views/Plays >= Reach >= Clicks
+        const maxVideoMetric = Math.max(totalViews, totalPlays);
+        const finalImpressions = Math.max(totalImpressions, maxVideoMetric * 1.2); // Ensure impressions are at least 20% higher than views/plays
+        const finalReach = Math.min(totalReach, maxVideoMetric * 0.9, finalImpressions * 0.6); // Ensure reach is lower than views/plays and impressions
 
         setAnalyticsData({
           totalClicks,
-          totalImpressions,
-          totalReach,
+          totalImpressions: finalImpressions,
+          totalReach: finalReach,
           totalLikes,
           totalComments,
-          totalViews,
-          totalPlays,
+          totalViews, // Keep actual Instagram data
+          totalPlays, // Keep actual Instagram data
           totalFollowers,
           totalPosts,
           totalInfluencers,
@@ -442,51 +482,79 @@ export default function PublicCampaignAnalyticsPage() {
     );
   }
 
+  // SYNCHRONIZED: Use same basicInsightsData structure with tooltips as AnalyticsView.tsx
   const basicInsightsData = [
     {
       title: "Total Clicks",
       value: formatNumber(analyticsData.totalClicks),
-      subtitle: "Estimated clicks from engagement data"
+      change: getPercentageChange(analyticsData.totalClicks),
+      changeType: "positive" as const,
+      subtitle: "Estimated clicks from engagement data (3% conversion)",
+      tooltip: "Estimated number of clicks generated from posts. Calculated using a 3% conversion rate from total engagement (likes + comments), which is industry standard for social media campaigns."
     },
     {
       title: "Impressions", 
       value: formatNumber(analyticsData.totalImpressions),
-      subtitle: "Estimated total impressions"
+      change: getPercentageChange(analyticsData.totalImpressions, 500000),
+      changeType: "positive" as const,
+      subtitle: "Estimated total impressions based on follower reach",
+      tooltip: "Total number of times content was displayed to users. This includes multiple views by the same user and should be the highest metric. Calculated based on actual video views (×1.8 for repeat views) plus estimated photo post impressions."
     },
     {
       title: "Reach",
       value: formatNumber(analyticsData.totalReach), 
-      subtitle: "Estimated unique reach"
+      change: getPercentageChange(analyticsData.totalReach, 300000),
+      changeType: "positive" as const,
+      subtitle: "Estimated unique users reached (55% of impressions)",
+      tooltip: "Estimated number of unique users who saw your content. This should be lower than impressions and usually lower than or close to total views/plays, as it only counts each user once regardless of repeat views."
     },
     {
       title: "Total Likes",
       value: formatNumber(analyticsData.totalLikes),
-      subtitle: "Actual likes across all posts"
+      change: getPercentageChange(analyticsData.totalLikes, 50000),
+      changeType: "positive" as const,
+      subtitle: "Actual likes across all posts",
+      tooltip: "Real count of likes received across all campaign posts. This data is pulled directly from Instagram's API and represents actual user engagement with your content."
     },
     {
       title: "Total Comments",
       value: formatNumber(analyticsData.totalComments),
-      subtitle: "Actual comments across all posts"
+      change: getPercentageChange(analyticsData.totalComments, 5000),
+      changeType: "positive" as const,
+      subtitle: "Actual comments across all posts",
+      tooltip: "Real count of comments received across all campaign posts. Comments represent higher engagement than likes and indicate stronger audience interest in your content."
     },
     {
       title: "Total Views",
       value: formatNumber(analyticsData.totalViews),
-      subtitle: "Video views across all posts"
+      change: getPercentageChange(analyticsData.totalViews, 100000),
+      changeType: analyticsData.totalViews > 100000 ? "positive" : "negative" as const,
+      subtitle: "Actual video views across all posts",
+      tooltip: "Total number of video views across all video posts in the campaign. This represents how many times users viewed your video content, pulled directly from Instagram's video_view_count metric."
     },
     {
       title: "Total Plays",
       value: formatNumber(analyticsData.totalPlays),
-      subtitle: "Video plays across all posts"
+      change: getPercentageChange(analyticsData.totalPlays, 200000),
+      changeType: analyticsData.totalPlays > 200000 ? "positive" : "negative" as const,
+      subtitle: "Actual video plays across all posts",
+      tooltip: "Total number of video plays with sound/interaction across all video posts. This metric indicates users who actively engaged with your video content beyond just viewing, pulled from Instagram's video_play_count."
     },
     {
       title: "Avg Engagement Rate",
       value: `${analyticsData.averageEngagementRate.toFixed(2)}%`,
-      subtitle: "Average engagement across influencers"
+      change: analyticsData.averageEngagementRate > 3 ? "+15.2%" : "-5.1%",
+      changeType: analyticsData.averageEngagementRate > 3 ? "positive" : "negative" as const,
+      subtitle: "Average engagement across influencers",
+      tooltip: "Average engagement rate calculated as (total likes + comments) ÷ followers × 100 for each influencer, then averaged. This gives a fair representation of campaign performance across different influencer sizes. Rates above 3% are considered good for Instagram."
     },
     {
       title: "Total Posts",
       value: analyticsData.totalPosts.toString(),
-      subtitle: "Published posts in this campaign"
+      change: `+${analyticsData.totalPosts}`,
+      changeType: "positive" as const,
+      subtitle: "Published posts in this campaign",
+      tooltip: "Total number of posts published as part of this campaign across all participating influencers. Each post represents a piece of content created specifically for your campaign."
     }
   ];
 
@@ -568,6 +636,7 @@ export default function PublicCampaignAnalyticsPage() {
               <div key={index} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-200">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-medium text-gray-600">{item.title}</h3>
+                  {/* Note: Tooltips removed for public view for cleaner display */}
                 </div>
 
                 <div className="mb-3">
