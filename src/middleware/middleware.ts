@@ -7,13 +7,39 @@ export function middleware(request: NextRequest) {
   // Get the pathname
   const path = request.nextUrl.pathname;
   
-  // Define public paths
+  // Handle CORS for public API routes
+  if (path.startsWith('/api/v0/profile-analytics/public/')) {
+    // Handle preflight requests
+    if (request.method === 'OPTIONS') {
+      return new NextResponse(null, {
+        status: 200,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+          'Access-Control-Max-Age': '86400',
+        },
+      });
+    }
+
+    // Add CORS headers to actual requests
+    const response = NextResponse.next();
+    response.headers.set('Access-Control-Allow-Origin', '*');
+    response.headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    
+    return response;
+  }
+  
+  // Define public paths (including our new public report page)
   const isPublicPath = 
     path === '/' || 
     path === '/login' || 
     path === '/register' || 
     path === '/reset-password' ||
+    path.startsWith('/profile-analytics-report/') || // Add public report path
     path.startsWith('/api/auth/') ||
+    path.startsWith('/api/v0/profile-analytics/public/') || // Add public API path
     path.startsWith('/_next/') ||
     path.includes('.');
   

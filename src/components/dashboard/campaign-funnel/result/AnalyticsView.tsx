@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { getVideoResults } from '@/services/video-results';
 import { VideoResult } from '@/types/user-detailed-info';
-import { Campaign } from '@/services/campaign/campaign.service';
+import { Campaign } from '@/types/campaign';
 import { exportToPDF, exportToPrint, generateExportFilename } from '@/utils/pdfExportUtils';
 
 interface AnalyticsData {
@@ -380,6 +380,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
           let influencerAvatar = '';
           let influencerName = '';
           let isVerified = false;
+          let avgEngagementRate = 0; // Declare the variable before use
 
           // Process each video from this influencer
           videos.forEach(video => {
