@@ -25,7 +25,8 @@ import {
   Linkedin,
   Music,
   Video,
-  Camera
+  Camera,
+  Share
 } from 'lucide-react';
 import { InsightIQProfileAnalyticsResponse } from '@/types/insightiq/profile-analytics';
 
@@ -53,6 +54,10 @@ const InfluencerProfileReport: React.FC<InfluencerProfileReportProps> = ({
   isRefreshing = false
 }) => {
   const [activeSection, setActiveSection] = useState<'overview' | 'audience' | 'content' | 'pricing'>('overview');
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
+  const [isGeneratingShareUrl, setIsGeneratingShareUrl] = useState(false);
+  
   const profile = analyticsData?.profile || null;
   const pricing = analyticsData?.pricing || null;
   const price_explanations = analyticsData?.price_explanations || null;
@@ -251,6 +256,95 @@ const InfluencerProfileReport: React.FC<InfluencerProfileReportProps> = ({
     return getSocialPlatformIcon(''); // Default fallback
   };
 
+  // Share Report functionality
+  const handleShareReport = async () => {
+    if (!platformAccountId) {
+      alert('Platform Account ID is required to share the report');
+      return;
+    }
+
+    setIsGeneratingShareUrl(true);
+    
+    try {
+      // Generate the public share URL
+      const publicUrl = `${window.location.origin}/profile-analytics-report/${platformAccountId}`;
+      setShareUrl(publicUrl);
+      setIsShareModalOpen(true);
+    } catch (error) {
+      console.error('Error generating share URL:', error);
+      alert('Failed to generate share URL');
+    } finally {
+      setIsGeneratingShareUrl(false);
+    }
+  };
+
+  // Copy URL to clipboard
+  const copyToClipboard = async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      alert('URL copied to clipboard!');
+    } catch (error) {
+      console.error('Failed to copy URL:', error);
+      alert('Failed to copy URL');
+    }
+  };
+
+  // Share Modal Component
+  const ShareModal = () => {
+    if (!isShareModalOpen) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold">Share Profile Report</h3>
+            <button
+              onClick={() => setIsShareModalOpen(false)}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              ✕
+            </button>
+          </div>
+          
+          <p className="text-gray-600 mb-4">
+            Share this public link to give others access to the complete profile analytics report:
+          </p>
+          
+          <div className="flex items-center space-x-2 mb-4">
+            <input
+              type="text"
+              value={shareUrl}
+              readOnly
+              className="flex-1 p-2 border border-gray-300 rounded-lg text-sm bg-gray-50"
+            />
+            <button
+              onClick={() => copyToClipboard(shareUrl)}
+              className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+            >
+              Copy
+            </button>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => window.open(shareUrl, '_blank')}
+              className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2"
+            >
+              <ExternalLink className="w-4 h-4" />
+              <span>Open Report</span>
+            </button>
+            <button
+              onClick={() => setIsShareModalOpen(false)}
+              className="flex-1 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (!profile) {
     return (
       <div className="p-4">
@@ -329,16 +423,27 @@ const InfluencerProfileReport: React.FC<InfluencerProfileReportProps> = ({
                 </div>
               </div>
               
-              {/* Last Updated with Refresh - moved to separate row */}
-              <div className="flex items-center space-x-2 mt-3 text-xs opacity-90">
+              {/* Last Updated with Refresh and Share - moved to separate row */}
+              <div className="flex items-center space-x-3 mt-3 text-xs opacity-90">
                 <span>Last updated: {new Date(profile.updated_at).toLocaleDateString()}</span>
+                {onRefresh && (
+                  <button
+                    onClick={onRefresh}
+                    disabled={isRefreshing}
+                    className="bg-white/20 hover:bg-white/30 rounded-full p-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    title={isRefreshing ? 'Refreshing data...' : 'Refresh data from source'}
+                  >
+                    <RefreshCw className={`w-3 h-3 text-white ${isRefreshing ? 'animate-spin' : ''}`} />
+                  </button>
+                )}
+                {/* Share Report Button */}
                 <button
-                  onClick={onRefresh}
-                  disabled={isRefreshing}
-                  className="bg-white/20 hover:bg-white/30 rounded-full p-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  title={isRefreshing ? 'Refreshing data...' : 'Refresh data from source'}
+                  onClick={handleShareReport}
+                  disabled={isGeneratingShareUrl}
+                  className="bg-white/20 hover:bg-white/30 rounded-full p-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
+                  title="Share this report publicly"
                 >
-                  <RefreshCw className={`w-3 h-3 text-white ${isRefreshing ? 'animate-spin' : ''}`} />
+                  <Share className={`w-3 h-3 text-white ${isGeneratingShareUrl ? 'animate-pulse' : ''}`} />
                 </button>
               </div>
             </div>
@@ -467,6 +572,9 @@ const InfluencerProfileReport: React.FC<InfluencerProfileReportProps> = ({
           />
         )}
       </div>
+
+      {/* Share Modal */}
+      <ShareModal />
     </div>
   );
 };
