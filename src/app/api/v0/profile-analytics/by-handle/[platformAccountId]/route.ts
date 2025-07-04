@@ -26,14 +26,15 @@ export async function GET(
 
     // Extract auth token from request headers
     const authHeader = request.headers.get('authorization');
-    const authToken = authHeader?.replace('Bearer ', '');
+    // const authToken = authHeader?.replace('Bearer ', '');
+    const authToken = '';
 
-    if (!authToken) {
-      return NextResponse.json(
-        { detail: 'Authentication token is required' },
-        { status: 401 }
-      );
-    }
+    // if (!authToken) {
+    //   return NextResponse.json(
+    //     { detail: 'Authentication token is required' },
+    //     { status: 401 }
+    //   );
+    // }
 
     // Call server service to get profile analytics
     const result = await getProfileAnalyticsByHandleServer(platformAccountId, authToken);

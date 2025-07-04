@@ -29,22 +29,17 @@ const AudienceTabsSection: React.FC<AudienceTabsSectionProps> = ({
     {
       id: 'overview',
       label: 'Overall Audience',
-      icon: Users,
-      count: formatNumber(profile.audience?.significant_followers?.length || 0)
+      icon: Users
     },
     {
       id: 'likers',
       label: 'Active Likers',
-      icon: Heart,
-      count: profile.audience_likers?.significant_likers ? 
-        formatNumber(profile.audience_likers.significant_likers.length) : '0'
+      icon: Heart
     },
     {
       id: 'commenters',
       label: 'Commenters',
-      icon: MessageCircle,
-      count: profile.audience_commenters?.countries ? 
-        formatNumber(profile.audience_commenters.countries.length) : '0'
+      icon: MessageCircle
     }
   ];
 
@@ -70,15 +65,6 @@ const AudienceTabsSection: React.FC<AudienceTabsSectionProps> = ({
                 >
                   <Icon className="w-5 h-5" />
                   <span>{tab.label}</span>
-                  {tab.count && (
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      activeTab === tab.id
-                        ? 'bg-purple-100 text-purple-800'
-                        : 'bg-gray-100 text-gray-600'
-                    }`}>
-                      {tab.count}
-                    </span>
-                  )}
                 </button>
               );
             })}
