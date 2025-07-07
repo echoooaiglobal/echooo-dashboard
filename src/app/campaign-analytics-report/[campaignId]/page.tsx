@@ -482,16 +482,9 @@ export default function PublicCampaignAnalyticsPage() {
     );
   }
 
-  // SYNCHRONIZED: Use same basicInsightsData structure with tooltips as AnalyticsView.tsx
+  // REORDERED: Performance Overview cards in the requested sequence - same as AnalyticsView.tsx
   const basicInsightsData = [
-    {
-      title: "Total Clicks",
-      value: formatNumber(analyticsData.totalClicks),
-      change: getPercentageChange(analyticsData.totalClicks),
-      changeType: "positive" as const,
-      subtitle: "Estimated clicks from engagement data (3% conversion)",
-      tooltip: "Estimated number of clicks generated from posts. Calculated using a 3% conversion rate from total engagement (likes + comments), which is industry standard for social media campaigns."
-    },
+    // First row: Impressions, Reach, Total Plays, Total Views
     {
       title: "Impressions", 
       value: formatNumber(analyticsData.totalImpressions),
@@ -509,6 +502,23 @@ export default function PublicCampaignAnalyticsPage() {
       tooltip: "Estimated number of unique users who saw your content. This should be lower than impressions and usually lower than or close to total views/plays, as it only counts each user once regardless of repeat views."
     },
     {
+      title: "Total Plays",
+      value: formatNumber(analyticsData.totalPlays),
+      change: getPercentageChange(analyticsData.totalPlays, 200000),
+      changeType: analyticsData.totalPlays > 200000 ? "positive" : "negative" as const,
+      subtitle: "Actual video plays across all posts",
+      tooltip: "Total number of video plays with sound/interaction across all video posts. This metric indicates users who actively engaged with your video content beyond just viewing, pulled from Instagram's video_play_count."
+    },
+    {
+      title: "Total Views",
+      value: formatNumber(analyticsData.totalViews),
+      change: getPercentageChange(analyticsData.totalViews, 100000),
+      changeType: analyticsData.totalViews > 100000 ? "positive" : "negative" as const,
+      subtitle: "Actual video views across all posts",
+      tooltip: "Total number of video views across all video posts in the campaign. This represents how many times users viewed your video content, pulled directly from Instagram's video_view_count metric."
+    },
+    // Second row: Total Likes, Total Comments, Total Clicks, Avg Engagement Rate
+    {
       title: "Total Likes",
       value: formatNumber(analyticsData.totalLikes),
       change: getPercentageChange(analyticsData.totalLikes, 50000),
@@ -525,20 +535,12 @@ export default function PublicCampaignAnalyticsPage() {
       tooltip: "Real count of comments received across all campaign posts. Comments represent higher engagement than likes and indicate stronger audience interest in your content."
     },
     {
-      title: "Total Views",
-      value: formatNumber(analyticsData.totalViews),
-      change: getPercentageChange(analyticsData.totalViews, 100000),
-      changeType: analyticsData.totalViews > 100000 ? "positive" : "negative" as const,
-      subtitle: "Actual video views across all posts",
-      tooltip: "Total number of video views across all video posts in the campaign. This represents how many times users viewed your video content, pulled directly from Instagram's video_view_count metric."
-    },
-    {
-      title: "Total Plays",
-      value: formatNumber(analyticsData.totalPlays),
-      change: getPercentageChange(analyticsData.totalPlays, 200000),
-      changeType: analyticsData.totalPlays > 200000 ? "positive" : "negative" as const,
-      subtitle: "Actual video plays across all posts",
-      tooltip: "Total number of video plays with sound/interaction across all video posts. This metric indicates users who actively engaged with your video content beyond just viewing, pulled from Instagram's video_play_count."
+      title: "Total Clicks",
+      value: formatNumber(analyticsData.totalClicks),
+      change: getPercentageChange(analyticsData.totalClicks),
+      changeType: "positive" as const,
+      subtitle: "Estimated clicks from engagement data (3% conversion)",
+      tooltip: "Estimated number of clicks generated from posts. Calculated using a 3% conversion rate from total engagement (likes + comments), which is industry standard for social media campaigns."
     },
     {
       title: "Avg Engagement Rate",
@@ -547,14 +549,6 @@ export default function PublicCampaignAnalyticsPage() {
       changeType: analyticsData.averageEngagementRate > 3 ? "positive" : "negative" as const,
       subtitle: "Average engagement across influencers",
       tooltip: "Average engagement rate calculated as (total likes + comments) ÷ followers × 100 for each influencer, then averaged. This gives a fair representation of campaign performance across different influencer sizes. Rates above 3% are considered good for Instagram."
-    },
-    {
-      title: "Total Posts",
-      value: analyticsData.totalPosts.toString(),
-      change: `+${analyticsData.totalPosts}`,
-      changeType: "positive" as const,
-      subtitle: "Published posts in this campaign",
-      tooltip: "Total number of posts published as part of this campaign across all participating influencers. Each post represents a piece of content created specifically for your campaign."
     }
   ];
 

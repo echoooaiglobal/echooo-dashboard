@@ -1,7 +1,7 @@
 // src/components/dashboard/profile-analytics/InfluencerProfileReport.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   BarChart3,
   Users,
@@ -26,7 +26,8 @@ import {
   Music,
   Video,
   Camera,
-  Share
+  Copy,
+  Check
 } from 'lucide-react';
 import { InsightIQProfileAnalyticsResponse } from '@/types/insightiq/profile-analytics';
 
@@ -54,13 +55,25 @@ const InfluencerProfileReport: React.FC<InfluencerProfileReportProps> = ({
   isRefreshing = false
 }) => {
   const [activeSection, setActiveSection] = useState<'overview' | 'audience' | 'content' | 'pricing'>('overview');
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [shareUrl, setShareUrl] = useState('');
-  const [isGeneratingShareUrl, setIsGeneratingShareUrl] = useState(false);
+  const [urlCopied, setUrlCopied] = useState(false);
+  const [showButtons, setShowButtons] = useState(true);
   
   const profile = analyticsData?.profile || null;
   const pricing = analyticsData?.pricing || null;
   const price_explanations = analyticsData?.price_explanations || null;
+
+  // Check current URL to determine button visibility
+  useEffect(() => {
+    const currentPath = window.location.pathname;
+    const currentUrl = window.location.href;
+    
+    // Hide buttons if on the public report page
+    if (currentPath === '/profile-analytics-report' || currentUrl.includes('/profile-analytics-report')) {
+      setShowButtons(false);
+    } else if (currentPath === '/profile-analytics' || currentUrl.includes('/profile-analytics')) {
+      setShowButtons(true);
+    }
+  }, []);
 
   const formatNumber = (num: number) => {
     if(num === null || num === undefined) return '0';
@@ -239,110 +252,22 @@ const InfluencerProfileReport: React.FC<InfluencerProfileReportProps> = ({
     }
   };
 
-  // Helper function to get platform icon from profile data
-  const getPlatformIcon = () => {
-    // Try to detect from URL or other data
-    if (profile?.url) {
-      const url = profile.url.toLowerCase();
-      if (url.includes('instagram')) return getSocialPlatformIcon('instagram');
-      if (url.includes('youtube')) return getSocialPlatformIcon('youtube');
-      if (url.includes('twitter') || url.includes('x.com')) return getSocialPlatformIcon('twitter');
-      if (url.includes('facebook')) return getSocialPlatformIcon('facebook');
-      if (url.includes('linkedin')) return getSocialPlatformIcon('linkedin');
-      if (url.includes('tiktok')) return getSocialPlatformIcon('tiktok');
-      if (url.includes('snapchat')) return getSocialPlatformIcon('snapchat');
-      if (url.includes('twitch')) return getSocialPlatformIcon('twitch');
-    }
-    return getSocialPlatformIcon(''); // Default fallback
-  };
-
-  // Share Report functionality
-  const handleShareReport = async () => {
+  // Copy URL to clipboard functionality
+  const handleCopyUrl = async () => {
     if (!platformAccountId) {
-      alert('Platform Account ID is required to share the report');
+      alert('Platform Account ID is required to copy the URL');
       return;
     }
 
-    setIsGeneratingShareUrl(true);
-    
     try {
-      // Generate the public share URL
-      const publicUrl = `${window.location.origin}/profile-analytics-report/${platformAccountId}`;
-      setShareUrl(publicUrl);
-      setIsShareModalOpen(true);
-    } catch (error) {
-      console.error('Error generating share URL:', error);
-      alert('Failed to generate share URL');
-    } finally {
-      setIsGeneratingShareUrl(false);
-    }
-  };
-
-  // Copy URL to clipboard
-  const copyToClipboard = async (url: string) => {
-    try {
+      const url = `${window.location.origin}/profile-analytics-report?user=${platformAccountId}`;
       await navigator.clipboard.writeText(url);
-      alert('URL copied to clipboard!');
+      setUrlCopied(true);
+      setTimeout(() => setUrlCopied(false), 2000);
     } catch (error) {
       console.error('Failed to copy URL:', error);
       alert('Failed to copy URL');
     }
-  };
-
-  // Share Modal Component
-  const ShareModal = () => {
-    if (!isShareModalOpen) return null;
-
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">Share Profile Report</h3>
-            <button
-              onClick={() => setIsShareModalOpen(false)}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              ✕
-            </button>
-          </div>
-          
-          <p className="text-gray-600 mb-4">
-            Share this public link to give others access to the complete profile analytics report:
-          </p>
-          
-          <div className="flex items-center space-x-2 mb-4">
-            <input
-              type="text"
-              value={shareUrl}
-              readOnly
-              className="flex-1 p-2 border border-gray-300 rounded-lg text-sm bg-gray-50"
-            />
-            <button
-              onClick={() => copyToClipboard(shareUrl)}
-              className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
-            >
-              Copy
-            </button>
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => window.open(shareUrl, '_blank')}
-              className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2"
-            >
-              <ExternalLink className="w-4 h-4" />
-              <span>Open Report</span>
-            </button>
-            <button
-              onClick={() => setIsShareModalOpen(false)}
-              className="flex-1 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      </div>
-    );
   };
 
   if (!profile) {
@@ -373,7 +298,7 @@ const InfluencerProfileReport: React.FC<InfluencerProfileReportProps> = ({
                 className="w-20 h-20 rounded-full border-4 border-white shadow-lg"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
-                  target.src = '/placeholder-avatar.png'; // Fallback image
+                  target.src = '/user/profile-placeholder.png'; // Fallback image
                 }}
               />
               {profile.is_verified && (
@@ -423,28 +348,48 @@ const InfluencerProfileReport: React.FC<InfluencerProfileReportProps> = ({
                 </div>
               </div>
               
-              {/* Last Updated with Refresh and Share - moved to separate row */}
+              {/* Last Updated with Refresh and Copy URL - moved to separate row */}
               <div className="flex items-center space-x-3 mt-3 text-xs opacity-90">
                 <span>Last updated: {new Date(profile.updated_at).toLocaleDateString()}</span>
-                {onRefresh && (
-                  <button
-                    onClick={onRefresh}
-                    disabled={isRefreshing}
-                    className="bg-white/20 hover:bg-white/30 rounded-full p-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    title={isRefreshing ? 'Refreshing data...' : 'Refresh data from source'}
-                  >
-                    <RefreshCw className={`w-3 h-3 text-white ${isRefreshing ? 'animate-spin' : ''}`} />
-                  </button>
+                
+                {/* Show buttons only when showButtons is true */}
+                {showButtons && (
+                  <>
+                    {onRefresh && (
+                      <button
+                        onClick={onRefresh}
+                        disabled={isRefreshing}
+                        className="bg-white/20 hover:bg-white/30 rounded-full p-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title={isRefreshing ? 'Refreshing data...' : 'Refresh data from source'}
+                      >
+                        <RefreshCw className={`w-3 h-3 text-white ${isRefreshing ? 'animate-spin' : ''}`} />
+                      </button>
+                    )}
+                    
+                    {/* Copy URL Button */}
+                    <button
+                      onClick={handleCopyUrl}
+                      className={`flex items-center space-x-1 px-2 py-1 rounded-full transition-all duration-200 text-xs font-medium ${
+                        urlCopied 
+                          ? 'bg-green-500/20 text-green-100' 
+                          : 'bg-white/20 hover:bg-white/30 text-white'
+                      }`}
+                      title="Copy public report URL"
+                    >
+                      {urlCopied ? (
+                        <>
+                          <Check className="w-3 h-3" />
+                          <span>Copied!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3 h-3" />
+                          <span>Copy URL</span>
+                        </>
+                      )}
+                    </button>
+                  </>
                 )}
-                {/* Share Report Button */}
-                <button
-                  onClick={handleShareReport}
-                  disabled={isGeneratingShareUrl}
-                  className="bg-white/20 hover:bg-white/30 rounded-full p-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
-                  title="Share this report publicly"
-                >
-                  <Share className={`w-3 h-3 text-white ${isGeneratingShareUrl ? 'animate-pulse' : ''}`} />
-                </button>
               </div>
             </div>
           </div>
@@ -572,9 +517,6 @@ const InfluencerProfileReport: React.FC<InfluencerProfileReportProps> = ({
           />
         )}
       </div>
-
-      {/* Share Modal */}
-      <ShareModal />
     </div>
   );
 };
