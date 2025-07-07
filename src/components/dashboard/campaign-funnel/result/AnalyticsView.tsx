@@ -558,7 +558,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
       value: formatNumber(analyticsData.totalImpressions),
       change: getPercentageChange(analyticsData.totalImpressions, 500000),
       changeType: "positive" as const,
-      subtitle: "Estimated total impressions based on follower reach",
+      // subtitle: "Estimated total impressions based on follower reach",
       tooltip: "Total number of times content was displayed to users. This includes multiple views by the same user and should be the highest metric. Calculated based on actual video views (×1.8 for repeat views) plus estimated photo post impressions."
     },
     {
@@ -566,7 +566,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
       value: formatNumber(analyticsData.totalReach), 
       change: getPercentageChange(analyticsData.totalReach, 300000),
       changeType: "positive" as const,
-      subtitle: "Estimated unique users reached (75% of impressions)",
+      // subtitle: "Estimated unique users reached (75% of impressions)",
       tooltip: "Estimated number of unique users who saw your content. This should be lower than impressions and usually lower than or close to total views/plays, as it only counts each user once regardless of repeat views."
     },
     {
@@ -574,7 +574,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
       value: formatNumber(analyticsData.totalPlays),
       change: getPercentageChange(analyticsData.totalPlays, 200000),
       changeType: analyticsData.totalPlays > 200000 ? "positive" : "negative" as const,
-      subtitle: "Actual video plays across all posts",
+      // subtitle: "Actual video plays across all posts",
       tooltip: "Total number of video plays with sound/interaction across all video posts. This metric indicates users who actively engaged with your video content beyond just viewing, pulled from Instagram's video_play_count."
     },
     {
@@ -582,7 +582,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
       value: formatNumber(analyticsData.totalViews),
       change: getPercentageChange(analyticsData.totalViews, 100000),
       changeType: analyticsData.totalViews > 100000 ? "positive" : "negative" as const,
-      subtitle: "Actual video views across all posts",
+      // subtitle: "Actual video views across all posts",
       tooltip: "Total number of video views across all video posts in the campaign. This represents how many times users viewed your video content, pulled directly from Instagram's video_view_count metric."
     },
     // Second row: Total Likes, Total Comments, Total Clicks, Avg Engagement Rate
@@ -591,7 +591,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
       value: formatNumber(analyticsData.totalLikes),
       change: getPercentageChange(analyticsData.totalLikes, 50000),
       changeType: "positive" as const,
-      subtitle: "Actual likes across all posts",
+      // subtitle: "Actual likes across all posts",
       tooltip: "Real count of likes received across all campaign posts. This data is pulled directly from Instagram's API and represents actual user engagement with your content."
     },
     {
@@ -599,7 +599,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
       value: formatNumber(analyticsData.totalComments),
       change: getPercentageChange(analyticsData.totalComments, 5000),
       changeType: "positive" as const,
-      subtitle: "Actual comments across all posts",
+      // subtitle: "Actual comments across all posts",
       tooltip: "Real count of comments received across all campaign posts. Comments represent higher engagement than likes and indicate stronger audience interest in your content."
     },
     {
@@ -607,7 +607,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
       value: formatNumber(analyticsData.totalClicks),
       change: getPercentageChange(analyticsData.totalClicks),
       changeType: "positive" as const,
-      subtitle: "Estimated clicks from engagement data (3% conversion)",
+      // subtitle: "Estimated clicks from engagement data (3% conversion)",
       tooltip: "Estimated number of clicks generated from posts. Calculated using a 3% conversion rate from total engagement (likes + comments), which is industry standard for social media campaigns."
     },
     {
@@ -615,7 +615,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
       value: `${analyticsData.averageEngagementRate.toFixed(2)}%`,
       change: analyticsData.averageEngagementRate > 3 ? "+15.2%" : "-5.1%",
       changeType: analyticsData.averageEngagementRate > 3 ? "positive" : "negative" as const,
-      subtitle: "Average engagement across influencers",
+      // subtitle: "Average engagement across influencers",
       tooltip: "Average engagement rate calculated as (total likes + comments) ÷ followers × 100 for each influencer, then averaged. This gives a fair representation of campaign performance across different influencer sizes. Rates above 3% are considered good for Instagram."
     }
   ];
@@ -755,7 +755,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                   <span className="text-3xl font-bold text-gray-900">{item.value}</span>
                 </div>
 
-                <p className="text-xs text-gray-500 leading-relaxed">{item.subtitle}</p>
+                {/* <p className="text-xs text-gray-500 leading-relaxed">{item.subtitle}</p> */}
               </div>
             ))}
           </div>
