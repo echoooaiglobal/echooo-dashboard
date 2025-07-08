@@ -10,6 +10,13 @@ interface InterestsProps {
   isOpen: boolean;
   onToggle: () => void;
   onCloseFilter: () => void;
+  // Add context update handler
+  onUpdateContext?: (updates: {
+    selectedInterests?: {
+      creator?: string[];
+      audience?: { value: string; percentage_value: number }[];
+    };
+  }) => void;
 }
 
 interface ProcessedInterest {
@@ -37,7 +44,8 @@ const Interests: React.FC<InterestsProps> = ({
   onFilterChange,
   isOpen,
   onToggle,
-  onCloseFilter 
+  onCloseFilter,
+  onUpdateContext
 }) => {
   // States for creator interests (left column)
   const [creatorSearchQuery, setCreatorSearchQuery] = useState('');
@@ -90,6 +98,18 @@ const Interests: React.FC<InterestsProps> = ({
       }
     }
   }, [filters.creator_interests, filters.audience_interest_affinities]);
+
+  // Update context when interests change
+  useEffect(() => {
+    if (onUpdateContext) {
+      onUpdateContext({
+        selectedInterests: {
+          creator: selectedCreatorInterests,
+          audience: selectedAudienceInterests
+        }
+      });
+    }
+  }, [selectedCreatorInterests, selectedAudienceInterests, onUpdateContext]);
 
   // Fetch all interests once when component opens
   const fetchAllInterests = useCallback(async () => {

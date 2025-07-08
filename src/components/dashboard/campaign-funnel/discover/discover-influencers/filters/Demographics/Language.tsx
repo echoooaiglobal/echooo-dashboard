@@ -14,6 +14,12 @@ interface LanguageFilterProps {
   isOpen: boolean;
   onToggle: () => void;
   onCloseFilter: () => void;
+  // Add callback to update language data in parent
+  onLanguageDataUpdate?: (languageData: {
+    creatorLanguage?: { code: string; name: string };
+    audienceLanguages?: { code: string; name: string }[];
+    allFetchedLanguages?: Language[];
+  }) => void;
 }
 
 const Language: React.FC<LanguageFilterProps> = ({
@@ -21,7 +27,8 @@ const Language: React.FC<LanguageFilterProps> = ({
   onFilterChange,
   isOpen,
   onToggle,
-  onCloseFilter
+  onCloseFilter,
+  onLanguageDataUpdate
 }) => {
   const [creatorSearchQuery, setCreatorSearchQuery] = useState('');
   const [audienceSearchQuery, setAudienceSearchQuery] = useState('');
@@ -29,9 +36,50 @@ const Language: React.FC<LanguageFilterProps> = ({
   const [audienceLanguages, setAudienceLanguages] = useState<Language[]>([]);
   const [isLoadingCreator, setIsLoadingCreator] = useState(false);
   const [isLoadingAudience, setIsLoadingAudience] = useState(false);
+  
+  // Keep track of all fetched languages for parent context
+  const [allFetchedLanguages, setAllFetchedLanguages] = useState<Language[]>([]);
 
   const creatorDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const audienceDebounceRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Function to update parent with current language data
+  const updateParentLanguageData = () => {
+    if (!onLanguageDataUpdate) return;
+    
+    const selectedCreatorLanguage = filters.creator_language;
+    const selectedAudienceLanguages = filters.audience_language || [];
+    
+    // Get creator language name
+    let creatorLanguageData: { code: string; name: string } | undefined;
+    if (selectedCreatorLanguage) {
+      const creatorLang = allFetchedLanguages.find(lang => lang.code === selectedCreatorLanguage.code);
+      creatorLanguageData = {
+        code: selectedCreatorLanguage.code,
+        name: creatorLang?.name || selectedCreatorLanguage.code
+      };
+    }
+    
+    // Get audience language names
+    const audienceLanguageData = selectedAudienceLanguages.map(audienceLang => {
+      const audienceLangObj = allFetchedLanguages.find(lang => lang.code === audienceLang.code);
+      return {
+        code: audienceLang.code,
+        name: audienceLangObj?.name || audienceLang.code
+      };
+    });
+    
+    onLanguageDataUpdate({
+      creatorLanguage: creatorLanguageData,
+      audienceLanguages: audienceLanguageData,
+      allFetchedLanguages
+    });
+  };
+
+  // Update parent whenever filters or language data changes
+  useEffect(() => {
+    updateParentLanguageData();
+  }, [filters.creator_language, filters.audience_language, allFetchedLanguages]);
 
   // Search creator languages
   const searchCreatorLanguages = async (query: string) => {
@@ -40,7 +88,16 @@ const Language: React.FC<LanguageFilterProps> = ({
       const url = `/api/v0/discover/languages${query ? `?search=${encodeURIComponent(query)}` : ''}`;
       const response = await fetch(url);
       const data = await response.json();
-      setCreatorLanguages(data.languages || []);
+      const languages = data.languages || [];
+      setCreatorLanguages(languages);
+      
+      // Update allFetchedLanguages with new data
+      setAllFetchedLanguages(prev => {
+        const newLanguages = languages.filter((newLang: Language) => 
+          !prev.some(prevLang => prevLang.code === newLang.code)
+        );
+        return [...prev, ...newLanguages];
+      });
     } catch (error) {
       console.error('Error searching creator languages:', error);
       setCreatorLanguages([]);
@@ -56,7 +113,16 @@ const Language: React.FC<LanguageFilterProps> = ({
       const url = `/api/v0/discover/languages${query ? `?search=${encodeURIComponent(query)}` : ''}`;
       const response = await fetch(url);
       const data = await response.json();
-      setAudienceLanguages(data.languages || []);
+      const languages = data.languages || [];
+      setAudienceLanguages(languages);
+      
+      // Update allFetchedLanguages with new data
+      setAllFetchedLanguages(prev => {
+        const newLanguages = languages.filter((newLang: Language) => 
+          !prev.some(prevLang => prevLang.code === newLang.code)
+        );
+        return [...prev, ...newLanguages];
+      });
     } catch (error) {
       console.error('Error searching audience languages:', error);
       setAudienceLanguages([]);
@@ -173,13 +239,20 @@ const Language: React.FC<LanguageFilterProps> = ({
   // Get creator language name
   const getCreatorLanguageName = () => {
     if (!selectedCreatorLanguage) return null;
-    const language = creatorLanguages.find(lang => lang.code === selectedCreatorLanguage.code);
+    const language = allFetchedLanguages.find(lang => lang.code === selectedCreatorLanguage.code) ||
+                     creatorLanguages.find(lang => lang.code === selectedCreatorLanguage.code);
     return language?.name || selectedCreatorLanguage.code;
+  };
+
+  // Get audience language name
+  const getAudienceLanguageName = (code: string) => {
+    const language = allFetchedLanguages.find(lang => lang.code === code) ||
+                     audienceLanguages.find(lang => lang.code === code);
+    return language?.name || code;
   };
 
   const hasActiveFilters =
     !!selectedCreatorLanguage || selectedAudienceLanguages.length > 0;
-
 
   return (
     <FilterComponent
@@ -307,35 +380,32 @@ const Language: React.FC<LanguageFilterProps> = ({
             {/* Selected Audience Language (bottom, like locations design) */}
             {selectedAudienceLanguages.length > 0 && (
               <div className="space-y-1">
-                {selectedAudienceLanguages.map((item) => {
-                  const language = audienceLanguages.find(lang => lang.code === item.code);
-                  return (
-                    <div key={item.code} className="bg-blue-50 border border-blue-200 rounded p-2">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-medium text-blue-800">
-                          {language?.name || item.code}
-                        </span>
-                        <button
-                          onClick={() => handleAudienceLanguageToggle(language || { name: item.code, code: item.code })}
-                          className="text-blue-600 hover:text-blue-800 text-xs"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="number"
-                          min="1"
-                          max="100"
-                          value={parseInt(item.percentage_value)}
-                          onChange={(e) => handleAudiencePercentageChange(item.code, e.target.value)}
-                          className="w-12 text-xs text-center border border-blue-300 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        />
-                        <span className="text-xs text-blue-600">%</span>
-                      </div>
+                {selectedAudienceLanguages.map((item) => (
+                  <div key={item.code} className="bg-blue-50 border border-blue-200 rounded p-2">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-medium text-blue-800">
+                        {getAudienceLanguageName(item.code)}
+                      </span>
+                      <button
+                        onClick={() => handleAudienceLanguageToggle({ name: getAudienceLanguageName(item.code), code: item.code })}
+                        className="text-blue-600 hover:text-blue-800 text-xs"
+                      >
+                        ✕
+                      </button>
                     </div>
-                  );
-                })}
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min="1"
+                        max="100"
+                        value={parseInt(item.percentage_value)}
+                        onChange={(e) => handleAudiencePercentageChange(item.code, e.target.value)}
+                        className="w-12 text-xs text-center border border-blue-300 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                      <span className="text-xs text-blue-600">%</span>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>

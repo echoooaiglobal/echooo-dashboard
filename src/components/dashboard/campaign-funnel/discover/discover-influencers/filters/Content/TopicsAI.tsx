@@ -11,6 +11,10 @@ interface TopicsAIFilterProps {
   isOpen: boolean;
   onToggle: () => void;
   onCloseFilter: () => void;
+  // Add context update handler
+  onUpdateContext?: (updates: {
+    selectedTopics?: string[];
+  }) => void;
 }
 
 interface ProcessedTopic {
@@ -33,7 +37,8 @@ const TopicsAI: React.FC<TopicsAIFilterProps> = ({
   onFilterChange, 
   isOpen, 
   onToggle,
-  onCloseFilter 
+  onCloseFilter,
+  onUpdateContext
 }) => {
   // State management
   const [searchQuery, setSearchQuery] = useState('');
@@ -57,6 +62,14 @@ const TopicsAI: React.FC<TopicsAIFilterProps> = ({
     }
   }, [filters.topic_relevance]);
 
+  // Update context when topics change
+  useEffect(() => {
+    if (onUpdateContext) {
+      onUpdateContext({
+        selectedTopics: selectedTopics
+      });
+    }
+  }, [selectedTopics, onUpdateContext]);
 
   // Search topics with autocomplete
   const searchTopics = useCallback(async (query: string) => {

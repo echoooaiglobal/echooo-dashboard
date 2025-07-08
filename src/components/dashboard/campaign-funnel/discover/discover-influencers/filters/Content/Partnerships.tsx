@@ -10,6 +10,10 @@ interface PartnershipsProps {
   isOpen: boolean;
   onToggle: () => void;
   onCloseFilter: () => void;
+  // Add context update handler
+  onUpdateContext?: (updates: {
+    selectedBrands?: string[];
+  }) => void;
 }
 
 interface ProcessedBrand {
@@ -31,7 +35,8 @@ const Partnerships: React.FC<PartnershipsProps> = ({
   onFilterChange,
   isOpen,
   onToggle,
-  onCloseFilter 
+  onCloseFilter,
+  onUpdateContext
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBrands, setSelectedBrands] = useState<string[]>(
@@ -59,7 +64,14 @@ const Partnerships: React.FC<PartnershipsProps> = ({
     }
   }, [filters.brand_sponsors]);
 
-
+  // Update context when brands change
+  useEffect(() => {
+    if (onUpdateContext) {
+      onUpdateContext({
+        selectedBrands: selectedBrands
+      });
+    }
+  }, [selectedBrands, onUpdateContext]);
 
   // Fetch all brands once when component opens
   const fetchAllBrands = useCallback(async () => {

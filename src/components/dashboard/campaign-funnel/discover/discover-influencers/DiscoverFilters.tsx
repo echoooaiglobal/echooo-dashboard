@@ -10,7 +10,8 @@ import {
   getActiveFilters, 
   removeFilter, 
   getActiveFilterCounts,
-  hasActiveFilters 
+  hasActiveFilters,
+  FilterContext 
 } from '@/utils/filter-utils';
 
 // Import filter section components
@@ -29,6 +30,8 @@ type DiscoverFiltersProps = {
   selectedPlatform?: Platform | null;
   onPlatformChange?: (platform: Platform) => void;
   isLoadingPlatforms?: boolean;
+  // Filter context for displaying names instead of counts
+  filterContext?: FilterContext;
 };
 
 export default function DiscoverFilters({
@@ -40,6 +43,7 @@ export default function DiscoverFilters({
   selectedPlatform = null,
   onPlatformChange,
   isLoadingPlatforms = false,
+  filterContext = {},
 }: DiscoverFiltersProps) {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isApplying, setIsApplying] = useState<boolean>(false);
@@ -180,18 +184,29 @@ export default function DiscoverFilters({
     }
   };
 
-  // Clear all filters
-  const clearAllFilters = async () => {
+  // MODIFIED: Clear all filters without triggering API call
+  const clearAllFilters = () => {
+    console.log('🧹 Clearing all filters locally...');
+    
     setIsClearing(true);
+    
     try {
-      // Clear pending filters but don't modify existing searchParams automatically
+      // Clear all local states immediately
       setPendingFilters({});
       setOpenFilterId(null);
+      setSearchQuery('');
+      setPlatformSearchQuery('');
       
-      // Only call onClear to reset the actual applied filters
-      await onClear();
+      // Reset section collapse states to default (only demographics expanded)
+      setCollapsedSections(new Set(['performance', 'content', 'account']));
+      
+      // Call the parent's clear function - this should now only clear local state
+      // and NOT trigger an API call since we modified handleClearFilters in parent
+      onClear();
+      
+      console.log('✅ All filters cleared locally');
     } catch (error) {
-      console.error('Error clearing filters:', error);
+      console.error('❌ Error clearing filters:', error);
     } finally {
       setIsClearing(false);
     }
@@ -250,14 +265,36 @@ export default function DiscoverFilters({
     }
   };
 
-  // Use utility functions for active filters
-  const activeFilters = getActiveFilters(searchParams, pendingFilters);
-  const filterCounts = getActiveFilterCounts(searchParams, pendingFilters);
+  // Use utility functions for active filters with context
+  const activeFilters = getActiveFilters(searchParams, pendingFilters, filterContext);
+  const filterCounts = getActiveFilterCounts(searchParams, pendingFilters, filterContext);
 
   // Remove specific filter using utility function
   const handleRemoveFilter = (filterKey: string) => {
     const updatedFilters = removeFilter(filterKey, pendingFilters);
     setPendingFilters(updatedFilters);
+  };
+
+  const FILTER_SECTION_IDS = ['demographics', 'performance', 'content', 'account'];
+
+  const areAllSectionsCollapsed = () => {
+    return FILTER_SECTION_IDS.every(id => collapsedSections.has(id));
+  };
+
+  const areAllSectionsExpanded = () => {
+    return FILTER_SECTION_IDS.every(id => !collapsedSections.has(id));
+  };
+
+  const handleExpandCollapseAll = () => {
+    setCollapsedSections(prev => {
+      if (areAllSectionsCollapsed()) {
+        // Expand all
+        return new Set();
+      } else {
+        // Collapse all
+        return new Set(FILTER_SECTION_IDS);
+      }
+    });
   };
 
   // Section Header Component
@@ -280,7 +317,6 @@ export default function DiscoverFilters({
         }`}
         onClick={() => toggleSectionCollapse(sectionId)}
       >
-        {/* Rest of your SectionHeader content remains the same */}
         <div className="flex-1">
           <div className="flex items-center gap-3">
             <h3 className={`text-base font-semibold transition-colors ${
@@ -529,6 +565,18 @@ export default function DiscoverFilters({
         </div>
 
         
+        {/* Expand/Collapse All Toggle */}
+        <div className="flex justify-end mb-2">
+          <button
+            type="button"
+            onClick={handleExpandCollapseAll}
+            className="text-sm font-medium text-purple-700 hover:underline focus:outline-none px-3 py-1 rounded transition-colors"
+            aria-label={areAllSectionsCollapsed() ? "Expand all filters" : "Collapse all filters"}
+          >
+            {areAllSectionsCollapsed() ? "Expand All" : "Collapse All"}
+          </button>
+        </div>
+
         {/* Filter Sections */}
         <div className="space-y-3">
           {/* Demographics Filters */}
@@ -627,7 +675,7 @@ export default function DiscoverFilters({
         {/* Action Buttons */}
         <div className="flex justify-between items-center pt-4 border-t border-gray-200">
           <div className="text-sm text-gray-600">
-            {hasActiveFilters(searchParams, pendingFilters) && (
+            {hasActiveFilters(searchParams, pendingFilters, filterContext) && (
               <span>{activeFilters.length} filter{activeFilters.length !== 1 ? 's' : ''} active</span>
             )}
           </div>
