@@ -1,7 +1,7 @@
 // src/components/dashboard/campaign-funnel/discover/discover-influencers/DiscoveredInfluencers.tsx
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Search, X, Check, Users, ExternalLink } from 'react-feather';
 import DiscoverFilters from './DiscoverFilters';
 import DiscoveredResults from './DiscoveredResults';
@@ -9,8 +9,10 @@ import { DiscoverInfluencer } from '@/lib/types';
 import { Campaign } from '@/types/campaign';
 import { CampaignListMember, addInfluencerToList } from '@/services/campaign/campaign-list.service';
 import { DiscoveredCreatorsResults, Influencer } from '@/types/insights-iq';
-import { InfluencerSearchFilter } from '@/lib/creator-discovery-types';
+import { InfluencerSearchFilter, SpecificContactDetail, AudienceInterestAffinity } from '@/lib/creator-discovery-types';
 import { Platform } from '@/types/platform';
+import { FilterContext } from '@/utils/filter-utils';
+import { CreatorLocationSelection } from '@/lib/types';
 
 interface DiscoveredInfluencersProps {
   campaignData?: Campaign | null;
@@ -92,8 +94,133 @@ const DiscoveredInfluencers: React.FC<DiscoveredInfluencersProps> = ({
   const [addedInfluencers, setAddedInfluencers] = useState<Record<string, boolean>>({});
   const [isAdding, setIsAdding] = useState<Record<string, boolean>>({});
   
+  // NEW: Filter Context State for displaying names instead of counts
+  const [selectedCreatorLocations, setSelectedCreatorLocations] = useState<CreatorLocationSelection[]>([]);
+  const [allFetchedLocations, setAllFetchedLocations] = useState<any[]>([]);
+  const [selectedLanguages, setSelectedLanguages] = useState<{
+    creatorLanguage?: { code: string; name: string };
+    audienceLanguages?: { code: string; name: string }[];
+  }>({});
+  const [selectedInterests, setSelectedInterests] = useState<{
+    creator?: string[];
+    audience?: { value: string; percentage_value: number }[];
+  }>({});
+  const [selectedHashtags, setSelectedHashtags] = useState<{ name: string }[]>([]);
+  const [selectedMentions, setSelectedMentions] = useState<{ name: string }[]>([]);
+  const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
+  const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
+  const [selectedContacts, setSelectedContacts] = useState<SpecificContactDetail[]>([]);
+  
   const searchDropdownRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // NEW: Helper functions for filter context
+  const getLocationNameById = (id: string): string => {
+    const location = allFetchedLocations.find(loc => loc.id === id) ||
+                   selectedCreatorLocations.find(loc => loc.id === id);
+    return location?.display_name || location?.name || `Location ${id}`;
+  };
+
+  const getLanguageNameByCode = (code: string): string => {
+    if (selectedLanguages.creatorLanguage?.code === code) {
+      return selectedLanguages.creatorLanguage.name;
+    }
+    
+    const audienceLang = selectedLanguages.audienceLanguages?.find(lang => lang.code === code);
+    if (audienceLang) {
+      return audienceLang.name;
+    }
+    
+    return code.toUpperCase();
+  };
+
+  // NEW: Create filter context for displaying names
+  const filterContext: FilterContext = useMemo(() => ({
+    selectedCreatorLocations,
+    allFetchedLocations,
+    getLocationNameById,
+    selectedLanguages,
+    getLanguageNameByCode,
+    selectedInterests,
+    selectedHashtags,
+    selectedMentions,
+    selectedTopics,
+    selectedBrands,
+    selectedContacts,
+  }), [
+    selectedCreatorLocations, 
+    allFetchedLocations, 
+    selectedLanguages, 
+    selectedInterests,
+    selectedHashtags,
+    selectedMentions,
+    selectedTopics,
+    selectedBrands,
+    selectedContacts
+  ]);
+
+  // NEW: Handler to update filter context from child components
+  const handleFilterContextUpdate = (updates: Partial<FilterContext>) => {
+    if (updates.selectedCreatorLocations) {
+      setSelectedCreatorLocations(updates.selectedCreatorLocations);
+    }
+    if (updates.allFetchedLocations) {
+      setAllFetchedLocations(updates.allFetchedLocations);
+    }
+    if (updates.selectedLanguages) {
+      setSelectedLanguages(prev => ({ ...prev, ...updates.selectedLanguages }));
+    }
+    if (updates.selectedInterests) {
+      setSelectedInterests(prev => ({ ...prev, ...updates.selectedInterests }));
+    }
+    if (updates.selectedHashtags) {
+      setSelectedHashtags(updates.selectedHashtags);
+    }
+    if (updates.selectedMentions) {
+      setSelectedMentions(updates.selectedMentions);
+    }
+    if (updates.selectedTopics) {
+      setSelectedTopics(updates.selectedTopics);
+    }
+    if (updates.selectedBrands) {
+      setSelectedBrands(updates.selectedBrands);
+    }
+    if (updates.selectedContacts) {
+      setSelectedContacts(updates.selectedContacts);
+    }
+  };
+
+  // MODIFIED: Enhanced clear filters handler to only reset without triggering API
+  const handleClearFilters = () => {
+    console.log('🧹 Clearing all filters without API call...');
+    
+    // Clear filter context state
+    setSelectedCreatorLocations([]);
+    setAllFetchedLocations([]);
+    setSelectedLanguages({});
+    setSelectedInterests({});
+    setSelectedHashtags([]);
+    setSelectedMentions([]);
+    setSelectedTopics([]);
+    setSelectedBrands([]);
+    setSelectedContacts([]);
+    
+    // Clear search text
+    setSearchText('');
+    setSelectedInfluencer(null);
+    setSearchResults([]);
+    setShowSearchDropdown(false);
+    setSearchError(null);
+    
+    // Reset add to list states
+    setAddedInfluencers({});
+    setIsAdding({});
+    
+    console.log('✅ All local filter states cleared');
+    
+    // NOTE: We are NOT calling onClearFilters() here to prevent API call
+    // The parent component should handle the actual filter clearing when needed
+  };
 
   // Search userhandles function
   const searchUserhandles = useCallback(async (query: string) => {
@@ -502,11 +629,12 @@ const DiscoveredInfluencers: React.FC<DiscoveredInfluencersProps> = ({
           searchParams={searchParams}
           onFilterChange={onFilterChange}
           onApplyFilters={onApplyFilters}
-          onClear={onClearFilters}
+          onClear={handleClearFilters}
           platforms={platforms}
           selectedPlatform={selectedPlatform}
           onPlatformChange={onPlatformChange}
           isLoadingPlatforms={isLoadingPlatforms}
+          filterContext={filterContext}
         />
       )}
       

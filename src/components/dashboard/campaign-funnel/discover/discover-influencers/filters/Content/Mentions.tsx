@@ -10,6 +10,10 @@ interface MentionsProps {
   isOpen: boolean;
   onToggle: () => void;
   onCloseFilter: () => void;
+  // Add context update handler
+  onUpdateContext?: (updates: {
+    selectedMentions?: { name: string }[];
+  }) => void;
 }
 
 interface UserhandleResult {
@@ -34,7 +38,8 @@ const Mentions: React.FC<MentionsProps> = ({
   onFilterChange, 
   isOpen, 
   onToggle,
-  onCloseFilter 
+  onCloseFilter,
+  onUpdateContext
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<UserhandleResult[]>([]);
@@ -64,6 +69,15 @@ const Mentions: React.FC<MentionsProps> = ({
       }
     }
   }, [filters.mentions]);
+
+  // Update context when mentions change
+  useEffect(() => {
+    if (onUpdateContext) {
+      onUpdateContext({
+        selectedMentions: selectedMentions
+      });
+    }
+  }, [selectedMentions, onUpdateContext]);
 
   // Search userhandles with API
   const searchUserhandles = useCallback(async (query: string) => {

@@ -18,12 +18,45 @@ import {
   InstagramOptions,
   AudienceLocationsFilter
 } from '@/lib/creator-discovery-types';
+import { CreatorLocationSelection } from '@/lib/types';
 
 export interface ActiveFilter {
   key: string;
   label: string;
   value: string;
   category: 'demographics' | 'performance' | 'content' | 'account' | 'platform' | 'other';
+}
+
+// Add a new interface for context that includes location and language data
+export interface FilterContext {
+  selectedCreatorLocations?: CreatorLocationSelection[];
+  allFetchedLocations?: any[];
+  getLocationNameById?: (id: string) => string;
+  selectedLanguages?: {
+    creatorLanguage?: { code: string; name: string };
+    audienceLanguages?: { code: string; name: string }[];
+  };
+  getLanguageNameByCode?: (code: string) => string;
+  selectedInterests?: {
+    creator?: string[];
+    audience?: { value: string; percentage_value: number }[];
+  };
+  selectedHashtags?: { name: string }[];
+  selectedMentions?: { name: string }[];
+  selectedTopics?: string[];
+  selectedBrands?: string[];
+  selectedContacts?: SpecificContactDetail[];
+}
+
+// Helper function to truncate long lists
+function formatNamesList(names: string[], maxDisplay: number = 3): string {
+  if (names.length === 0) return '';
+  
+  if (names.length <= maxDisplay) {
+    return names.join(', ');
+  }
+  
+  return `${names.slice(0, maxDisplay).join(', ')} +${names.length - maxDisplay} more`;
 }
 
 // Configuration for filter metadata
@@ -33,7 +66,7 @@ export const FILTER_CONFIG = {
     label: 'Platform',
     category: 'platform' as const,
     type: 'string',
-    valueFormatter: (value: string) => value,
+    valueFormatter: (value: string, context?: FilterContext) => value,
   },
   
   // Demographics
@@ -41,56 +74,163 @@ export const FILTER_CONFIG = {
     label: 'Creator Locations',
     category: 'demographics' as const,
     type: 'array',
-    valueFormatter: (value: string[]) => `${value.length} location${value.length > 1 ? 's' : ''}`,
+    valueFormatter: (value: string[], context?: FilterContext) => {
+      if (value.length === 0) {
+        return '';
+      }
+      
+      const locationNames: string[] = [];
+      
+      if (context?.selectedCreatorLocations) {
+        value.forEach(id => {
+          const location = context.selectedCreatorLocations?.find(loc => loc.id === id);
+          if (location) {
+            const displayName = location.display_name || location.name;
+            if (displayName && !displayName.includes('Loading')) {
+              locationNames.push(displayName);
+            }
+          }
+        });
+      }
+      
+      if (locationNames.length === 0 && context?.allFetchedLocations) {
+        value.forEach(id => {
+          const location = context.allFetchedLocations?.find(loc => loc.id === id);
+          if (location) {
+            const displayName = location.display_name || location.name;
+            if (displayName && !displayName.includes('Loading')) {
+              locationNames.push(displayName);
+            }
+          }
+        });
+      }
+      
+      if (locationNames.length === 0) {
+        return `${value.length} location${value.length !== 1 ? 's' : ''}`;
+      }
+      
+      return formatNamesList(locationNames, 2);
+    },
   },
   audience_locations: {
     label: 'Audience Locations',
     category: 'demographics' as const,
     type: 'array',
-    valueFormatter: (value: AudienceLocationsFilter[]) => `${value.length} location${value.length > 1 ? 's' : ''}`,
+    valueFormatter: (value: AudienceLocationsFilter[], context?: FilterContext) => {
+      if (value.length === 0) {
+        return '';
+      }
+      
+      const locationDisplays: string[] = [];
+      
+      value.forEach(audienceLocation => {
+        let locationName = '';
+        
+        if (context?.allFetchedLocations) {
+          const location = context.allFetchedLocations.find(loc => loc.id === audienceLocation.location_id);
+          if (location) {
+            locationName = location.display_name || location.name;
+          }
+        }
+        
+        if (!locationName && context?.selectedCreatorLocations) {
+          const location = context.selectedCreatorLocations.find(loc => loc.id === audienceLocation.location_id);
+          if (location) {
+            locationName = location.display_name || location.name;
+          }
+        }
+        
+        if (!locationName && context?.getLocationNameById) {
+          locationName = context.getLocationNameById(audienceLocation.location_id);
+        }
+        
+        if (locationName && !locationName.includes('Loading') && !locationName.startsWith('Location ')) {
+          locationDisplays.push(`${locationName} (${audienceLocation.percentage_value}%)`);
+        }
+      });
+      
+      if (locationDisplays.length === 0) {
+        return `${value.length} location${value.length !== 1 ? 's' : ''}`;
+      }
+      
+      return formatNamesList(locationDisplays, 2);
+    },
   },
   creator_gender: {
     label: 'Creator Gender',
     category: 'demographics' as const,
     type: 'enum',
     excludeValues: ['ANY'],
-    valueFormatter: (value: string) => value.replace(/_/g, ' '),
+    valueFormatter: (value: string, context?: FilterContext) => value.replace(/_/g, ' '),
   },
   audience_gender: {
     label: 'Audience Gender',
     category: 'demographics' as const,
     type: 'object',
-    valueFormatter: (value: AudienceGenderFilter) => `${value.type.replace(/_/g, ' ')} ≥${value.percentage_value}%`,
+    valueFormatter: (value: AudienceGenderFilter, context?: FilterContext) => `${value.type.replace(/_/g, ' ')} ≥${value.percentage_value}%`,
   },
   creator_age: {
     label: 'Creator Age',
     category: 'demographics' as const,
     type: 'object',
-    valueFormatter: (value: NumericRange) => formatRange(value.min, value.max),
+    valueFormatter: (value: NumericRange, context?: FilterContext) => formatRange(value.min, value.max),
   },
   audience_age: {
     label: 'Audience Age',
     category: 'demographics' as const,
     type: 'object',
-    valueFormatter: (value: AudienceAgeFilter) => `${value.min}-${value.max} (≥${value.percentage_value}%)`,
+    valueFormatter: (value: AudienceAgeFilter, context?: FilterContext) => `${value.min}-${value.max} (≥${value.percentage_value}%)`,
   },
   audience_language: {
     label: 'Audience Language',
     category: 'demographics' as const,
     type: 'array',
-    valueFormatter: (value: AudienceLanguageFilter[]) => `${value.length} language${value.length > 1 ? 's' : ''}`,
+    valueFormatter: (value: AudienceLanguageFilter[], context?: FilterContext) => {
+      if (value.length === 0) {
+        return '';
+      }
+      
+      const languageDisplays: string[] = [];
+      
+      value.forEach(audienceLanguage => {
+        let displayName = audienceLanguage.code.toUpperCase();
+        
+        if (context?.selectedLanguages?.audienceLanguages) {
+          const selectedLang = context.selectedLanguages.audienceLanguages.find(lang => lang.code === audienceLanguage.code);
+          if (selectedLang) {
+            displayName = selectedLang.name;
+          }
+        }
+        
+        if (displayName === audienceLanguage.code.toUpperCase() && context?.getLanguageNameByCode) {
+          const nameFromFunction = context.getLanguageNameByCode(audienceLanguage.code);
+          if (nameFromFunction) {
+            displayName = nameFromFunction;
+          }
+        }
+        
+        languageDisplays.push(`${displayName} (${audienceLanguage.percentage_value}%)`);
+      });
+      
+      return formatNamesList(languageDisplays, 2);
+    },
   },
   creator_language: {
     label: 'Creator Language',
     category: 'demographics' as const,
     type: 'object',
-    valueFormatter: (value: CreatorLanguageFilter) => value.code.toUpperCase(),
+    valueFormatter: (value: CreatorLanguageFilter, context?: FilterContext) => {
+      if (context?.selectedLanguages?.creatorLanguage) {
+        return context.selectedLanguages.creatorLanguage.name;
+      }
+      return value.code.toUpperCase();
+    },
   },
   creator_age_bracket: {
     label: 'Creator Age Bracket',
     category: 'demographics' as const,
     type: 'enum',
-    valueFormatter: (value: string) => value.replace(/_/g, ' '),
+    valueFormatter: (value: string, context?: FilterContext) => value.replace(/_/g, ' '),
   },
 
   // Performance
@@ -98,73 +238,73 @@ export const FILTER_CONFIG = {
     label: 'Followers',
     category: 'performance' as const,
     type: 'object',
-    valueFormatter: (value: NumericRange) => formatNumberRange(value.min, value.max),
+    valueFormatter: (value: NumericRange, context?: FilterContext) => formatNumberRange(value.min, value.max),
   },
   subscriber_count: {
     label: 'Subscribers',
     category: 'performance' as const,
     type: 'object',
-    valueFormatter: (value: NumericRange) => formatNumberRange(value.min, value.max),
+    valueFormatter: (value: NumericRange, context?: FilterContext) => formatNumberRange(value.min, value.max),
   },
   content_count: {
     label: 'Content Count',
     category: 'performance' as const,
     type: 'object',
-    valueFormatter: (value: NumericRange) => formatRange(value.min, value.max),
+    valueFormatter: (value: NumericRange, context?: FilterContext) => formatRange(value.min, value.max),
   },
   engagement_rate: {
     label: 'Engagement Rate',
     category: 'performance' as const,
     type: 'object',
-    valueFormatter: (value: EngagementRate) => `≥${value.percentage_value}%`,
+    valueFormatter: (value: EngagementRate, context?: FilterContext) => `≥${value.percentage_value}%`,
   },
   average_likes: {
     label: 'Avg Likes',
     category: 'performance' as const,
     type: 'object',
-    valueFormatter: (value: NumericRange) => formatNumberRange(value.min, value.max),
+    valueFormatter: (value: NumericRange, context?: FilterContext) => formatNumberRange(value.min, value.max),
   },
   average_views: {
     label: 'Avg Views',
     category: 'performance' as const,
     type: 'object',
-    valueFormatter: (value: NumericRange) => formatNumberRange(value.min, value.max),
+    valueFormatter: (value: NumericRange, context?: FilterContext) => formatNumberRange(value.min, value.max),
   },
   total_engagements: {
     label: 'Total Engagements',
     category: 'performance' as const,
     type: 'object',
-    valueFormatter: (value: NumericRange) => formatNumberRange(value.min, value.max),
+    valueFormatter: (value: NumericRange, context?: FilterContext) => formatNumberRange(value.min, value.max),
   },
   follower_growth: {
     label: 'Follower Growth',
     category: 'performance' as const,
     type: 'object',
-    valueFormatter: (value: FollowerGrowthFilter) => `≥${value.percentage_value}% in ${value.interval} ${value.interval_unit.toLowerCase()}${value.interval > 1 ? 's' : ''}`,
+    valueFormatter: (value: FollowerGrowthFilter, context?: FilterContext) => `≥${value.percentage_value}% in ${value.interval} ${value.interval_unit.toLowerCase()}${value.interval > 1 ? 's' : ''}`,
   },
   subscriber_growth: {
     label: 'Subscriber Growth',
     category: 'performance' as const,
     type: 'object',
-    valueFormatter: (value: SubscriberGrowthFilter) => `≥${value.percentage_value}% in ${value.interval} ${value.interval_unit.toLowerCase()}${value.interval > 1 ? 's' : ''}`,
+    valueFormatter: (value: SubscriberGrowthFilter, context?: FilterContext) => `≥${value.percentage_value}% in ${value.interval} ${value.interval_unit.toLowerCase()}${value.interval > 1 ? 's' : ''}`,
   },
   views_growth: {
     label: 'Views Growth',
     category: 'performance' as const,
     type: 'object',
-    valueFormatter: (value: ViewsGrowth) => `≥${value.percentage_value}% in ${value.interval} ${value.interval_unit.toLowerCase()}${value.interval > 1 ? 's' : ''}`,
+    valueFormatter: (value: ViewsGrowth, context?: FilterContext) => `≥${value.percentage_value}% in ${value.interval} ${value.interval_unit.toLowerCase()}${value.interval > 1 ? 's' : ''}`,
   },
   share_count: {
     label: 'Share Count',
     category: 'performance' as const,
     type: 'object',
-    valueFormatter: (value: NumericRange) => formatNumberRange(value.min, value.max),
+    valueFormatter: (value: NumericRange, context?: FilterContext) => formatNumberRange(value.min, value.max),
   },
   save_count: {
     label: 'Save Count',
     category: 'performance' as const,
     type: 'object',
-    valueFormatter: (value: NumericRange) => formatNumberRange(value.min, value.max),
+    valueFormatter: (value: NumericRange, context?: FilterContext) => formatNumberRange(value.min, value.max),
   },
 
   // Content
@@ -172,79 +312,112 @@ export const FILTER_CONFIG = {
     label: 'Keywords',
     category: 'content' as const,
     type: 'string',
-    valueFormatter: (value: string) => value,
+    valueFormatter: (value: string, context?: FilterContext) => value,
   },
   bio_phrase: {
     label: 'Bio Phrase',
     category: 'content' as const,
     type: 'string',
-    valueFormatter: (value: string) => value,
+    valueFormatter: (value: string, context?: FilterContext) => value,
   },
   hashtags: {
     label: 'Hashtags',
     category: 'content' as const,
     type: 'array',
-    valueFormatter: (value: HashtagFilter[]) => `${value.length} hashtag${value.length > 1 ? 's' : ''}`,
+    valueFormatter: (value: HashtagFilter[], context?: FilterContext) => {
+      if (value.length === 0) return '';
+      
+      const hashtagNames = value.map(hashtag => `#${hashtag.name}`);
+      return formatNamesList(hashtagNames, 3);
+    },
   },
   mentions: {
     label: 'Mentions',
     category: 'content' as const,
     type: 'array',
-    valueFormatter: (value: MentionFilter[]) => `${value.length} mention${value.length > 1 ? 's' : ''}`,
+    valueFormatter: (value: MentionFilter[], context?: FilterContext) => {
+      if (value.length === 0) return '';
+      
+      const mentionNames = value.map(mention => `@${mention.name}`);
+      return formatNamesList(mentionNames, 3);
+    },
   },
   audience_interests: {
     label: 'Audience Interests',
     category: 'content' as const,
     type: 'array',
-    valueFormatter: (value: string[]) => `${value.length} interest${value.length > 1 ? 's' : ''}`,
+    valueFormatter: (value: string[], context?: FilterContext) => {
+      if (value.length === 0) return '';
+      return formatNamesList(value, 3);
+    },
   },
   creator_interests: {
     label: 'Creator Interests',
     category: 'content' as const,
     type: 'array',
-    valueFormatter: (value: string[]) => `${value.length} interest${value.length > 1 ? 's' : ''}`,
+    valueFormatter: (value: string[], context?: FilterContext) => {
+      if (value.length === 0) return '';
+      return formatNamesList(value, 3);
+    },
   },
   audience_brand_affinities: {
     label: 'Audience Brands',
     category: 'content' as const,
     type: 'array',
-    valueFormatter: (value: string[]) => `${value.length} brand${value.length > 1 ? 's' : ''}`,
+    valueFormatter: (value: string[], context?: FilterContext) => {
+      if (value.length === 0) return '';
+      return formatNamesList(value, 3);
+    },
   },
   creator_brand_affinities: {
     label: 'Creator Brands',
     category: 'content' as const,
     type: 'array',
-    valueFormatter: (value: string[]) => `${value.length} brand${value.length > 1 ? 's' : ''}`,
+    valueFormatter: (value: string[], context?: FilterContext) => {
+      if (value.length === 0) return '';
+      return formatNamesList(value, 3);
+    },
   },
   brand_sponsors: {
     label: 'Brand Sponsors',
     category: 'content' as const,
     type: 'array',
-    valueFormatter: (value: string[]) => `${value.length} sponsor${value.length > 1 ? 's' : ''}`,
+    valueFormatter: (value: string[], context?: FilterContext) => {
+      if (value.length === 0) return '';
+      return formatNamesList(value, 3);
+    },
   },
   topic_relevance: {
-    label: 'Topic Relevance',
+    label: 'Topics AI',
     category: 'content' as const,
     type: 'object',
-    valueFormatter: (value: TopicRelevanceFilter) => `${value.name.length} topic${value.name.length > 1 ? 's' : ''}`,
+    valueFormatter: (value: TopicRelevanceFilter, context?: FilterContext) => {
+      if (!value.name || value.name.length === 0) return '';
+      return formatNamesList(value.name, 3);
+    },
   },
   creator_lookalikes: {
     label: 'Creator Lookalikes',
     category: 'content' as const,
     type: 'string',
-    valueFormatter: (value: string) => `@${value}`,
+    valueFormatter: (value: string, context?: FilterContext) => `@${value}`,
   },
   audience_lookalikes: {
     label: 'Audience Lookalikes',
     category: 'content' as const,
     type: 'string',
-    valueFormatter: (value: string) => `@${value}`,
+    valueFormatter: (value: string, context?: FilterContext) => `@${value}`,
   },
   audience_interest_affinities: {
     label: 'Interest Affinities',
     category: 'content' as const,
     type: 'array',
-    valueFormatter: (value: AudienceInterestAffinity[]) => `${value.length} affinity${value.length > 1 ? 'ies' : 'y'}`,
+    valueFormatter: (value: AudienceInterestAffinity[], context?: FilterContext) => {
+      if (value.length === 0) return '';
+      
+      const affinityNames = value.map(affinity => `${affinity.value} (${affinity.percentage_value}%)`);
+      return formatNamesList(affinityNames, 2);
+    },
   },
 
   // Account
@@ -252,89 +425,105 @@ export const FILTER_CONFIG = {
     label: 'Verified',
     category: 'account' as const,
     type: 'boolean',
-    valueFormatter: () => 'Yes',
+    valueFormatter: (value: boolean, context?: FilterContext) => 'Yes',
   },
   has_contact_details: {
     label: 'Has Contact',
     category: 'account' as const,
     type: 'boolean',
-    valueFormatter: () => 'Yes',
+    valueFormatter: (value: boolean, context?: FilterContext) => 'Yes',
   },
   specific_contact_details: {
     label: 'Contact Details',
     category: 'account' as const,
     type: 'array',
-    valueFormatter: (value: SpecificContactDetail[]) => `${value.length} type${value.length > 1 ? 's' : ''}`,
+    valueFormatter: (value: SpecificContactDetail[], context?: FilterContext) => {
+      if (value.length === 0) return '';
+      
+      const contactNames = value.map(contact => {
+        const formattedType = contact.type.charAt(0) + contact.type.slice(1).toLowerCase();
+        const preference = contact.preference === 'MUST_HAVE' ? ' (Must)' : ' (Should)';
+        return `${formattedType}${preference}`;
+      });
+      
+      return formatNamesList(contactNames, 2);
+    },
   },
   has_sponsored_posts: {
     label: 'Has Sponsored Posts',
     category: 'account' as const,
     type: 'boolean',
-    valueFormatter: () => 'Yes',
+    valueFormatter: (value: boolean, context?: FilterContext) => 'Yes',
   },
   is_official_artist: {
     label: 'Official Artist',
     category: 'account' as const,
     type: 'boolean',
-    valueFormatter: () => 'Yes',
+    valueFormatter: (value: boolean, context?: FilterContext) => 'Yes',
   },
   has_audience_info: {
     label: 'Has Audience Info',
     category: 'account' as const,
     type: 'boolean',
-    valueFormatter: () => 'Yes',
+    valueFormatter: (value: boolean, context?: FilterContext) => 'Yes',
   },
   exclude_private_profiles: {
     label: 'Exclude Private',
     category: 'account' as const,
     type: 'boolean',
-    valueFormatter: () => 'Yes',
+    valueFormatter: (value: boolean, context?: FilterContext) => 'Yes',
   },
   platform_account_type: {
     label: 'Platform Account Type',
     category: 'account' as const,
     type: 'enum',
     excludeValues: ['ANY'],
-    valueFormatter: (value: string) => value.replace(/_/g, ' '),
+    valueFormatter: (value: string, context?: FilterContext) => value.replace(/_/g, ' '),
   },
   creator_account_type: {
     label: 'Creator Account Type',
     category: 'account' as const,
     type: 'array',
     excludeValues: ['ANY'],
-    valueFormatter: (value: string[]) => value.filter(type => type !== 'ANY').join(', ').replace(/_/g, ' '),
+    valueFormatter: (value: string[], context?: FilterContext) => {
+      const filteredTypes = value.filter(type => type !== 'ANY');
+      if (filteredTypes.length === 0) return '';
+      
+      const formattedTypes = filteredTypes.map(type => type.replace(/_/g, ' '));
+      return formatNamesList(formattedTypes, 2);
+    },
   },
   last_post_timestamp: {
     label: 'Last Post After',
     category: 'account' as const,
     type: 'string',
-    valueFormatter: (value: string) => new Date(value).toLocaleDateString(),
+    valueFormatter: (value: string, context?: FilterContext) => new Date(value).toLocaleDateString(),
   },
   audience_credibility_category: {
     label: 'Audience Credibility',
     category: 'account' as const,
     type: 'enum',
-    valueFormatter: (value: string) => value,
+    valueFormatter: (value: string, context?: FilterContext) => value,
   },
   audience_credibility_score: {
     label: 'Credibility Score',
     category: 'account' as const,
     type: 'number',
-    valueFormatter: (value: number) => `≥${value}`,
+    valueFormatter: (value: number, context?: FilterContext) => `≥${value}`,
   },
   post_type: {
     label: 'Post Type',
     category: 'account' as const,
     type: 'enum',
     excludeValues: ['ALL'],
-    valueFormatter: (value: string) => value,
+    valueFormatter: (value: string, context?: FilterContext) => value,
   },
   audience_source: {
     label: 'Audience Source',
     category: 'account' as const,
     type: 'enum',
     excludeValues: ['ANY'],
-    valueFormatter: (value: string) => value.replace(/_/g, ' '),
+    valueFormatter: (value: string, context?: FilterContext) => value.replace(/_/g, ' '),
   },
 
   // Nested filters
@@ -343,7 +532,7 @@ export const FILTER_CONFIG = {
     category: 'performance' as const,
     type: 'nested',
     path: ['instagram_options', 'reel_views'],
-    valueFormatter: (value: any) => formatNumberRange(value.min, value.max),
+    valueFormatter: (value: any, context?: FilterContext) => formatNumberRange(value.min, value.max),
   },
 
   // Pagination & Sorting (usually not shown as active filters)
@@ -351,19 +540,19 @@ export const FILTER_CONFIG = {
     label: 'Sort By',
     category: 'other' as const,
     type: 'object',
-    valueFormatter: (value: any) => `${value.field} (${value.order})`,
+    valueFormatter: (value: any, context?: FilterContext) => `${value.field} (${value.order})`,
   },
   limit: {
     label: 'Limit',
     category: 'other' as const,
     type: 'number',
-    valueFormatter: (value: number) => value.toString(),
+    valueFormatter: (value: number, context?: FilterContext) => value.toString(),
   },
   offset: {
     label: 'Offset',
     category: 'other' as const,
     type: 'number',
-    valueFormatter: (value: number) => value.toString(),
+    valueFormatter: (value: number, context?: FilterContext) => value.toString(),
   },
 } as const;
 
@@ -443,7 +632,8 @@ function setNestedValue(obj: any, path: string[], value: any): any {
  */
 export function getActiveFilters(
   searchParams: InfluencerSearchFilter,
-  pendingFilters: Partial<InfluencerSearchFilter> = {}
+  pendingFilters: Partial<InfluencerSearchFilter> = {},
+  context?: FilterContext
 ): ActiveFilter[] {
   const combinedFilters = { ...searchParams, ...pendingFilters };
   const activeFilters: ActiveFilter[] = [];
@@ -470,8 +660,8 @@ export function getActiveFilters(
 
     if (isActiveValue(value, config)) {
       try {
-        // Explicitly type config as any to satisfy TypeScript
-        const formattedValue = (config as any).valueFormatter(value);
+        // Pass context to the valueFormatter
+        const formattedValue = (config as any).valueFormatter(value, context);
         if (formattedValue) {
           activeFilters.push({
             key: filterKey,
@@ -549,9 +739,10 @@ export function removeFilter(
  */
 export function getActiveFiltersByCategory(
   searchParams: InfluencerSearchFilter,
-  pendingFilters: Partial<InfluencerSearchFilter> = {}
+  pendingFilters: Partial<InfluencerSearchFilter> = {},
+  context?: FilterContext
 ): Record<string, ActiveFilter[]> {
-  const activeFilters = getActiveFilters(searchParams, pendingFilters);
+  const activeFilters = getActiveFilters(searchParams, pendingFilters, context);
   
   return activeFilters.reduce((grouped, filter) => {
     if (!grouped[filter.category]) {
@@ -567,9 +758,10 @@ export function getActiveFiltersByCategory(
  */
 export function getActiveFilterCounts(
   searchParams: InfluencerSearchFilter,
-  pendingFilters: Partial<InfluencerSearchFilter> = {}
+  pendingFilters: Partial<InfluencerSearchFilter> = {},
+  context?: FilterContext
 ): Record<string, number> {
-  const groupedFilters = getActiveFiltersByCategory(searchParams, pendingFilters);
+  const groupedFilters = getActiveFiltersByCategory(searchParams, pendingFilters, context);
   
   return Object.entries(groupedFilters).reduce((counts, [category, filters]) => {
     counts[category] = filters.length;
@@ -582,7 +774,8 @@ export function getActiveFilterCounts(
  */
 export function hasActiveFilters(
   searchParams: InfluencerSearchFilter,
-  pendingFilters: Partial<InfluencerSearchFilter> = {}
+  pendingFilters: Partial<InfluencerSearchFilter> = {},
+  context?: FilterContext
 ): boolean {
-  return getActiveFilters(searchParams, pendingFilters).length > 0;
+  return getActiveFilters(searchParams, pendingFilters, context).length > 0;
 }

@@ -5,7 +5,6 @@ import { IoLocationOutline, IoClose, IoWarningOutline, IoCheckmarkCircleOutline 
 import FilterComponent from '../FilterComponent';
 import { Location, LocationSearchResponse, CreatorLocationSelection } from '@/lib/types';
 import { InfluencerSearchFilter, AudienceLocationsFilter } from '@/lib/creator-discovery-types';
-import { useFilterClickOutside } from '@/hooks/useClickOutside';
 
 interface LocationFilterProps {
   selectedLocations: CreatorLocationSelection[];
@@ -15,6 +14,11 @@ interface LocationFilterProps {
   searchParams: InfluencerSearchFilter;
   onFilterChange: (updates: Partial<InfluencerSearchFilter>) => void;
   onCloseFilter: () => void;
+  // Add new props for context updates
+  onUpdateContext?: (updates: {
+    selectedCreatorLocations?: CreatorLocationSelection[];
+    allFetchedLocations?: Location[];
+  }) => void;
 }
 
 export default function LocationFilter({
@@ -24,7 +28,8 @@ export default function LocationFilter({
   onToggle,
   searchParams,
   onFilterChange,
-  onCloseFilter
+  onCloseFilter,
+  onUpdateContext
 }: LocationFilterProps) {
   // Creator locations state
   const [creatorQuery, setCreatorQuery] = useState('');
@@ -43,7 +48,6 @@ export default function LocationFilter({
   // Common state
   const [allFetchedLocations, setAllFetchedLocations] = useState<Location[]>([]);
 
-
   // Initialize from searchParams
   useEffect(() => {
     // Initialize creator locations
@@ -58,13 +62,18 @@ export default function LocationFilter({
         };
       });
       setSelectedCreatorLocations(creatorLocs);
+      
+      // Update context
+      if (onUpdateContext) {
+        onUpdateContext({ selectedCreatorLocations: creatorLocs });
+      }
     }
 
     // Initialize audience locations
     if (searchParams.audience_locations && searchParams.audience_locations.length > 0) {
       setSelectedAudienceLocations(searchParams.audience_locations);
     }
-  }, [searchParams.creator_locations, searchParams.audience_locations, selectedLocations]);
+  }, [searchParams.creator_locations, searchParams.audience_locations, selectedLocations, onUpdateContext]);
 
   // Generic location fetch function
   const fetchLocations = async (
@@ -108,7 +117,14 @@ export default function LocationFilter({
         const newLocations = fetchedLocations.filter((newLoc: Location) => 
           !prev.some(prevLoc => prevLoc.id === newLoc.id)
         );
-        return [...prev, ...newLocations];
+        const updated = [...prev, ...newLocations];
+        
+        // Update context with all fetched locations
+        if (onUpdateContext) {
+          onUpdateContext({ allFetchedLocations: updated });
+        }
+        
+        return updated;
       });
 
     } catch (error) {
@@ -157,6 +173,11 @@ export default function LocationFilter({
     setSelectedCreatorLocations(updatedSelections);
     onSelect(updatedSelections);
     
+    // Update context with selected creator locations
+    if (onUpdateContext) {
+      onUpdateContext({ selectedCreatorLocations: updatedSelections });
+    }
+    
     // Update filter
     const creatorLocationIds = updatedSelections.map(loc => loc.id);
     onFilterChange({ creator_locations: creatorLocationIds });
@@ -166,6 +187,11 @@ export default function LocationFilter({
     const updatedSelections = selectedCreatorLocations.filter(loc => loc.id !== id);
     setSelectedCreatorLocations(updatedSelections);
     onSelect(updatedSelections);
+    
+    // Update context with selected creator locations
+    if (onUpdateContext) {
+      onUpdateContext({ selectedCreatorLocations: updatedSelections });
+    }
     
     const creatorLocationIds = updatedSelections.map(loc => loc.id);
     onFilterChange({ creator_locations: creatorLocationIds });
@@ -238,6 +264,7 @@ export default function LocationFilter({
 
   const totalSelectedCount = selectedCreatorLocations.length + selectedAudienceLocations.length;
   const hasActiveFilters = totalSelectedCount > 0 || creatorQuery.length > 0 || audienceQuery.length > 0;
+
   return (
     <FilterComponent 
       hasActiveFilters={hasActiveFilters}
@@ -492,7 +519,6 @@ export default function LocationFilter({
                   <IoLocationOutline className="w-3 h-3 text-blue-600" />
                 </div>
                 <div className="text-xs text-gray-600 font-medium">Search audience locations</div>
-              
               </div>
             )}
           </div>

@@ -10,6 +10,10 @@ interface ContactsProps {
   isOpen: boolean;
   onToggle: () => void;
   onCloseFilter: () => void;
+  // Add context update handler
+  onUpdateContext?: (updates: {
+    selectedContacts?: SpecificContactDetail[];
+  }) => void;
 }
 
 // All available contact types based on the API specification
@@ -36,7 +40,8 @@ const Contacts: React.FC<ContactsProps> = ({
   onFilterChange,
   isOpen,
   onToggle,
-  onCloseFilter 
+  onCloseFilter,
+  onUpdateContext
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedContacts, setSelectedContacts] = useState<SpecificContactDetail[]>(
@@ -62,6 +67,15 @@ const Contacts: React.FC<ContactsProps> = ({
       setSelectedContacts(incoming);
     }
   }, [filters.specific_contact_details]);
+
+  // Update context when contacts change
+  useEffect(() => {
+    if (onUpdateContext) {
+      onUpdateContext({
+        selectedContacts: selectedContacts
+      });
+    }
+  }, [selectedContacts, onUpdateContext]);
 
   // Handle clicks outside dropdown and tooltip
   useEffect(() => {
