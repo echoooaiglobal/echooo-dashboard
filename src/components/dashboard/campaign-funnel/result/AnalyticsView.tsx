@@ -112,18 +112,24 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
 
   const getPostData = (video: VideoResult) => {
     const postData = video.post_result_obj?.data;
-    if (!postData) return {
-      likes: Math.max(0, video.likes_count || 0),
-      comments: Math.max(0, video.comments_count || 0),
-      // Real view count from API data - not dummy values
-      views: Math.max(0, video.views_count || 0),
-      shares: Math.max(0, Math.floor((video.likes_count || 0) * 0.1)),
-      followers: 0,
-      engagementRate: 0,
-      avatarUrl: getProxiedImageUrl(video.profile_pic_url || ''),
-      isVerified: false,
-      thumbnailUrl: getProxiedImageUrl(video.thumbnail || video.media_preview || '')
-    };
+    if (!postData) {
+      // When no post data, use whichever is greater between views_count and plays_count
+      const viewsFromAPI = Math.max(0, video.views_count || 0);
+      const playsFromAPI = Math.max(0, video.plays_count || 0);
+      const finalViews = Math.max(viewsFromAPI, playsFromAPI);
+      
+      return {
+        likes: Math.max(0, video.likes_count || 0),
+        comments: Math.max(0, video.comments_count || 0),
+        views: finalViews,
+        shares: Math.max(0, Math.floor((video.likes_count || 0) * 0.1)),
+        followers: 0,
+        engagementRate: 0,
+        avatarUrl: getProxiedImageUrl(video.profile_pic_url || ''),
+        isVerified: false,
+        thumbnailUrl: getProxiedImageUrl(video.thumbnail || video.media_preview || '')
+      };
+    }
 
     const likes = Math.max(0, postData.edge_media_preview_like?.count || 
                   postData.edge_liked_by?.count || 
@@ -134,8 +140,13 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                      postData.edge_media_to_parent_comment?.count ||
                      video.comments_count || 0);
     
-    // Real view count from Instagram API - video_view_count or views_count
-    const views = Math.max(0, postData.video_view_count || video.views_count || 0);
+    // Get both video_view_count (plays) and general views, use whichever is greater
+    const videoPlaysFromAPI = Math.max(0, postData.video_view_count || postData.video_play_count || 0);
+    const generalViewsFromAPI = Math.max(0, video.views_count || 0);
+    const playsFromVideo = Math.max(0, video.plays_count || 0);
+    
+    // Take the maximum of all available view/play counts
+    const views = Math.max(videoPlaysFromAPI, generalViewsFromAPI, playsFromVideo);
     const shares = Math.max(0, Math.floor(likes * 0.1));
     
     const followers = Math.max(0, postData.owner?.edge_followed_by?.count || 0);
@@ -659,11 +670,11 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
       tooltip: "Estimated number of unique users who saw your content. This should be lower than impressions and usually lower than or close to total views, as it only counts each user once regardless of repeat views."
     },
     {
-      title: "Total Views",
+      title: "Total Plays",
       value: formatNumber(analyticsData.totalViews),
       change: getPercentageChange(analyticsData.totalViews, 200000),
       changeType: analyticsData.totalViews > 200000 ? "positive" : "negative" as const,
-      tooltip: "Total number of video views across all posts. This represents the total watch count for all video content in the campaign, fetched directly from Instagram's API."
+      tooltip: "Total number of video plays across all posts. This represents the total play count for all video content in the campaign, fetched directly from Instagram's API using video_play_count data."
     },
     {
       title: "Total Likes",
@@ -866,7 +877,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                       { label: 'Likes', value: analyticsData.totalLikes, color: 'bg-gradient-to-r from-pink-500 to-pink-600' },
                       { label: 'Comments', value: analyticsData.totalComments, color: 'bg-gradient-to-r from-blue-500 to-blue-600' },
                       { label: 'Clicks', value: analyticsData.totalClicks, color: 'bg-gradient-to-r from-purple-500 to-purple-600' },
-                      { label: 'Views', value: analyticsData.totalViews, color: 'bg-gradient-to-r from-green-500 to-green-600' }
+                      { label: 'Plays', value: analyticsData.totalViews, color: 'bg-gradient-to-r from-green-500 to-green-600' }
                     ];
                     const maxValue = Math.max(...data.map(item => item.value));
                     
@@ -902,10 +913,10 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                 </div>
               </div>
 
-              {/* Enhanced Views Over Time Chart - Nivo Style */}
+              {/* Enhanced Plays Over Time Chart - Nivo Style */}
               <div className="md:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-sm font-medium text-gray-600">Views Over Time</h3>
+                  <h3 className="text-sm font-medium text-gray-600">Plays Over Time</h3>
                   <div className="relative group">
                     <button className="text-gray-400 hover:text-gray-600 transition-colors duration-200 no-print">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -914,7 +925,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                     </button>
                     <div className="absolute bottom-full right-0 mb-2 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
                       <div className="relative">
-                        Cumulative view count showing campaign momentum over time. Each data point represents the total accumulated views up to that date.
+                        Cumulative play count showing campaign momentum over time. Each data point represents the total accumulated plays up to that date.
                         <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
                       </div>
                     </div>
@@ -1111,11 +1122,11 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                                 </span>
                               </div>
                               <div className="flex justify-between">
-                                <span className="text-gray-600">Daily Views:</span>
+                                <span className="text-gray-600">Daily Plays:</span>
                                 <span className="font-medium text-blue-600">{formatNumber(hoveredDataPoint.views)}</span>
                               </div>
                               <div className="flex justify-between border-t border-gray-100 pt-2">
-                                <span className="text-gray-600">Total Views:</span>
+                                <span className="text-gray-600">Total Plays:</span>
                                 <span className="font-bold text-gray-900">{formatNumber(hoveredDataPoint.cumulativeViews)}</span>
                               </div>
                             </div>
@@ -1141,8 +1152,8 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                         <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h2a2 2 0 01-2-2z" />
                         </svg>
-                        <p className="text-gray-500 text-sm">No view data available</p>
-                        <p className="text-gray-400 text-xs mt-1">Views will appear here once data is collected</p>
+                        <p className="text-gray-500 text-sm">No play data available</p>
+                        <p className="text-gray-400 text-xs mt-1">Plays will appear here once data is collected</p>
                       </div>
                     </div>
                   )}
@@ -1154,21 +1165,21 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                     <div className="grid grid-cols-3 gap-4 text-center">
                       <div>
                         <div className="text-lg font-bold text-gray-900">{formatNumber(analyticsData.totalViews)}</div>
-                        <div className="text-xs text-gray-500">Total Views</div>
+                        <div className="text-xs text-gray-500">Total Plays</div>
                       </div>
                       <div>
                         <div className="text-lg font-bold text-gray-900">
                           {Math.max(...analyticsData.postsByDate.map(p => p.views)) > 0 ? 
                             formatNumber(Math.max(...analyticsData.postsByDate.map(p => p.views))) : '0'}
                         </div>
-                        <div className="text-xs text-gray-500">Peak Day</div>
+                        <div className="text-xs text-gray-500">Peak Day Plays</div>
                       </div>
                       <div>
                         <div className="text-lg font-bold text-gray-900">
                           {analyticsData.postsByDate.length > 0 ? 
                             formatNumber(Math.round(analyticsData.totalViews / analyticsData.postsByDate.length)) : '0'}
                         </div>
-                        <div className="text-xs text-gray-500">Avg per Day</div>
+                        <div className="text-xs text-gray-500">Avg Plays per Day</div>
                       </div>
                     </div>
                   </div>
@@ -1435,7 +1446,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                             </div>
                             <div className="bg-white rounded-lg p-2 border border-gray-100 text-center">
                               <div className="text-sm font-semibold text-gray-900">{formatNumber(Math.max(0, influencer.totalViews))}</div>
-                              <div className="text-xs text-gray-500">Views</div>
+                              <div className="text-xs text-gray-500">Plays</div>
                             </div>
                           </div>
                           
