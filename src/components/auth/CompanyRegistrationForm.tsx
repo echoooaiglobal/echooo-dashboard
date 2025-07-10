@@ -1,4 +1,4 @@
-// src/components/auth/CompanyRegistrationForm.tsx
+// src/components/auth/CompanyRegistrationForm.tsx - Updated to include OAuth
 'use client';
 
 import { useState } from 'react';
@@ -7,6 +7,7 @@ import { User, Mail, Lock, Phone, Briefcase, Globe, Eye, EyeOff, AlertCircle } f
 import { registerUser, RegistrationData } from '@/services/auth/register.service';
 import SuccessMessage from '@/components/ui/SuccessMessage';
 import { validateEmail, validatePassword, validatePhoneNumber } from '@/utils/validation';
+import OAuthButtons from './OAuthButtons';
 
 interface CompanyRegistrationFormProps {
   onSuccess?: (redirectPath: string) => void;
@@ -19,13 +20,14 @@ export default function CompanyRegistrationForm({ onSuccess }: CompanyRegistrati
     phone_number: '',
     password: '',
     confirmPassword: '',
-    company_name: '',    // New field
-    company_domain: '',  // New field
+    company_name: '',    
+    company_domain: '',  
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [oauthError, setOAuthError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const router = useRouter();
 
@@ -43,6 +45,11 @@ export default function CompanyRegistrationForm({ onSuccess }: CompanyRegistrati
 
   const toggleShowConfirmPassword = () => {
     setShowConfirmPassword(!showConfirmPassword);
+  };
+
+  const handleOAuthError = (errorMessage: string) => {
+    setOAuthError(errorMessage);
+    setError(null); // Clear regular registration errors
   };
   
   // Simple domain validation
@@ -63,6 +70,7 @@ export default function CompanyRegistrationForm({ onSuccess }: CompanyRegistrati
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setOAuthError(null);
     setIsSubmitting(true);
     
     // Email validation
@@ -121,6 +129,7 @@ export default function CompanyRegistrationForm({ onSuccess }: CompanyRegistrati
         full_name: form.full_name,
         phone_number: form.phone_number || undefined,
         user_type: 'company',
+        role_name: 'company_admin',
         company_name: form.company_name,
         company_domain: form.company_domain
       };
@@ -159,13 +168,32 @@ export default function CompanyRegistrationForm({ onSuccess }: CompanyRegistrati
         />
       )}
 
-      {error && (
+      {(error || oauthError) && (
         <div className="bg-red-50 text-red-700 p-4 rounded-lg mb-6 flex items-start">
           <AlertCircle className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
-          <span className="text-sm">{error}</span>
+          <span className="text-sm">{error || oauthError}</span>
         </div>
       )}
 
+      {/* OAuth Registration Options */}
+      <div className="mb-8">
+        <OAuthButtons 
+          userType="company"
+          onError={handleOAuthError}
+          className="mb-6"
+        />
+        
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-300" />
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="px-2 bg-white text-gray-500">Or register with email</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Regular Registration Form */}
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Admin details section */}
         <div className="mb-2">

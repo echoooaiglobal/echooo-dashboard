@@ -47,25 +47,25 @@ body {
 }
 
 .content-container {
-  width: 100%;
-  max-width: 1280px; /* or your preferred max width */
+  width: 98%;
+  max-width: 100%;
   margin-left: auto;
   margin-right: auto;
-  padding-left: 1rem;
-  padding-right: 1rem;
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
 }
 
 @media (min-width: 640px) {
   .content-container {
-    padding-left: 1.5rem;
-    padding-right: 1.5rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
   }
 }
 
 @media (min-width: 1024px) {
   .content-container {
-    padding-left: 2rem;
-    padding-right: 2rem;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
   }
 }
 

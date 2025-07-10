@@ -1,4 +1,5 @@
-// src/context/AuthContext.tsx
+// src/context/AuthContext.tsx - MINIMAL FIX VERSION
+// Based on your working version, only adding loadAuthFromStorage method
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
@@ -7,7 +8,10 @@ import {
   AuthState, 
   LoginCredentials, 
   User, 
-  Role
+  Role,
+  DetailedRole,
+  UserType,
+  RoleCheckResult
 } from '@/types/auth';
 import { 
   login as loginService,
@@ -26,11 +30,32 @@ import {
   AccountInactiveError, 
   InvalidCredentialsError 
 } from '@/services/auth/auth.errors';
+import { 
+  checkRoleAccess, 
+  getPrimaryRole, 
+  getUserTypeFromRole,
+  hasDetailedRole,
+  hasAnyDetailedRole,
+  canAccessComponent,
+  PermissionCheck
+} from '@/utils/role-utils';
 
 interface AuthContextType extends AuthState {
   login: (credentials: LoginCredentials) => Promise<void>;
   logout: () => Promise<void>;
   refreshUserSession: () => Promise<boolean>;
+  loadAuthFromStorage: () => void; // ONLY NEW ADDITION
+  
+  // Enhanced role checking methods
+  getPrimaryRole: () => DetailedRole | null;
+  getUserType: () => UserType | null;
+  hasRole: (role: DetailedRole) => boolean;
+  hasAnyRole: (roles: DetailedRole[]) => boolean;
+  checkRoleAccess: () => RoleCheckResult;
+  canAccess: (componentName: string, requiredRoles?: DetailedRole[], requiredPermissions?: PermissionCheck[]) => boolean;
+  
+  // Legacy support for existing code
+  isUserType: (type: UserType) => boolean;
 }
 
 const initialState: AuthState = {
@@ -47,7 +72,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [authState, setAuthState] = useState<AuthState>(initialState);
   const router = useRouter();
   
-  // Initialize auth state from localStorage on mount
+  // ONLY NEW ADDITION: loadAuthFromStorage method for OAuth
+  const loadAuthFromStorage = () => {
+    try {
+      console.log('🔄 AuthContext: Loading auth data from localStorage...');
+      
+      const user = getStoredUser();
+      const roles = getStoredRoles();
+      const token = localStorage.getItem('accessToken');
+      
+      console.log('📊 AuthContext: Auth data check:', {
+        hasUser: !!user,
+        hasRoles: !!(roles && roles.length > 0),
+        hasToken: !!token,
+        tokenExpired: isTokenExpired()
+      });
+      
+      if (user && roles && roles.length > 0 && token && !isTokenExpired()) {
+        console.log('✅ AuthContext: Valid auth data found, updating state');
+        
+        setAuthState({
+          user,
+          roles,
+          isAuthenticated: true,
+          isLoading: false,
+          error: null,
+        });
+      } else {
+        console.log('❌ AuthContext: Invalid or missing auth data');
+        clearAuthData();
+        setAuthState({
+          user: null,
+          roles: [],
+          isAuthenticated: false,
+          isLoading: false,
+          error: null,
+        });
+      }
+    } catch (error) {
+      console.error('💥 AuthContext: Error loading auth from storage:', error);
+      clearAuthData();
+      setAuthState({
+        user: null,
+        roles: [],
+        isAuthenticated: false,
+        isLoading: false,
+        error: null,
+      });
+    }
+  };
+  
+  // Initialize auth state from localStorage on mount - UNCHANGED
   useEffect(() => {
     const initializeAuth = async () => {
       try {
@@ -119,7 +194,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initializeAuth();
   }, []);
 
-  // Set up token refresh interval
+  // Set up token refresh interval - UNCHANGED
   useEffect(() => {
     if (!authState.isAuthenticated) return;
     
@@ -235,7 +310,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       return true;
     } catch (error) {
-      console.error('Token refresh failed:', error);
+      // console.error('Token refresh failed:', error);
       // Clear auth data on failure
       clearAuthData();
       
@@ -252,11 +327,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Enhanced role checking methods - UNCHANGED
+  const getPrimaryRoleMethod = (): DetailedRole | null => {
+    return getPrimaryRole(authState.roles);
+  };
+
+  const getUserTypeMethod = (): UserType | null => {
+    const primaryRole = getPrimaryRole(authState.roles);
+    return primaryRole ? getUserTypeFromRole(primaryRole) : null;
+  };
+
+  const hasRoleMethod = (role: DetailedRole): boolean => {
+    return hasDetailedRole(authState.roles, role);
+  };
+
+  const hasAnyRoleMethod = (roles: DetailedRole[]): boolean => {
+    return hasAnyDetailedRole(authState.roles, roles);
+  };
+
+  const checkRoleAccessMethod = (): RoleCheckResult => {
+    return checkRoleAccess(authState.user, authState.roles);
+  };
+
+  const canAccessMethod = (
+    componentName: string, 
+    requiredRoles?: DetailedRole[], 
+    requiredPermissions?: PermissionCheck[]
+  ): boolean => {
+    return canAccessComponent(authState.roles, componentName, requiredRoles, requiredPermissions);
+  };
+
+  // Legacy support method
+  const isUserTypeMethod = (type: UserType): boolean => {
+    const userType = getUserTypeMethod();
+    return userType === type;
+  };
+
   const value = {
     ...authState,
     login,
     logout: () => handleLogout(true),
     refreshUserSession,
+    loadAuthFromStorage, // ONLY NEW ADDITION
+    
+    // Enhanced role methods
+    getPrimaryRole: getPrimaryRoleMethod,
+    getUserType: getUserTypeMethod,
+    hasRole: hasRoleMethod,
+    hasAnyRole: hasAnyRoleMethod,
+    checkRoleAccess: checkRoleAccessMethod,
+    canAccess: canAccessMethod,
+    
+    // Legacy support
+    isUserType: isUserTypeMethod,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -36,13 +36,13 @@ export default function Login() {
   return (
     <div className="min-h-screen flex">
       {/* Back to Landing Page button */}
-      <Link 
+      {/* <Link 
         href="/" 
         className="absolute top-6 left-6 flex items-center text-gray-600 hover:text-purple-600 transition-colors z-10"
       >
         <ChevronLeft className="w-5 h-5 mr-1" />
         <span>Back to Home</span>
-      </Link>
+      </Link> */}
 
       {/* Left side with login form */}
       <div className="w-full md:w-1/2 flex items-center justify-center bg-gradient-to-br from-purple-50 to-blue-50 px-6 py-12">
@@ -54,7 +54,7 @@ export default function Login() {
                 alt="Echooo" 
                 width={180} 
                 height={50} 
-                className="h-12 w-auto mx-auto mb-6 hover:opacity-80 transition-opacity" 
+                className="h-8 w-auto mx-auto mb-6 hover:opacity-80 transition-opacity" 
               />
             </Link>
             <h1 className="text-3xl font-extrabold text-gray-900 mb-2 tracking-tight">Welcome Back</h1>

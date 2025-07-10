@@ -1,8 +1,28 @@
 // src/app/page.tsx
+'use client'
+
 import Link from 'next/link';
 import Image from 'next/image';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
 
 export default function Home() {
+
+  const router = useRouter();
+  const { isAuthenticated } = useAuth();
+
+  useEffect(() => {
+
+    if (!isAuthenticated) {
+      router.replace('/login'); // use replace to avoid adding to browser history
+    } else {
+      router.push('/campaigns');
+    }
+  }, [isAuthenticated]);
+
+  return null
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}

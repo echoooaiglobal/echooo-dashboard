@@ -16,7 +16,7 @@ export default function Register() {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
   const [showContent, setShowContent] = useState(false);
-  const [activeTab, setActiveTab] = useState<RegisterTab>('influencer');
+  const [activeTab, setActiveTab] = useState<RegisterTab>('company');
   
   // Redirect if already authenticated
   useEffect(() => {
@@ -41,10 +41,10 @@ export default function Register() {
       {/* Left side with form */}
       <div className="w-full md:w-1/2 flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 px-6 py-12 relative">
         {/* Back to home link */}
-        <Link href="/" className="absolute top-6 left-6 flex items-center text-gray-600 hover:text-purple-600 transition-colors">
+        {/* <Link href="/" className="absolute top-6 left-6 flex items-center text-gray-600 hover:text-purple-600 transition-colors">
           <ArrowLeft className="h-4 w-4 mr-1" />
           <span className="text-sm font-medium">Back to Home</span>
-        </Link>
+        </Link> */}
         
         <div className={`w-full max-w-md transform transition-all duration-700 ease-in-out ${showContent ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}>
           <div className="text-center mb-8">
@@ -53,7 +53,7 @@ export default function Register() {
               alt="Echooo" 
               width={180} 
               height={50} 
-              className="h-12 w-auto mx-auto mb-6" 
+              className="h-8 w-auto mx-auto mb-6" 
             />
             <h1 className="text-3xl font-extrabold text-gray-900 mb-2 tracking-tight">Create Your Account</h1>
             <p className="text-gray-600 mb-6">
@@ -61,18 +61,7 @@ export default function Register() {
             </p>
             
             {/* Tabs */}
-            <div className="flex bg-gray-100 p-1 rounded-lg mb-8">
-              <button
-                onClick={() => setActiveTab('influencer')}
-                className={`flex items-center justify-center space-x-2 flex-1 py-2 px-4 rounded-md transition ${
-                  activeTab === 'influencer' 
-                    ? 'bg-white text-purple-600 shadow-sm' 
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                <Users size={18} />
-                <span>Influencer</span>
-              </button>
+            {/* <div className="flex bg-gray-100 p-1 rounded-lg mb-8">
               <button
                 onClick={() => setActiveTab('company')}
                 className={`flex items-center justify-center space-x-2 flex-1 py-2 px-4 rounded-md transition ${
@@ -84,7 +73,18 @@ export default function Register() {
                 <Briefcase size={18} />
                 <span>Company</span>
               </button>
-            </div>
+              <button
+                onClick={() => setActiveTab('influencer')}
+                className={`flex items-center justify-center space-x-2 flex-1 py-2 px-4 rounded-md transition ${
+                  activeTab === 'influencer' 
+                    ? 'bg-white text-purple-600 shadow-sm' 
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <Users size={18} />
+                <span>Influencer</span>
+              </button>
+            </div> */}
           </div>
 
           <div className="bg-white rounded-xl shadow-xl p-8 border border-gray-100">
