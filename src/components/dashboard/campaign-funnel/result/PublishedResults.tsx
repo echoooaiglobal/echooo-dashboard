@@ -304,8 +304,7 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
     if (!postData) return {
       likes: video.likes_count || 0,
       comments: video.comments_count || 0,
-      views: video.views_count || 0,
-      plays: video.plays_count || 0,
+      views: video.plays_count || 0, // Changed from views_count to plays_count
       followers: 0,
       engagementRate: '0%',
       videoUrl: null,
@@ -323,9 +322,8 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
                      postData.edge_media_to_parent_comment?.count ||
                      video.comments_count || 0;
     
-    // Separate video_view_count and video_play_count
-    const views = postData.video_view_count || video.views_count || 0;
-    const plays = postData.video_play_count || video.plays_count || 0;
+    // Use video_play_count as the primary views source
+    const views = postData.video_play_count || video.plays_count || 0;
     
     const followers = postData.owner?.edge_followed_by?.count || 0;
     const engagementRate = followers > 0 ? (((likes + comments) / followers) * 100).toFixed(2) + '%' : '0%';
@@ -356,7 +354,6 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
       likes,
       comments,
       views,
-      plays,
       followers,
       engagementRate,
       videoUrl,
@@ -558,16 +555,13 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
                     <span className="truncate">Views</span>
                   </th>
                   <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
-                    <span className="truncate">Plays</span>
-                  </th>
-                  <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
                     <span className="truncate">Eng Rate</span>
                   </th>
                   <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
                     <span className="truncate">Post Date</span>
                   </th>
                   <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
-                    <span className="truncate">Added Date</span>
+                    <span className="truncate">Updated at</span>
                   </th>
                   <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
                     <span className="truncate">Actions</span>
@@ -577,7 +571,7 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
               <tbody className="bg-white divide-y divide-gray-200">
                 {paginatedVideos.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="py-12 text-center">
+                    <td colSpan={9} className="py-12 text-center">
                       <svg className="h-12 w-12 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24">
                         <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                       </svg>
@@ -678,9 +672,6 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
                           {postData.views > 0 ? formatNumber(postData.views) : 'N/A'}
                         </td>
                         <td className="px-2 py-4 whitespace-nowrap text-xs text-gray-500">
-                          {postData.plays > 0 ? formatNumber(postData.plays) : 'N/A'}
-                        </td>
-                        <td className="px-2 py-4 whitespace-nowrap text-xs text-gray-500">
                           {postData.engagementRate}
                         </td>
 
@@ -692,7 +683,7 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
                           </div>
                         </td>
 
-                        {/* Added Date */}
+                        {/* UPDATED AT */}
                         <td className="px-2 py-4 whitespace-nowrap text-xs text-gray-500">
                           <div className="flex flex-col">
                             <span className="font-medium">{formatDate(video.created_at)}</span>
@@ -1012,8 +1003,8 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
                         <p className="text-gray-500">Views</p>
                       </div>
                       <div className="text-center">
-                        <p className="font-medium text-gray-900">{postData.plays > 0 ? formatNumber(postData.plays) : 'N/A'}</p>
-                        <p className="text-gray-500">Plays</p>
+                        <p className="font-medium text-gray-900">{postData.followers > 0 ? formatNumber(postData.followers) : 'N/A'}</p>
+                        <p className="text-gray-500">Followers</p>
                       </div>
                     </>
                   );
