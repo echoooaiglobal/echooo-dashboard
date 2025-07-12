@@ -44,7 +44,7 @@ const ResultTab: React.FC<ResultTabProps> = ({
             {activeTab === TABS.SCHEDULED ? 'Scheduled Campaign Content' : 'Published Campaign Result'}
           </h2>
           
-          {/* Tab Navigation - Always visible */}
+          {/* Tab Navigation with View Analytics Button */}
           <div className="flex items-center space-x-3">
             <button
               onClick={() => setActiveTab(TABS.SCHEDULED)}
@@ -66,6 +66,19 @@ const ResultTab: React.FC<ResultTabProps> = ({
             >
               Published ({publishedVideoCount})
             </button>
+            
+            {/* View Analytics Button - Always show when Published tab is active */}
+            {activeTab === TABS.PUBLISHED && (
+              <button 
+                onClick={() => setShowAnalyticsView(true)}
+                className="flex items-center px-8 py-3 bg-gradient-to-r from-green-100 to-green-200 text-green-700 rounded-full hover:from-green-200 hover:to-green-300 transition-all duration-200 text-sm font-medium shadow-sm min-w-[150px]"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h2a2 2 0 01-2-2z" />
+                </svg>
+                View Analytics
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -77,7 +90,6 @@ const ResultTab: React.FC<ResultTabProps> = ({
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <PublishedResults 
             campaignData={campaignData}
-            onShowAnalytics={() => setShowAnalyticsView(true)}
             onVideoCountChange={handleVideoCountChange}
           />
         </div>
