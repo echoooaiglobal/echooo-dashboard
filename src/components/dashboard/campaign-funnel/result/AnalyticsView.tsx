@@ -119,10 +119,10 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
     return originalUrl;
   };
 
+  // Get post data with consistent calculations
   const getPostData = (video: VideoResult) => {
     const postData = video.post_result_obj?.data;
     if (!postData) {
-      // When no post data, use whichever is greater between views_count and plays_count
       const viewsFromAPI = Math.max(0, video.views_count || 0);
       const playsFromAPI = Math.max(0, video.plays_count || 0);
       const finalViews = Math.max(viewsFromAPI, playsFromAPI);
@@ -153,12 +153,10 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                      postData.edge_media_to_parent_comment?.count ||
                      video.comments_count || 0);
     
-    // Get both video_view_count (plays) and general views, use whichever is greater
     const videoPlaysFromAPI = Math.max(0, postData.video_view_count || postData.video_play_count || 0);
     const generalViewsFromAPI = Math.max(0, video.views_count || 0);
     const playsFromVideo = Math.max(0, video.plays_count || 0);
     
-    // Take the maximum of all available view/play counts for views
     const views = Math.max(videoPlaysFromAPI, generalViewsFromAPI, playsFromVideo);
     const plays = Math.max(videoPlaysFromAPI, playsFromVideo);
     const shares = Math.max(0, Math.floor(likes * 0.1));
@@ -221,7 +219,6 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
   const getFilteredAndSortedPosts = () => {
     let filtered = [...analyticsData.topPosts];
     
-    // Apply filters
     if (postsFilterBy === 'high-engagement') {
       const avgEngagement = filtered.reduce((sum, post) => sum + post.totalEngagement, 0) / filtered.length;
       filtered = filtered.filter(post => post.totalEngagement > avgEngagement);
@@ -230,7 +227,6 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
       filtered = filtered.filter(post => post.views > avgViews);
     }
     
-    // Apply sorting
     filtered.sort((a, b) => {
       switch (postsSortBy) {
         case 'views':
@@ -254,7 +250,6 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
   const getFilteredAndSortedInfluencers = () => {
     let filtered = [...analyticsData.topPerformers];
     
-    // Apply filters
     if (influencersFilterBy === 'verified') {
       filtered = filtered.filter(influencer => influencer.isVerified);
     } else if (influencersFilterBy === 'top-performers') {
@@ -262,7 +257,6 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
       filtered = filtered.filter(inf => inf.totalEngagement > avgEngagement);
     }
     
-    // Apply sorting
     filtered.sort((a, b) => {
       switch (influencersSortBy) {
         case 'views':
@@ -287,17 +281,11 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
       return;
     }
     
-    console.log('🚀 Starting share report process...');
-    console.log('Campaign data:', { id: campaignData.id, name: campaignData.name });
-    console.log('Analytics data:', analyticsData);
-    
     setIsSharing(true);
     
     try {
       const shareId = `${campaignData.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-      
-      console.log('📝 Generated share ID:', shareId);
       
       const requestBody = {
         shareId,
@@ -308,8 +296,6 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
         expiresAt
       };
       
-      console.log('📤 Sending request to API:', requestBody);
-      
       const response = await fetch('/api/shared-reports', {
         method: 'POST',
         headers: {
@@ -318,27 +304,20 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
         body: JSON.stringify(requestBody),
       });
 
-      console.log('📥 API Response status:', response.status);
-      console.log('📥 API Response headers:', Object.fromEntries(response.headers.entries()));
-
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('❌ API Error:', errorData);
         throw new Error(errorData.error || 'Failed to create shared report');
       }
 
       const result = await response.json();
-      console.log('✅ API Success:', result);
       
       const baseUrl = window.location.origin;
       const shareUrl = `${baseUrl}/campaign-analytics-report/${campaignData.id}`;
-      console.log('🔗 Generated share URL:', shareUrl);
       
       try {
         await navigator.clipboard.writeText(shareUrl);
-        console.log('📋 Successfully copied to clipboard');
       } catch (clipboardError) {
-        console.warn('⚠️ Clipboard copy failed:', clipboardError);
+        console.warn('Clipboard copy failed:', clipboardError);
       }
       
       alert(`Share link created and copied to clipboard!\n\n${shareUrl}\n\nThis link allows public access to the campaign analytics without requiring login.`);
@@ -346,7 +325,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
       window.open(shareUrl, '_blank');
       
     } catch (error) {
-      console.error('💥 Error sharing report:', error);
+      console.error('Error sharing report:', error);
       alert(`Failed to generate share link: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsSharing(false);
@@ -431,16 +410,18 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
           influencerGroups.get(key)!.push(video);
         });
 
+        // Initialize totals
         let totalLikes = 0;
         let totalComments = 0;
         let totalViews = 0;
         let totalShares = 0;
         let totalFollowers = 0;
-        
-        let totalInfluencerEngagementRates = 0;
-        let validInfluencerCount = 0;
 
-        // FIXED: Enhanced date processing for posts by date chart
+        // For calculating average engagement rate
+        let totalEngagementRate = 0;
+        let influencersWithFollowers = 0;
+
+        // Enhanced date processing for posts by date chart
         const postDateMap = new Map<string, {
           count: number;
           views: number;
@@ -499,11 +480,11 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
           let influencerAvatar = '';
           let influencerName = '';
           let isVerified = false;
-          let avgEngagementRate = 0;
 
           videos.forEach(video => {
             const postDataDetail = getPostData(video);
             
+            // Sum post metrics
             totalLikes += postDataDetail.likes;
             totalComments += postDataDetail.comments;
             totalViews += postDataDetail.views;
@@ -514,6 +495,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
             influencerTotalViews += postDataDetail.views;
             influencerTotalShares += postDataDetail.shares;
             
+            // Take the maximum followers count for this influencer
             if (postDataDetail.followers > influencerFollowers) {
               influencerFollowers = postDataDetail.followers;
             }
@@ -524,7 +506,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
               isVerified = postDataDetail.isVerified;
             }
 
-            // FIXED: Enhanced date processing to include all posts with valid dates
+            // Enhanced date processing
             let postDate = null;
             if (video.post_created_at) {
               postDate = video.post_created_at;
@@ -532,7 +514,6 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
               postDate = video.created_at;
             }
             
-            // Only process posts with valid dates and views > 0
             if (postDate && postDataDetail.views > 0) {
               try {
                 const dateKey = new Date(postDate).toISOString().split('T')[0];
@@ -579,19 +560,16 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
             });
           });
 
-          // Accumulate total followers from all influencers
+          // Add unique influencer followers to total
           totalFollowers += influencerFollowers;
 
-          // FIXED: Calculate engagement rate using Followers (not Reach)
+          // Calculate individual influencer engagement rate
+          let avgEngagementRate = 0;
           if (influencerFollowers > 0) {
             const influencerTotalEngagement = influencerTotalLikes + influencerTotalComments + influencerTotalShares;
-            const influencerEngagementRate = (influencerTotalEngagement / influencerFollowers) * 100;
-            totalInfluencerEngagementRates += influencerEngagementRate;
-            validInfluencerCount++;
-            
-            avgEngagementRate = influencerEngagementRate;
-          } else {
-            avgEngagementRate = 0;
+            avgEngagementRate = (influencerTotalEngagement / influencerFollowers) * 100;
+            totalEngagementRate += avgEngagementRate;
+            influencersWithFollowers++;
           }
 
           const influencerTotalEngagement = influencerTotalLikes + influencerTotalComments + influencerTotalShares;
@@ -614,12 +592,10 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
           });
         });
 
-        // FIXED: Convert posts by date to array with proper sorting and cumulative calculation
+        // Convert posts by date to array with proper sorting and cumulative calculation
         const sortedPostsByDate = Array.from(postDateMap.entries())
           .map(([date, data]) => ({ date, ...data }))
           .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-        console.log('🗓️ Sorted posts by date:', sortedPostsByDate);
 
         let cumulativeViews = 0;
         const postsByDate = sortedPostsByDate.map(item => {
@@ -633,8 +609,6 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
           };
         });
 
-        console.log('📊 Final posts by date with cumulative views:', postsByDate);
-
         const topPerformers = influencerPerformanceData
           .sort((a, b) => b.totalEngagement - a.totalEngagement);
 
@@ -645,35 +619,32 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
         const totalPosts = results.length;
         const totalInfluencers = influencerGroups.size;
         
-        // FIXED: Average engagement rate calculation using Followers, not Reach
-        const averageEngagementRate = validInfluencerCount > 0 ? totalInfluencerEngagementRates / validInfluencerCount : 0;
+        // Calculate average engagement rate using industry standard formula
+        const totalEngagement = totalLikes + totalComments + totalShares;
+        const averageEngagementRate = totalFollowers > 0 ? (totalEngagement / totalFollowers) * 100 : 0;
         
-        const totalClicks = Math.round((totalLikes + totalComments + totalShares) * 0.03);
+        // Calculate clicks (typically 2-5% of total engagement)
+        const totalClicks = Math.round(totalEngagement * 0.03);
         
-        // CORRECTED FORMULAS:
-        // 1. Impressions = Video views * 1.8 (for repeat views) + Estimated photo impressions
-        const videoImpressions = Math.max(totalViews, 0) || 0;
-        const estimatedPhotoImpressions = Math.round((totalPosts - (videoImpressions > 0 ? Math.ceil(totalPosts * 0.6) : 0)) * totalFollowers * 0.4);
-        const totalImpressions = Math.round(videoImpressions * 1.8 + estimatedPhotoImpressions);
+        // Calculate impressions using industry standard formulas
+        const videoPosts = results.filter(video => {
+          const postData = getPostData(video);
+          return postData.views > 0 || postData.plays > 0;
+        }).length;
+        const photoPosts = totalPosts - videoPosts;
         
-        // 2. Reach = Should be less than or equal to impressions (unique users)
-        const totalReach = Math.round(Math.max(totalViews, totalImpressions * 0.55));
+        const videoImpressions = Math.round(totalViews * 1.3);
+        const photoImpressions = Math.round((photoPosts * totalFollowers * 0.4) / totalInfluencers);
+        const totalImpressions = videoImpressions + photoImpressions;
         
-        const maxVideoMetric = Math.max(totalViews, 0);
-        const finalImpressions = Math.max(totalImpressions, maxVideoMetric * 1.2);
-        const finalReach = Math.min(totalReach, maxVideoMetric * 0.9, finalImpressions * 0.6);
-
-        console.log('📈 Final analytics data:', {
-          totalViews,
-          totalImpressions: finalImpressions,
-          totalReach: finalReach,
-          postsByDateLength: postsByDate.length
-        });
+        // Calculate reach (unique users who saw content)
+        const estimatedReach = Math.round(totalImpressions * 0.65);
+        const totalReach = Math.min(estimatedReach, Math.max(totalViews, totalImpressions * 0.5));
 
         setAnalyticsData({
           totalClicks,
-          totalImpressions: finalImpressions,
-          totalReach: finalReach,
+          totalImpressions,
+          totalReach,
           totalLikes,
           totalComments,
           totalViews,
@@ -713,69 +684,69 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
     );
   }
 
-  // Updated Performance Overview cards
+  // Performance Overview cards data
   const basicInsightsData = [
     {
       title: "Followers", 
       value: formatNumber(analyticsData.totalFollowers),
       change: getPercentageChange(analyticsData.totalFollowers, 100000),
       changeType: "positive" as const,
-      tooltip: "Total number of followers across all participating influencers. This represents the combined reach potential of your campaign through the influencer community you've engaged with."
+      tooltip: "Total unique followers across all participating influencers. Each influencer is counted once with their maximum follower count to avoid double counting."
     },
     {
       title: "Impressions", 
       value: formatNumber(analyticsData.totalImpressions),
       change: getPercentageChange(analyticsData.totalImpressions, 500000),
       changeType: "positive" as const,
-      tooltip: "Total number of times content was displayed to users. Calculated as: (Total Video Views × 1.8 for repeat views) + Estimated Photo Post Impressions. This should be the highest metric as it counts multiple views by the same user."
+      tooltip: "Total number of times content was displayed. Calculated as: (Video Views × 1.3) + (Photo Posts × Avg Followers × 40% reach rate). Accounts for repeat views and organic reach."
     },
     {
       title: "Reach",
       value: formatNumber(analyticsData.totalReach), 
       change: getPercentageChange(analyticsData.totalReach, 300000),
       changeType: "positive" as const,
-      tooltip: "Estimated number of unique users who saw your content. This represents unique viewers only (counted once per user) and should be lower than impressions. Calculated as approximately 55% of total impressions or 90% of total views, whichever is lower."
+      tooltip: "Estimated unique users who saw your content. Calculated as 65% of total impressions, but capped at actual engagement levels. Always lower than impressions."
     },
     {
       title: "Total Views",
       value: formatNumber(analyticsData.totalViews),
       change: getPercentageChange(analyticsData.totalViews, 200000),
       changeType: analyticsData.totalViews > 200000 ? "positive" : "negative" as const,
-      tooltip: "Sum of all views across all posts in the campaign. This represents the total consolidated view count, combining the best available view and play data from Instagram's API for each post."
+      tooltip: "Sum of all video views across all posts. Uses the highest available count from Instagram's API (video_view_count, plays_count, or views_count)."
     },
     {
       title: "Total Likes",
       value: formatNumber(analyticsData.totalLikes),
       change: getPercentageChange(analyticsData.totalLikes, 50000),
       changeType: "positive" as const,
-      tooltip: "Sum of all likes across all campaign posts. This data is pulled directly from Instagram's API and represents actual user engagement with your content."
+      tooltip: "Sum of all likes across all campaign posts. Data pulled directly from Instagram's API."
     },
     {
       title: "Total Comments",
       value: formatNumber(analyticsData.totalComments),
       change: getPercentageChange(analyticsData.totalComments, 5000),
       changeType: "positive" as const,
-      tooltip: "Sum of all comments across all campaign posts. Comments represent higher engagement than likes and indicate stronger audience interest in your content."
+      tooltip: "Sum of all comments across all campaign posts. Comments indicate higher engagement than likes."
     },
     {
       title: "Total Shares",
       value: formatNumber(analyticsData.totalShares),
       change: getPercentageChange(analyticsData.totalShares),
       changeType: "positive" as const,
-      tooltip: "Estimated number of shares across all posts. Calculated as approximately 10% of total likes, representing content that users found compelling enough to share with their networks."
+      tooltip: "Estimated shares calculated as 10% of total likes. Instagram doesn't provide direct share counts."
     },
     {
       title: "Avg Engagement Rate",
       value: `${analyticsData.averageEngagementRate.toFixed(2)}%`,
       change: analyticsData.averageEngagementRate > 3 ? "+15.2%" : "-5.1%",
       changeType: analyticsData.averageEngagementRate > 3 ? "positive" : "negative" as const,
-      tooltip: "Average engagement rate calculated as (total likes + comments + shares) ÷ followers × 100 for each influencer, then averaged across all influencers. This gives a fair representation of campaign performance across different influencer sizes. Rates above 3% are considered good for Instagram."
+      tooltip: "Industry standard formula: (Total Likes + Comments + Shares) ÷ Total Followers × 100. Rates above 3% are considered good for Instagram."
     }
   ];
 
   return (
     <div className="pt-4 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 min-h-screen">
-      {/* Header with Back and Export Buttons - Not included in PDF */}
+      {/* Header with Back and Export Buttons */}
       <div className="no-print flex items-center justify-between mb-8 px-6">
         <button
           onClick={onBack}
@@ -836,7 +807,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
         </div>
       </div>
 
-      {/* Content to be exported - wrapped in ref */}
+      {/* Content to be exported */}
       <div ref={exportContentRef} className="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 px-6">
         {/* PDF-only header section */}
         <div className="print-only">
@@ -865,7 +836,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                     <p className="text-2xl font-bold text-pink-600">{analyticsData.totalInfluencers}</p>
                     <div className="absolute bottom-full right-0 mb-2 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
                       <div className="relative">
-                        Total number of unique influencers participating in this campaign. This count ensures each creator is counted only once, regardless of how many posts they published.
+                        Total number of unique influencers participating in this campaign. Each creator is counted only once, regardless of how many posts they published.
                         <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
                       </div>
                     </div>
@@ -894,7 +865,6 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     </button>
-                    {/* Tooltip */}
                     <div className="absolute bottom-full right-0 mb-2 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
                       <div className="relative">
                         {item.tooltip}
@@ -930,14 +900,14 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                     </button>
                     <div className="absolute bottom-full right-0 mb-2 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
                       <div className="relative">
-                        Breakdown of total engagement across likes, comments, shares, and plays. This shows how users interact with your content across different engagement types.
+                        Breakdown of total engagement across likes, comments, shares, and views. Shows how users interact with your content across different engagement types.
                         <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Horizontal Bar Chart with Shares */}
+                {/* Horizontal Bar Chart */}
                 <div className="space-y-4">
                   {(() => {
                     const data = [
@@ -971,7 +941,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                   })()}
                 </div>
 
-                {/* Summary to include shares */}
+                {/* Summary */}
                 <div className="mt-6 pt-4 border-t border-gray-100 text-center">
                   <div className="text-lg font-bold text-gray-900">
                     {formatNumber(analyticsData.totalLikes + analyticsData.totalComments + analyticsData.totalShares + analyticsData.totalViews)}
@@ -980,7 +950,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                 </div>
               </div>
 
-              {/* FIXED: Enhanced Views Over Time Chart */}
+              {/* Views Over Time Chart */}
               <div className="md:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-sm font-medium text-gray-600">Views Over Time</h3>
@@ -999,13 +969,13 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                   </div>
                 </div>
                 
-                {/* Chart with Enhanced Tooltip */}
-                <div className="h-64 relative">
+                {/* Chart */}
+                <div className="h-80 relative">
                   {analyticsData.postsByDate.length > 0 ? (
-                    <div className="relative h-full bg-gradient-to-br from-gray-50 to-white rounded-lg border border-gray-100 p-4 pl-12">
-                      {/* Chart container */}
+                    <div className="relative h-full bg-gradient-to-br from-gray-50 to-white rounded-lg border-2 border-gray-200 p-4 pl-12 pb-12 shadow-sm">
                       <div 
                         className="relative h-full"
+                        style={{ paddingBottom: '30px' }}
                         onMouseMove={(e) => {
                           const rect = e.currentTarget.getBoundingClientRect();
                           setMousePosition({
@@ -1022,19 +992,18 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                             <line
                               key={`h-${i}`}
                               x1="60"
-                              y1={40 + (i * (200 / 4))}
-                              x2="100%"
-                              y2={40 + (i * (200 / 4))}
+                              y1={20 + (i * (180 / 4))}
+                              x2="calc(100% - 20px)"
+                              y2={20 + (i * (180 / 4))}
                               stroke="#e5e7eb"
                               strokeWidth="1"
                               strokeDasharray="2,2"
                             />
                           ))}
-                          {/* Vertical grid lines - FIXED: Perfect alignment with data points and dates */}
+                          {/* Vertical grid lines */}
                           {analyticsData.postsByDate.map((item, index) => {
-                            // Use same positioning calculation as data points
-                            const chartWidth = 70; // 85% - 15% = 70% of chart width
-                            const chartStart = 15; // Start at 15%
+                            const chartWidth = 70;
+                            const chartStart = 15;
                             
                             let xPercent;
                             if (analyticsData.postsByDate.length === 1) {
@@ -1047,9 +1016,9 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                               <line
                                 key={`v-${index}`}
                                 x1={`${xPercent}%`}
-                                y1="40"
+                                y1="20"
                                 x2={`${xPercent}%`}
-                                y2="240"
+                                y2="200"
                                 stroke="#e5e7eb"
                                 strokeWidth="1"
                                 strokeDasharray="2,2"
@@ -1061,13 +1030,12 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                         {/* Data visualization */}
                         <svg className="absolute inset-0 w-full h-full" style={{ zIndex: 2 }}>
                           <defs>
-                            <linearGradient id="nivoAreaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <linearGradient id="areaGradient1" x1="0%" y1="0%" x2="0%" y2="100%">
                               <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.4"/>
-                              <stop offset="50%" stopColor="#06b6d4" stopOpacity="0.2"/>
-                              <stop offset="100%" stopColor="#06b6d4" stopOpacity="0.05"/>
+                              <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.1"/>
                             </linearGradient>
                             <filter id="glow">
-                              <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                              <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
                               <feMerge>
                                 <feMergeNode in="coloredBlur"/>
                                 <feMergeNode in="SourceGraphic"/>
@@ -1075,109 +1043,133 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                             </filter>
                           </defs>
                           
-                          {/* Area chart */}
+                          {/* Smooth curved line and area chart */}
                           {analyticsData.postsByDate.length > 1 && (
                             <>
-                              {/* Area path - FIXED: Perfect alignment with date positions */}
+                              {/* Area fill with smooth curves */}
                               <path
                                 d={(() => {
                                   const maxViews = Math.max(...analyticsData.postsByDate.map(p => p.cumulativeViews));
-                                  if (maxViews === 0 || analyticsData.postsByDate.length === 0) return '';
+                                  const roundedMax = Math.ceil(maxViews / 100000) * 100000;
+                                  if (roundedMax === 0 || analyticsData.postsByDate.length === 0) return '';
                                   
-                                  const chartWidth = 70; // 85% - 15% = 70% of chart width
-                                  const chartStart = 15; // Start at 15%
+                                  const chartWidth = 70;
+                                  const chartStart = 15;
+                                  
+                                  if (analyticsData.postsByDate.length === 1) {
+                                    const xPercent = 50;
+                                    const y = 200 - (analyticsData.postsByDate[0].cumulativeViews / roundedMax) * 180;
+                                    return `M ${xPercent}%,${y} L ${xPercent}%,200 L ${xPercent}%,200 Z`;
+                                  }
                                   
                                   let pathData = '';
                                   
+                                  // Start path
+                                  const firstXPercent = chartStart;
+                                  const firstY = 200 - (analyticsData.postsByDate[0].cumulativeViews / roundedMax) * 180;
+                                  pathData = `M ${firstXPercent}%,${firstY}`;
+                                  
+                                  // Add smooth curves for the top line
                                   analyticsData.postsByDate.forEach((item, index) => {
-                                    let xPercent;
-                                    if (analyticsData.postsByDate.length === 1) {
-                                      xPercent = 50;
-                                    } else {
-                                      xPercent = chartStart + (index / (analyticsData.postsByDate.length - 1)) * chartWidth;
-                                    }
+                                    if (index === 0) return;
                                     
-                                    const y = 240 - (item.cumulativeViews / maxViews) * 200;
+                                    const xPercent = chartStart + (index / (analyticsData.postsByDate.length - 1)) * chartWidth;
+                                    const y = 200 - (item.cumulativeViews / roundedMax) * 180;
                                     
-                                    if (index === 0) {
-                                      pathData = `M ${xPercent}%,${y}`;
-                                    } else {
-                                      pathData += ` L ${xPercent}%,${y}`;
-                                    }
+                                    // Get previous point
+                                    const prevXPercent = chartStart + ((index - 1) / (analyticsData.postsByDate.length - 1)) * chartWidth;
+                                    const prevY = 200 - (analyticsData.postsByDate[index - 1].cumulativeViews / roundedMax) * 180;
+                                    
+                                    // Calculate control points for smooth curve
+                                    const controlPointOffset = (xPercent - prevXPercent) * 0.4;
+                                    const cp1x = prevXPercent + controlPointOffset;
+                                    const cp1y = prevY;
+                                    const cp2x = xPercent - controlPointOffset;
+                                    const cp2y = y;
+                                    
+                                    // Add smooth curve using cubic bezier
+                                    pathData += ` C ${cp1x}%,${cp1y} ${cp2x}%,${cp2y} ${xPercent}%,${y}`;
                                   });
                                   
-                                  // Close the area
-                                  if (analyticsData.postsByDate.length > 0) {
-                                    const lastIndex = analyticsData.postsByDate.length - 1;
-                                    const firstXPercent = analyticsData.postsByDate.length === 1 ? 50 : chartStart;
-                                    const lastXPercent = analyticsData.postsByDate.length === 1 ? 50 : chartStart + chartWidth;
-                                    
-                                    pathData += ` L ${lastXPercent}%,240 L ${firstXPercent}%,240 Z`;
-                                  }
+                                  // Close the path to create area fill
+                                  const lastXPercent = chartStart + chartWidth;
+                                  pathData += ` L ${lastXPercent}%,200 L ${firstXPercent}%,200 Z`;
                                   
                                   return pathData;
                                 })()}
-                                fill="url(#nivoAreaGradient)"
+                                fill="url(#areaGradient1)"
                                 className="transition-all duration-300"
                               />
-                              
-                              {/* Line path with glow effect - FIXED: Perfect alignment */}
+
+                              {/* Main connecting line path with smooth curves */}
                               <path
                                 d={(() => {
                                   const maxViews = Math.max(...analyticsData.postsByDate.map(p => p.cumulativeViews));
-                                  if (maxViews === 0 || analyticsData.postsByDate.length === 0) return '';
+                                  const roundedMax = Math.ceil(maxViews / 100000) * 100000;
+                                  if (roundedMax === 0 || analyticsData.postsByDate.length === 0) return '';
                                   
-                                  const chartWidth = 70; // 85% - 15% = 70% of chart width
-                                  const chartStart = 15; // Start at 15%
+                                  const chartWidth = 70;
+                                  const chartStart = 15;
+                                  
+                                  if (analyticsData.postsByDate.length === 1) {
+                                    // Single point - just return a small circle path
+                                    const y = 200 - (analyticsData.postsByDate[0].cumulativeViews / roundedMax) * 180;
+                                    return `M 50%,${y} L 50%,${y}`;
+                                  }
                                   
                                   let pathData = '';
                                   
                                   analyticsData.postsByDate.forEach((item, index) => {
-                                    let xPercent;
-                                    if (analyticsData.postsByDate.length === 1) {
-                                      xPercent = 50;
-                                    } else {
-                                      xPercent = chartStart + (index / (analyticsData.postsByDate.length - 1)) * chartWidth;
-                                    }
-                                    
-                                    const y = 240 - (item.cumulativeViews / maxViews) * 200;
+                                    const xPercent = chartStart + (index / (analyticsData.postsByDate.length - 1)) * chartWidth;
+                                    const y = 200 - (item.cumulativeViews / roundedMax) * 180;
                                     
                                     if (index === 0) {
                                       pathData = `M ${xPercent}%,${y}`;
                                     } else {
-                                      pathData += ` L ${xPercent}%,${y}`;
+                                      // Get previous point
+                                      const prevXPercent = chartStart + ((index - 1) / (analyticsData.postsByDate.length - 1)) * chartWidth;
+                                      const prevY = 200 - (analyticsData.postsByDate[index - 1].cumulativeViews / roundedMax) * 180;
+                                      
+                                      // Calculate control points for smooth curve
+                                      const controlPointOffset = (xPercent - prevXPercent) * 0.4; // 40% of distance
+                                      const cp1x = prevXPercent + controlPointOffset;
+                                      const cp1y = prevY;
+                                      const cp2x = xPercent - controlPointOffset;
+                                      const cp2y = y;
+                                      
+                                      // Add smooth curve using cubic bezier
+                                      pathData += ` C ${cp1x}%,${cp1y} ${cp2x}%,${cp2y} ${xPercent}%,${y}`;
                                     }
                                   });
                                   
                                   return pathData;
                                 })()}
                                 fill="none"
-                                stroke="#3b82f6"
+                                stroke="#2563eb"
                                 strokeWidth="3"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
-                                filter="url(#glow)"
                                 className="transition-all duration-300"
+                                style={{ filter: 'drop-shadow(0 2px 4px rgba(37, 99, 235, 0.3))' }}
                               />
                             </>
                           )}
                           
-                          {/* Data points - FIXED: Perfect date alignment */}
+                          {/* Data points with enhanced visibility */}
                           {analyticsData.postsByDate.map((item, index) => {
-                            // Calculate X position to match exactly with date labels
-                            const chartWidth = 70; // 85% - 15% = 70% of chart width
-                            const chartStart = 15; // Start at 15%
+                            const chartWidth = 70;
+                            const chartStart = 15;
                             
                             let xPercent;
                             if (analyticsData.postsByDate.length === 1) {
-                              xPercent = 50; // Center single point
+                              xPercent = 50;
                             } else {
-                              // Use index-based positioning to match date label spacing
                               xPercent = chartStart + (index / (analyticsData.postsByDate.length - 1)) * chartWidth;
                             }
                             
                             const maxViews = Math.max(...analyticsData.postsByDate.map(p => p.cumulativeViews));
-                            const y = maxViews > 0 ? 240 - (item.cumulativeViews / maxViews) * 200 : 240;
+                            const roundedMax = Math.ceil(maxViews / 100000) * 100000;
+                            const y = roundedMax > 0 ? 200 - (item.cumulativeViews / roundedMax) * 180 : 200;
                             
                             return (
                               <g key={index}>
@@ -1186,21 +1178,22 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                                   cx={`${xPercent}%`}
                                   cy={y}
                                   r="8"
-                                  fill="#3b82f6"
+                                  fill="#2563eb"
                                   fillOpacity="0.2"
-                                  className="cursor-pointer transition-all duration-200"
+                                  className="transition-all duration-200"
                                 />
-                                {/* Main circle */}
+                                {/* Main data point */}
                                 <circle
                                   cx={`${xPercent}%`}
                                   cy={y}
-                                  r="4"
-                                  fill="#3b82f6"
+                                  r="5"
+                                  fill="#2563eb"
                                   stroke="#ffffff"
-                                  strokeWidth="2"
-                                  className="cursor-pointer hover:r-6 transition-all duration-200"
+                                  strokeWidth="3"
+                                  className="cursor-pointer hover:r-7 transition-all duration-200"
                                   onMouseEnter={() => setHoveredDataPoint(item)}
                                   onMouseLeave={() => setHoveredDataPoint(null)}
+                                  style={{ filter: 'drop-shadow(0 2px 4px rgba(37, 99, 235, 0.4))' }}
                                 />
                               </g>
                             );
@@ -1209,12 +1202,13 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                           {/* Y-axis labels */}
                           {[0, 1, 2, 3, 4].map(i => {
                             const maxViews = Math.max(...analyticsData.postsByDate.map(p => p.cumulativeViews));
-                            const value = maxViews * (1 - i / 4);
+                            const roundedMax = Math.ceil(maxViews / 100000) * 100000;
+                            const value = roundedMax * (1 - i / 4);
                             return (
                               <text
                                 key={`y-${i}`}
                                 x="50"
-                                y={40 + (i * (200 / 4)) + 5}
+                                y={20 + (i * (180 / 4)) + 5}
                                 textAnchor="end"
                                 className="fill-gray-500 text-xs font-medium"
                               >
@@ -1224,7 +1218,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                           })}
                         </svg>
 
-                        {/* Enhanced Tooltip with Post Details */}
+                        {/* Tooltip */}
                         {hoveredDataPoint && (
                           <div 
                             className="absolute z-20 bg-white rounded-xl shadow-2xl border border-gray-200 p-4 min-w-[280px] max-w-[400px] pointer-events-none"
@@ -1292,16 +1286,15 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                           </div>
                         )}
 
-                        {/* FIXED: Date labels - Perfect alignment with data points */}
-                        <div className="absolute bottom-0 left-0 right-0 py-2">
+                        {/* Date labels */}
+                        <div className="absolute bottom-0 left-0 right-0" style={{ height: '30px' }}>
                           {analyticsData.postsByDate.map((item, index) => {
-                            // Use exact same positioning calculation as data points
-                            const chartWidth = 70; // 85% - 15% = 70% of chart width
-                            const chartStart = 15; // Start at 15%
+                            const chartWidth = 70;
+                            const chartStart = 15;
                             
                             let leftPercent;
                             if (analyticsData.postsByDate.length === 1) {
-                              leftPercent = 50; // Center single point
+                              leftPercent = 50;
                             } else {
                               leftPercent = chartStart + (index / (analyticsData.postsByDate.length - 1)) * chartWidth;
                             }
@@ -1309,8 +1302,14 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                             return (
                               <div 
                                 key={index} 
-                                className="absolute text-xs text-gray-500 text-center transform -translate-x-1/2"
-                                style={{ left: `${leftPercent}%` }}
+                                className="absolute text-xs text-gray-500 font-medium"
+                                style={{ 
+                                  left: `${leftPercent}%`,
+                                  transform: 'translateX(-50%) translateY(10px) rotate(-45deg)',
+                                  transformOrigin: 'center center',
+                                  bottom: '5px',
+                                  whiteSpace: 'nowrap'
+                                }}
                               >
                                 {new Date(item.date).toLocaleDateString('en-US', { 
                                   month: 'short', 
@@ -1364,7 +1363,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
             </div>
           </div>
 
-          {/* Top Performing Posts Section with Date Sorting */}
+          {/* Top Performing Posts Section */}
           <div className="mb-8">
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
               <div className="flex items-center justify-between mb-6">
@@ -1401,7 +1400,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                     </button>
                     <div className="absolute bottom-full right-0 mb-2 w-72 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
                       <div className="relative">
-                        Top performing posts ranked by total engagement. These posts generated the highest interaction rates and can provide insights into what content types resonate best with your target audience. Views represent actual video views from post data.
+                        Top performing posts ranked by total engagement. These posts generated the highest interaction rates and can provide insights into what content types resonate best with your target audience.
                         <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
                       </div>
                     </div>
@@ -1465,7 +1464,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                             )}
                           </div>
                           
-                          {/* Updated stats grid */}
+                          {/* Stats grid */}
                           <div className="grid grid-cols-4 gap-1 text-xs">
                             <div className="text-center">
                               <div className="flex items-center justify-center space-x-1">
@@ -1514,7 +1513,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
             </div>
           </div>
 
-          {/* Top Performing Influencers Section - Show All with Swapped Metrics */}
+          {/* Top Performing Influencers Section */}
           <div className="mb-0">
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
               <div className="flex items-center justify-between mb-6">
@@ -1550,7 +1549,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                     </button>
                     <div className="absolute bottom-full right-0 mb-2 w-72 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
                       <div className="relative">
-                        All influencers ranked by total engagement (likes + comments + shares). This shows which creators generated the most interaction with their audience and delivered the best performance for your campaign.
+                        All influencers ranked by total engagement (likes + comments + shares). Shows which creators generated the most interaction with their audience and delivered the best performance for your campaign.
                         <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
                       </div>
                     </div>
@@ -1608,9 +1607,9 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                           <p className="text-xs text-gray-500">@{influencer.username}</p>
                         </div>
                         
-                        {/* Stats Grid - Swapped Metrics */}
+                        {/* Stats Grid */}
                         <div className="space-y-3">
-                          {/* Main metric changed from Total Engagement to Followers */}
+                          {/* Main metric - Followers */}
                           <div className="bg-white rounded-lg p-3 border border-gray-100">
                             <div className="text-center">
                               <div className="text-xl font-bold text-gray-900">{formatNumber(influencer.followers)}</div>
@@ -1619,7 +1618,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                           </div>
                           
                           <div className="grid grid-cols-2 gap-2">
-                            {/* Engagement moved here */}
+                            {/* Engagement */}
                             <div className="bg-white rounded-lg p-2 border border-gray-100 text-center">
                               <div className="text-sm font-semibold text-gray-900">{formatNumber(influencer.totalEngagement)}</div>
                               <div className="text-xs text-gray-500">Engagement</div>
