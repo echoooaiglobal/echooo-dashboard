@@ -88,6 +88,7 @@ export interface CreateVideoResultRequest {
   duration: number;
   thumbnail: string;
   post_created_at: string;
+  // collaboration_price?: number;
   post_result_obj: ThirdPartyApiResponse;
 }
 
@@ -106,6 +107,7 @@ export interface UpdateVideoResultRequest {
   duration?: number;
   thumbnail?: string;
   post_created_at?: string;
+  // collaboration_price?: number;
   post_result_obj?: ThirdPartyApiResponse;
 }
 
