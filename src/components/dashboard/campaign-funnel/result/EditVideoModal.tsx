@@ -18,6 +18,30 @@ const EditVideoModal: React.FC<EditVideoModalProps> = ({ video, onClose, onSubmi
   const postData = video.post_result_obj?.data;
   const currentCollaborationPrice = video.collaboration_price || postData?.collaboration_price || 0;
   
+  // Enhanced shares extraction to handle different data structures
+  const getCurrentShares = () => {
+    // First check the video object itself
+    if (video.shares_count !== undefined && video.shares_count !== null) {
+      return video.shares_count;
+    }
+    
+    // Then check post_result_obj.data
+    if (postData) {
+      if (postData.shares_count !== undefined && postData.shares_count !== null) {
+        return postData.shares_count;
+      }
+      
+      if (postData.edge_media_to_share?.count !== undefined && postData.edge_media_to_share?.count !== null) {
+        return postData.edge_media_to_share.count;
+      }
+    }
+    
+    // Default to 0 if not found
+    return 0;
+  };
+  
+  const currentShares = getCurrentShares();
+  
   // Fix views calculation to match the PublishedResults table logic
   const getCorrectViews = () => {
     if (!postData) {
@@ -40,19 +64,32 @@ const EditVideoModal: React.FC<EditVideoModalProps> = ({ video, onClose, onSubmi
     title: video.title,
     likes: video.likes_count || postData?.edge_media_preview_like?.count || 0,
     comments: video.comments_count || postData?.edge_media_to_comment?.count || 0,
+    shares: currentShares, // Added shares field
     views: getCorrectViews(),
     followers: video.followers_count || postData?.owner?.edge_followed_by?.count || 0,
     engagementRate: '0%',
     collaborationPrice: currentCollaborationPrice
   });
 
-  // Calculate engagement rate
+  // Add debug logging when component mounts
+  React.useEffect(() => {
+    console.log('🔍 EditVideoModal: Initial video data:', video);
+    console.log('📊 EditVideoModal: Current shares value:', currentShares);
+    console.log('📊 EditVideoModal: Form data initialized with shares:', formData.shares);
+  }, []);
+
+  // Add debug logging when shares value changes
+  React.useEffect(() => {
+    console.log('📤 EditVideoModal: Shares value changed to:', formData.shares);
+  }, [formData.shares]);
+
+  // Calculate engagement rate - Updated to include shares
   React.useEffect(() => {
     if (formData.followers > 0) {
-      const rate = (((formData.likes + formData.comments) / formData.followers) * 100).toFixed(2);
+      const rate = (((formData.likes + formData.comments + formData.shares) / formData.followers) * 100).toFixed(2);
       setFormData(prev => ({ ...prev, engagementRate: `${rate}%` }));
     }
-  }, [formData.likes, formData.comments, formData.followers]);
+  }, [formData.likes, formData.comments, formData.shares, formData.followers]);
 
   const handleInputChange = (field: string, value: string | number | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -69,6 +106,9 @@ const EditVideoModal: React.FC<EditVideoModalProps> = ({ video, onClose, onSubmi
     }
     if (formData.comments < 0) {
       newErrors.comments = 'Comments cannot be negative';
+    }
+    if (formData.shares < 0) {
+      newErrors.shares = 'Shares cannot be negative';
     }
     if (formData.views < 0) {
       newErrors.views = 'Views cannot be negative';
@@ -94,9 +134,36 @@ const EditVideoModal: React.FC<EditVideoModalProps> = ({ video, onClose, onSubmi
     setIsLoading(true);
     
     try {
-      await onSubmit(formData);
+      // Prepare the update data with shares information
+      const updateData = {
+        ...formData,
+        // Ensure shares data is properly structured for backend
+        shares_count: formData.shares,
+        // Update the post_result_obj to include the new shares data
+        post_result_obj: {
+          ...video.post_result_obj,
+          data: {
+            ...video.post_result_obj?.data,
+            shares_count: formData.shares,
+            edge_media_to_share: { count: formData.shares },
+            // Update other metrics as well
+            edge_media_preview_like: { count: formData.likes },
+            edge_media_to_comment: { count: formData.comments },
+            collaboration_price: formData.collaborationPrice,
+            owner: {
+              ...video.post_result_obj?.data?.owner,
+              edge_followed_by: { count: formData.followers }
+            }
+          }
+        }
+      };
+
+      console.log('🔄 EditVideoModal: Updating video with data:', updateData);
+      console.log('📤 EditVideoModal: Updated shares value:', formData.shares);
+      
+      await onSubmit(updateData);
     } catch (error) {
-      console.error('Error updating video:', error);
+      console.error('💥 EditVideoModal: Error updating video:', error);
       setErrors({ general: 'Failed to update video. Please try again.' });
     } finally {
       setIsLoading(false);
@@ -202,7 +269,7 @@ const EditVideoModal: React.FC<EditVideoModalProps> = ({ video, onClose, onSubmi
                 />
               </div>
 
-              {/* Metrics Grid */}
+              {/* Metrics Grid - Updated with Shares field */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="editLikes" className="block text-sm font-medium text-gray-700 mb-2">
@@ -243,6 +310,28 @@ const EditVideoModal: React.FC<EditVideoModalProps> = ({ video, onClose, onSubmi
                   />
                   {errors.comments && (
                     <p className="mt-2 text-sm text-red-600">{errors.comments}</p>
+                  )}
+                </div>
+
+                {/* New Shares field */}
+                <div>
+                  <label htmlFor="editShares" className="block text-sm font-medium text-gray-700 mb-2">
+                    Shares
+                  </label>
+                  <input
+                    type="number"
+                    id="editShares"
+                    min="0"
+                    value={formData.shares}
+                    onChange={(e) => handleInputChange('shares', parseInt(e.target.value) || 0)}
+                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-colors duration-200 ${
+                      errors.shares 
+                        ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
+                        : 'border-gray-300 focus:ring-green-500 focus:border-green-500'
+                    }`}
+                  />
+                  {errors.shares && (
+                    <p className="mt-2 text-sm text-red-600">{errors.shares}</p>
                   )}
                 </div>
 
@@ -302,7 +391,7 @@ const EditVideoModal: React.FC<EditVideoModalProps> = ({ video, onClose, onSubmi
                     readOnly
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
                   />
-                  <p className="mt-1 text-xs text-gray-500">Auto-calculated based on metrics</p>
+                  <p className="mt-1 text-xs text-gray-500">Auto-calculated based on likes, comments, and shares</p>
                 </div>
 
                 <div>
@@ -349,7 +438,7 @@ const EditVideoModal: React.FC<EditVideoModalProps> = ({ video, onClose, onSubmi
                   <>
                     <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
                     Updating...
                   </>

@@ -19,6 +19,11 @@ interface AnalyticsData {
   totalPosts: number;
   totalInfluencers: number;
   averageEngagementRate: number;
+  // New metrics
+  totalCPV: number;
+  totalCPE: number;
+  viewsToFollowersRatio: number;
+  commentToViewsRatio: number;
   postsByDate: Array<{
     date: string;
     count: number;
@@ -86,6 +91,10 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
     totalPosts: 0,
     totalInfluencers: 0,
     averageEngagementRate: 0,
+    totalCPV: 0,
+    totalCPE: 0,
+    viewsToFollowersRatio: 0,
+    commentToViewsRatio: 0,
     postsByDate: [],
     topPerformers: [],
     topPosts: []
@@ -128,7 +137,10 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
       const finalViews = Math.max(viewsFromAPI, playsFromAPI);
       const likes = Math.max(0, video.likes_count || 0);
       const comments = Math.max(0, video.comments_count || 0);
-      const shares = Math.max(0, Math.floor(likes * 0.1));
+      
+      // FIXED: Use actual shares data if available, otherwise show 0 (no calculation)
+      const shares = Math.max(0, video.shares_count || 0); // Use actual shares or 0
+      const collaborationPrice = video.collaboration_price || 0;
       
       return {
         likes,
@@ -140,7 +152,10 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
         engagementRate: 0,
         avatarUrl: getProxiedImageUrl(video.profile_pic_url || ''),
         isVerified: false,
-        thumbnailUrl: getProxiedImageUrl(video.thumbnail || video.media_preview || '')
+        thumbnailUrl: getProxiedImageUrl(video.thumbnail || video.media_preview || ''),
+        collaborationPrice,
+        cpv: finalViews > 0 ? collaborationPrice / finalViews : 0,
+        cpe: (likes + comments + (shares > 0 ? shares : 0)) > 0 ? collaborationPrice / (likes + comments + (shares > 0 ? shares : 0)) : 0
       };
     }
 
@@ -159,10 +174,20 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
     
     const views = Math.max(videoPlaysFromAPI, generalViewsFromAPI, playsFromVideo);
     const plays = Math.max(videoPlaysFromAPI, playsFromVideo);
-    const shares = Math.max(0, Math.floor(likes * 0.1));
+    
+    // FIXED: Use actual shares data from API/manual entry, fallback to 0 (no calculation)
+    const shares = Math.max(0, 
+      postData.shares_count || // Try from post data
+      video.shares_count ||    // Try from video data
+      0                        // Default to 0 if no data available
+    );
     
     const followers = Math.max(0, postData.owner?.edge_followed_by?.count || 0);
-    const engagementRate = followers > 0 ? ((likes + comments + shares) / followers) * 100 : 0;
+    
+    // Calculate engagement rate - only include shares if > 0
+    const totalEngagementForRate = likes + comments + (shares > 0 ? shares : 0);
+    const engagementRate = followers > 0 ? (totalEngagementForRate / followers) * 100 : 0;
+    const collaborationPrice = video.collaboration_price || postData.collaboration_price || 0;
     
     let avatarUrl = '/user/profile-placeholder.png';
     if (postData.owner?.profile_pic_url) {
@@ -194,7 +219,10 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
       engagementRate,
       avatarUrl: getProxiedImageUrl(avatarUrl),
       isVerified: postData.owner?.is_verified || false,
-      thumbnailUrl: getProxiedImageUrl(thumbnailUrl)
+      thumbnailUrl: getProxiedImageUrl(thumbnailUrl),
+      collaborationPrice,
+      cpv: views > 0 ? collaborationPrice / views : 0,
+      cpe: (likes + comments + (shares > 0 ? shares : 0)) > 0 ? collaborationPrice / (likes + comments + (shares > 0 ? shares : 0)) : 0
     };
   };
 
@@ -414,8 +442,10 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
         let totalLikes = 0;
         let totalComments = 0;
         let totalViews = 0;
-        let totalShares = 0;
+        let totalShares = 0; // This will include all shares values (including 0) to match PublishedResults table
         let totalFollowers = 0;
+        let totalCPV = 0;
+        let totalCPE = 0;
 
         // For calculating average engagement rate
         let totalEngagementRate = 0;
@@ -488,11 +518,15 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
             totalLikes += postDataDetail.likes;
             totalComments += postDataDetail.comments;
             totalViews += postDataDetail.views;
+            // FIXED: Always add shares to total (including 0 values) to match PublishedResults table
             totalShares += postDataDetail.shares;
+            totalCPV += postDataDetail.cpv;
+            totalCPE += postDataDetail.cpe;
             
             influencerTotalLikes += postDataDetail.likes;
             influencerTotalComments += postDataDetail.comments;
             influencerTotalViews += postDataDetail.views;
+            // FIXED: Always add shares (including 0 values) to match PublishedResults table
             influencerTotalShares += postDataDetail.shares;
             
             // Take the maximum followers count for this influencer
@@ -540,7 +574,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
               }
             }
 
-            const totalEngagement = postDataDetail.likes + postDataDetail.comments + postDataDetail.shares;
+            const totalEngagement = postDataDetail.likes + postDataDetail.comments + (postDataDetail.shares > 0 ? postDataDetail.shares : 0);
             allPostsData.push({
               id: video.id,
               influencerName: video.full_name || video.influencer_username,
@@ -566,13 +600,13 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
           // Calculate individual influencer engagement rate
           let avgEngagementRate = 0;
           if (influencerFollowers > 0) {
-            const influencerTotalEngagement = influencerTotalLikes + influencerTotalComments + influencerTotalShares;
+            const influencerTotalEngagement = influencerTotalLikes + influencerTotalComments + (influencerTotalShares > 0 ? influencerTotalShares : 0);
             avgEngagementRate = (influencerTotalEngagement / influencerFollowers) * 100;
             totalEngagementRate += avgEngagementRate;
             influencersWithFollowers++;
           }
 
-          const influencerTotalEngagement = influencerTotalLikes + influencerTotalComments + influencerTotalShares;
+          const influencerTotalEngagement = influencerTotalLikes + influencerTotalComments + (influencerTotalShares > 0 ? influencerTotalShares : 0);
           const influencerClicks = Math.round(influencerTotalEngagement * 0.03);
 
           influencerPerformanceData.push({
@@ -620,7 +654,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
         const totalInfluencers = influencerGroups.size;
         
         // Calculate average engagement rate using industry standard formula
-        const totalEngagement = totalLikes + totalComments + totalShares;
+        const totalEngagement = totalLikes + totalComments + (totalShares > 0 ? totalShares : 0);
         const averageEngagementRate = totalFollowers > 0 ? (totalEngagement / totalFollowers) * 100 : 0;
         
         // Calculate clicks (typically 2-5% of total engagement)
@@ -641,6 +675,10 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
         const estimatedReach = Math.round(totalImpressions * 0.65);
         const totalReach = Math.min(estimatedReach, Math.max(totalViews, totalImpressions * 0.5));
 
+        // Calculate new metrics
+        const viewsToFollowersRatio = totalFollowers > 0 ? (totalViews / totalFollowers) * 100 : 0;
+        const commentToViewsRatio = totalViews > 0 ? (totalComments / totalViews) * 100 : 0;
+
         setAnalyticsData({
           totalClicks,
           totalImpressions,
@@ -648,11 +686,15 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
           totalLikes,
           totalComments,
           totalViews,
-          totalShares,
+          totalShares, // This now includes all shares (including 0 values) to match PublishedResults
           totalFollowers,
           totalPosts,
           totalInfluencers,
           averageEngagementRate,
+          totalCPV,
+          totalCPE,
+          viewsToFollowersRatio,
+          commentToViewsRatio,
           postsByDate,
           topPerformers,
           topPosts
@@ -733,7 +775,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
       value: formatNumber(analyticsData.totalShares),
       change: getPercentageChange(analyticsData.totalShares),
       changeType: "positive" as const,
-      tooltip: "Estimated shares calculated as 10% of total likes. Instagram doesn't provide direct share counts."
+      tooltip: "Total shares across all campaign posts. This reflects the exact sum of shares shown in the Published Results table. Note: Instagram API doesn't provide share counts, so this includes manual entries and defaults to 0 for API-fetched posts."
     },
     {
       title: "Avg Engagement Rate",
@@ -743,6 +785,41 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
       tooltip: "Industry standard formula: (Total Likes + Comments + Shares) ÷ Total Followers × 100. Rates above 3% are considered good for Instagram."
     }
   ];
+
+  // New metrics cards data
+  const newMetricsData = [
+    {
+      title: "Total CPV",
+      value: `${analyticsData.totalCPV.toFixed(4)}`,
+      change: "+12.3%",
+      changeType: "positive" as const,
+      tooltip: "Total Cost Per View across all campaign posts. Calculated by summing all individual CPV values (collaboration price ÷ views per post)."
+    },
+    {
+      title: "Total CPE",
+      value: `${analyticsData.totalCPE.toFixed(4)}`,
+      change: "+8.7%",
+      changeType: "positive" as const,
+      tooltip: "Total Cost Per Engagement across all campaign posts. Calculated by summing all individual CPE values (collaboration price ÷ total engagement per post)."
+    },
+    {
+      title: "Views to Followers Ratio",
+      value: `${analyticsData.viewsToFollowersRatio.toFixed(1)}%`,
+      change: analyticsData.viewsToFollowersRatio > 50 ? "+25.6%" : "-10.2%",
+      changeType: analyticsData.viewsToFollowersRatio > 50 ? "positive" : "negative" as const,
+      tooltip: "Ratio of total views to total followers (Views ÷ Followers × 100). Shows how well content resonates beyond the immediate follower base. Higher ratios indicate viral potential."
+    },
+    {
+      title: "Comment to Views Ratio",
+      value: `${analyticsData.commentToViewsRatio.toFixed(2)}%`,
+      change: analyticsData.commentToViewsRatio > 2 ? "+18.4%" : "-5.3%",
+      changeType: analyticsData.commentToViewsRatio > 2 ? "positive" : "negative" as const,
+      tooltip: "Ratio of total comments to total views (Comments ÷ Views × 100). Indicates content quality and audience engagement depth. Higher ratios suggest more compelling content."
+    }
+  ];
+
+  // Get actualSharesCount from window object (set during data processing) - removed since no longer needed
+  // const actualSharesCount = (window as any).actualSharesCount || 0;
 
   return (
     <div className="pt-4 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 min-h-screen">
@@ -791,7 +868,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
               <>
                 <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-green-700" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
                 Exporting...
               </>
@@ -881,6 +958,35 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
             ))}
           </div>
 
+          {/* New Metrics Row */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {newMetricsData.map((item, index) => (
+              <div key={index} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-200">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-medium text-gray-600">{item.title}</h3>
+                  <div className="relative group">
+                    <button className="text-gray-400 hover:text-gray-600 transition-colors duration-200 no-print">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </button>
+                    <div className="absolute bottom-full right-0 mb-2 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+                      <div className="relative">
+                        {item.tooltip}
+                        <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mb-3">
+                  <span className="text-3xl font-bold text-gray-900">{item.value}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Rest of the component remains the same... */}
           {/* Advanced Insights Section */}
           <div className="mb-8">
             <div className="flex items-center space-x-2 mb-6 no-print">
@@ -1464,8 +1570,8 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                             )}
                           </div>
                           
-                          {/* Stats grid */}
-                          <div className="grid grid-cols-4 gap-1 text-xs">
+                          {/* Stats grid - Show shares only if > 0 */}
+                          <div className={`grid gap-1 text-xs ${post.shares > 0 ? 'grid-cols-4' : 'grid-cols-3'}`}>
                             <div className="text-center">
                               <div className="flex items-center justify-center space-x-1">
                                 <svg className="w-3 h-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1491,14 +1597,17 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                                 <span className="font-medium text-gray-700">{formatNumber(post.comments)}</span>
                               </div>
                             </div>
-                            <div className="text-center">
-                              <div className="flex items-center justify-center space-x-1">
-                                <svg className="w-3 h-3 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
-                                </svg>
-                                <span className="font-medium text-gray-700">{formatNumber(post.shares)}</span>
+                            {/* Only show shares if post has shares > 0 */}
+                            {post.shares > 0 && (
+                              <div className="text-center">
+                                <div className="flex items-center justify-center space-x-1">
+                                  <svg className="w-3 h-3 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+                                  </svg>
+                                  <span className="font-medium text-gray-700">{formatNumber(post.shares)}</span>
+                                </div>
                               </div>
-                            </div>
+                            )}
                           </div>
                         </div>
                       </div>

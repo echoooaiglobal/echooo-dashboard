@@ -132,7 +132,7 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
     }).format(amount);
   };
 
-  // Get post data utility function - SINGLE DEFINITION - Updated to match AnalyticsView exactly
+  // UPDATED: Enhanced getPostData function with proper shares handling
   const getPostData = (video: VideoResult) => {
     const postData = video.post_result_obj?.data;
     if (!postData) {
@@ -142,20 +142,22 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
       const finalViews = Math.max(viewsFromAPI, playsFromAPI);
       const likes = Math.max(0, video.likes_count || 0);
       const comments = Math.max(0, video.comments_count || 0);
-      const shares = Math.max(0, Math.floor(likes * 0.1));
+      
+      // UPDATED: Proper shares handling with multiple fallbacks
+      const shares = Math.max(0, video.shares_count || 0);
       const collaborationPrice = video.collaboration_price || 0;
       
-      // Calculate CPE (Cost Per Engagement) - Likes + Comments + Shares
-      const totalEngagements = likes + comments + shares;
+      // Calculate CPE (Cost Per Engagement) - Include shares if > 0
+      const totalEngagements = likes + comments + (shares > 0 ? shares : 0);
       const cpe = totalEngagements > 0 ? collaborationPrice / totalEngagements : 0;
       
       return {
         likes,
         comments,
-        plays: playsFromAPI, // Video plays
-        actualViews: finalViews, // For non-post data, views = max of available counts
+        plays: playsFromAPI,
+        actualViews: finalViews,
         shares,
-        followers: 0,
+        followers: video.followers_count || 0,
         engagementRate: '0%',
         videoUrl: null,
         thumbnailUrl: getProxiedImageUrl(video.thumbnail || video.media_preview || ''),
@@ -176,8 +178,15 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
                      postData.edge_media_to_parent_comment?.count ||
                      video.comments_count || 0);
     
+    // UPDATED: Enhanced shares extraction with multiple fallbacks
+    const shares = Math.max(0, 
+      video.shares_count ||                        // Primary: video level shares
+      postData.shares_count ||                     // Secondary: post data level shares
+      postData.edge_media_to_share?.count ||       // Tertiary: Instagram API format
+      0                                            // Default: 0 if no data
+    );
+    
     // UPDATED: Match AnalyticsView logic exactly for consistent views calculation
-    // Get both video_view_count (plays) and general views, use whichever is greater
     const videoPlaysFromAPI = Math.max(0, postData.video_view_count || postData.video_play_count || 0);
     const generalViewsFromAPI = Math.max(0, video.views_count || 0);
     const playsFromVideo = Math.max(0, video.plays_count || 0);
@@ -186,10 +195,11 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
     const views = Math.max(videoPlaysFromAPI, generalViewsFromAPI, playsFromVideo);
     const plays = Math.max(videoPlaysFromAPI, playsFromVideo);
     
-    const shares = Math.max(0, Math.floor(likes * 0.1));
+    const followers = Math.max(0, video.followers_count || postData.owner?.edge_followed_by?.count || 0);
     
-    const followers = Math.max(0, postData.owner?.edge_followed_by?.count || 0);
-    const engagementRate = followers > 0 ? (((likes + comments + shares) / followers) * 100).toFixed(2) + '%' : '0%';
+    // Calculate engagement rate - include shares if > 0
+    const totalEngagementForRate = likes + comments + (shares > 0 ? shares : 0);
+    const engagementRate = followers > 0 ? ((totalEngagementForRate / followers) * 100).toFixed(2) + '%' : '0%';
     
     // Get collaboration price from multiple sources
     const collaborationPrice = video.collaboration_price || postData.collaboration_price || 0;
@@ -197,8 +207,8 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
     // Calculate CPV (Cost Per View)
     const cpv = views > 0 ? collaborationPrice / views : 0;
     
-    // Calculate CPE (Cost Per Engagement)
-    const totalEngagements = likes + comments + shares;
+    // Calculate CPE (Cost Per Engagement) - include shares if > 0
+    const totalEngagements = likes + comments + (shares > 0 ? shares : 0);
     const cpe = totalEngagements > 0 ? collaborationPrice / totalEngagements : 0;
     
     let thumbnailUrl = '/dummy-image.jpg';
@@ -226,8 +236,8 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
     return {
       likes,
       comments,
-      plays, // Video plays
-      actualViews: views, // UPDATED: Now uses the same calculation as AnalyticsView
+      plays,
+      actualViews: views,
       shares,
       followers,
       engagementRate,
@@ -294,33 +304,39 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
     setShowEditVideoModal(true);
   };
 
+  // UPDATED: Fixed handleUpdateEditedVideo function with proper shares handling
   const handleUpdateEditedVideo = async (updatedData: any) => {
     if (!editingVideo) return;
 
     try {
       console.log('🔄 Updating edited video:', editingVideo.id, updatedData);
       
-      // Prepare update data with the edited fields
+      // UPDATED: Prepare update data with proper shares handling and field mapping
       const updatePayload = {
+        // Core video data fields (proper backend field names)
         full_name: updatedData.fullName || updatedData.full_name,
         influencer_username: updatedData.influencerUsername || updatedData.influencer_username,
         title: updatedData.title,
         likes_count: updatedData.likes,
         comments_count: updatedData.comments,
+        shares_count: updatedData.shares_count || updatedData.shares, // UPDATED: Handle both field names
         views_count: updatedData.views,
         plays_count: updatedData.views, // Using views for plays as well
         followers_count: updatedData.followers,
         collaboration_price: updatedData.collaborationPrice || updatedData.collaboration_price,
-        // Update the post_result_obj to reflect the manual changes
+        
+        // UPDATED: Update the post_result_obj to reflect the manual changes with proper shares structure
         post_result_obj: {
           ...editingVideo.post_result_obj,
           data: {
             ...editingVideo.post_result_obj?.data,
             edge_media_preview_like: { count: updatedData.likes },
             edge_media_to_comment: { count: updatedData.comments },
+            edge_media_to_share: { count: updatedData.shares_count || updatedData.shares }, // UPDATED: Proper shares structure
+            shares_count: updatedData.shares_count || updatedData.shares, // UPDATED: Store shares at data level
             video_play_count: updatedData.views,
             video_view_count: updatedData.views,
-            collaboration_price: updatedData.collaborationPrice || updatedData.collaboration_price, // Store price in post_result_obj.data
+            collaboration_price: updatedData.collaborationPrice || updatedData.collaboration_price,
             owner: {
               ...editingVideo.post_result_obj?.data?.owner,
               username: updatedData.influencerUsername || updatedData.influencer_username,
@@ -331,20 +347,32 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
         }
       };
 
+      console.log('📤 PublishedResults: Update payload shares data:', {
+        root_shares: updatePayload.shares_count,
+        post_data_shares: updatePayload.post_result_obj.data.shares_count,
+        edge_shares: updatePayload.post_result_obj.data.edge_media_to_share
+      });
+
       const updatedResult = await updateVideoResult(editingVideo.id, updatePayload);
 
-      // Update the local state with the updated video and ensure updated_at is current
+      // UPDATED: Update the local state with the updated video and ensure shares are preserved
       setVideoResults(prev => 
         (prev || []).map(video => 
           video.id === editingVideo.id ? { 
             ...updatedResult, 
+            // UPDATED: Ensure shares_count is properly set in the local state
+            shares_count: updatedData.shares_count || updatedData.shares,
             updated_at: new Date().toISOString(),
             created_at: updatedResult.updated_at || new Date().toISOString()
           } : video
         )
       );
 
-      console.log('✅ Video updated successfully:', updatedResult.id);
+      console.log('✅ Video updated successfully with shares:', {
+        video_id: updatedResult.id,
+        shares_count: updatedData.shares_count || updatedData.shares
+      });
+      
       setShowEditVideoModal(false);
       setEditingVideo(null);
       
@@ -383,6 +411,16 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
       }
 
       const backendData = mapToBackendFormat(freshInstagramData, videoResult.campaign_id);
+      
+      // UPDATED: Preserve existing shares data if not available in fresh data
+      if (!backendData.shares_count && videoResult.shares_count) {
+        backendData.shares_count = videoResult.shares_count;
+        if (backendData.post_result_obj && backendData.post_result_obj.data) {
+          backendData.post_result_obj.data.shares_count = videoResult.shares_count;
+          backendData.post_result_obj.data.edge_media_to_share = { count: videoResult.shares_count };
+        }
+      }
+      
       const updatedResult = await updateVideoResult(videoResult.id, backendData);
 
       setVideoResults(prev => 
@@ -487,6 +525,15 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
 
           const backendData = mapToBackendFormat(freshInstagramData, video.campaign_id);
           
+          // UPDATED: Preserve existing shares data if not available in fresh data
+          if (!backendData.shares_count && video.shares_count) {
+            backendData.shares_count = video.shares_count;
+            if (backendData.post_result_obj && backendData.post_result_obj.data) {
+              backendData.post_result_obj.data.shares_count = video.shares_count;
+              backendData.post_result_obj.data.edge_media_to_share = { count: video.shares_count };
+            }
+          }
+          
           updatesData.push({
             result_id: video.id,
             update_data: {
@@ -498,8 +545,9 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
               title: backendData.title,
               views_count: backendData.view_counts,
               plays_count: backendData.play_counts,
-              likes_count: backendData.comment_counts,
-              comments_count: backendData.comment_counts,
+              likes_count: backendData.likes_count,
+              comments_count: backendData.comments_count,
+              shares_count: backendData.shares_count, // UPDATED: Include shares in bulk update
               media_preview: backendData.media_preview,
               duration: backendData.duration,
               thumbnail: backendData.thumbnail,
@@ -631,7 +679,7 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
     video.full_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Updated sorting logic to match ShortlistedTable exactly
+  // Updated sorting logic to match ShortlistedTable exactly - UPDATED with shares support
   const sortedVideos = React.useMemo(() => {
     if (!sortConfig.key || !sortConfig.direction) {
       return filteredVideos;
@@ -661,7 +709,7 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
           aValue = Number(aData.comments) || 0;
           bValue = Number(bData.comments) || 0;
           break;
-        case 'shares':
+        case 'shares': // UPDATED: Added shares sorting
           aValue = Number(aData.shares) || 0;
           bValue = Number(bData.shares) || 0;
           break;
@@ -792,7 +840,7 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
 
   return (
     <div className="pt-4">
-      {/* Updated Search Bar and Action Buttons - View Analytics button moved to parent component */}
+      {/* Updated Search Bar and Action Buttons */}
       <div className="flex items-center justify-between mb-6 px-4">
         {/* Expanded search input to fill more space */}
         <div className="relative flex-1 mr-4">
@@ -831,7 +879,7 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
               <>
                 <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
                 Updating...
               </>
@@ -943,7 +991,7 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
         </div>
       )}
 
-      {/* Updated Table with Sticky Header */}
+      {/* UPDATED Table with Sticky Header and Shares Column */}
       {!isLoading && campaignData?.id && (
         <div className="bg-white rounded-lg shadow w-full relative">
           <div className="w-full min-w-full table-fixed max-h-[600px] overflow-y-auto">
@@ -994,6 +1042,7 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
                       </div>
                     </button>
                   </th>
+                  {/* UPDATED: Added Shares Column Header */}
                   <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/14">
                     <button 
                       onClick={() => handleSort('shares')}
@@ -1176,6 +1225,7 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
                         <td className="px-2 py-4 whitespace-nowrap text-xs text-gray-500">
                           {formatNumber(postData.comments)}
                         </td>
+                        {/* UPDATED: Shares Column Data */}
                         <td className="px-2 py-4 whitespace-nowrap text-xs text-gray-500">
                           {formatNumber(postData.shares)}
                         </td>
@@ -1225,7 +1275,7 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
                               {updatingVideoId === video.id ? (
                                 <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
                                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
                               ) : (
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1531,12 +1581,12 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
                         <p className="text-gray-500">Comments</p>
                       </div>
                       <div className="text-center">
-                        <p className="font-medium text-gray-900">{postData.actualViews > 0 ? formatNumber(postData.actualViews) : 'N/A'}</p>
-                        <p className="text-gray-500">Views</p>
+                        <p className="font-medium text-gray-900">{formatNumber(postData.shares)}</p>
+                        <p className="text-gray-500">Shares</p>
                       </div>
                       <div className="text-center">
-                        <p className="font-medium text-gray-900">{postData.followers > 0 ? formatNumber(postData.followers) : 'N/A'}</p>
-                        <p className="text-gray-500">Followers</p>
+                        <p className="font-medium text-gray-900">{postData.actualViews > 0 ? formatNumber(postData.actualViews) : 'N/A'}</p>
+                        <p className="text-gray-500">Views</p>
                       </div>
                     </>
                   );

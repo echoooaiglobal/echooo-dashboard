@@ -33,6 +33,7 @@ export interface InstagramPostInfo {
   display_url?: string;
   comments_count: number;
   likes_count: number;
+  shares_count?: number; // Added shares support
   media_type: 'image' | 'video' | 'carousel';
   is_video: boolean;
   has_audio?: boolean;
@@ -61,11 +62,13 @@ export interface VideoResult {
   plays_count: number;
   likes_count: number;
   comments_count: number;
+  shares_count?: number; // Added shares support
   media_preview: string;
   followers_count?: number;
   duration: number;
   thumbnail: string;
   post_created_at: string | null;
+  collaboration_price?: number; // Added collaboration price support
   post_result_obj: ThirdPartyApiResponse;
   created_at: string;
   updated_at: string;
@@ -84,11 +87,12 @@ export interface CreateVideoResultRequest {
   plays_count: number;
   likes_count: number;
   comments_count: number;
+  shares_count?: number; // Added shares support
   media_preview: string;
   duration: number;
   thumbnail: string;
   post_created_at: string;
-  // collaboration_price?: number;
+  collaboration_price?: number;
   post_result_obj: ThirdPartyApiResponse;
 }
 
@@ -103,11 +107,12 @@ export interface UpdateVideoResultRequest {
   plays_count?: number;
   likes_count?: number;
   comments_count?: number;
+  shares_count?: number; // Added shares support
   media_preview?: string;
   duration?: number;
   thumbnail?: string;
   post_created_at?: string;
-  // collaboration_price?: number;
+  collaboration_price?: number;
   post_result_obj?: ThirdPartyApiResponse;
 }
 
