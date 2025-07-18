@@ -26,6 +26,7 @@ interface ManualVideoData {
   description: string;
   likes: number;
   comments: number;
+  shares: number; // Added shares field
   views: number;
   followers: number;
   engagementRate: string;
@@ -59,6 +60,7 @@ const AddVideoModal: React.FC<AddVideoModalProps> = ({ campaignId, onClose, onSu
     description: '',
     likes: 0,
     comments: 0,
+    shares: 0, // Added shares field
     views: 0,
     followers: 0,
     engagementRate: '0%',
@@ -127,6 +129,9 @@ const AddVideoModal: React.FC<AddVideoModalProps> = ({ campaignId, onClose, onSu
     }
     if (manualFormData.comments < 0) {
       newErrors.comments = 'Comments cannot be negative';
+    }
+    if (manualFormData.shares < 0) {
+      newErrors.shares = 'Shares cannot be negative';
     }
     if (manualFormData.views < 0) {
       newErrors.views = 'Views cannot be negative';
@@ -273,6 +278,7 @@ const AddVideoModal: React.FC<AddVideoModalProps> = ({ campaignId, onClose, onSu
           plays_count: manualFormData.views,
           likes_count: manualFormData.likes,
           comment_counts: manualFormData.comments,
+          shares_count: manualFormData.shares, // Added shares_count
           collaboration_price: manualFormData.collaborationPrice,
           media_preview: manualFormData.thumbnailUrl || '/user/profile-placeholder.png',
           duration: manualFormData.duration,
@@ -284,11 +290,13 @@ const AddVideoModal: React.FC<AddVideoModalProps> = ({ campaignId, onClose, onSu
               shortcode: extractPostIdFromUrl(manualFormData.profileUrl) || `manual_${Date.now()}`,
               edge_media_preview_like: { count: manualFormData.likes },
               edge_media_to_comment: { count: manualFormData.comments },
+              edge_media_to_share: { count: manualFormData.shares }, // Added shares support
               video_play_count: manualFormData.views,
               video_view_count: manualFormData.views,
               is_video: manualFormData.isVideo,
               video_duration: manualFormData.duration,
               collaboration_price: manualFormData.collaborationPrice, // Store collaboration price in post_result_obj.data
+              shares_count: manualFormData.shares, // Store shares count in post_result_obj.data
               owner: {
                 username: manualFormData.influencerUsername,
                 full_name: manualFormData.fullName,
@@ -307,11 +315,12 @@ const AddVideoModal: React.FC<AddVideoModalProps> = ({ campaignId, onClose, onSu
           }
         };
 
-        // Add debugging to verify the collaboration_price is included
+        // Add debugging to verify the collaboration_price and shares are included
         console.log('💾 AddVideoModal: Manual video result data being sent:', manualVideoResultData);
         console.log('💰 AddVideoModal: Collaboration price value:', manualFormData.collaborationPrice);
+        console.log('📤 AddVideoModal: Shares value:', manualFormData.shares);
         console.log('💰 AddVideoModal: Collaboration price in payload:', manualVideoResultData.collaboration_price);
-        console.log('💰 AddVideoModal: Collaboration price in post_result_obj:', manualVideoResultData.post_result_obj.data.collaboration_price);
+        console.log('📤 AddVideoModal: Shares in payload:', manualVideoResultData.shares_count);
 
         console.log('💾 AddVideoModal: Saving manual video result to backend...');
         const videoResult = await createVideoResult(manualVideoResultData);
@@ -352,6 +361,18 @@ const AddVideoModal: React.FC<AddVideoModalProps> = ({ campaignId, onClose, onSu
         backendData.post_result_obj.data.collaboration_price = formData.collaborationPrice;
         
         console.log('💰 AddVideoModal: Added collaboration price to Instagram data:', formData.collaborationPrice);
+      }
+
+      // Add shares count if available from Instagram data
+      if (instagramData.post.shares_count !== undefined) {
+        backendData.shares_count = instagramData.post.shares_count;
+        // Also store in post_result_obj.data
+        if (!backendData.post_result_obj.data) {
+          backendData.post_result_obj.data = {};
+        }
+        backendData.post_result_obj.data.shares_count = instagramData.post.shares_count;
+        
+        console.log('📤 AddVideoModal: Added shares count to Instagram data:', instagramData.post.shares_count);
       }
       
       const videoResult = await createVideoResult(backendData);
@@ -515,7 +536,7 @@ const AddVideoModal: React.FC<AddVideoModalProps> = ({ campaignId, onClose, onSu
             )}
           </div>
 
-          {/* Metrics Grid */}
+          {/* Metrics Grid - Updated with Shares field */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label htmlFor="likes" className="block text-sm font-medium text-gray-700 mb-2">
@@ -558,6 +579,29 @@ const AddVideoModal: React.FC<AddVideoModalProps> = ({ campaignId, onClose, onSu
               />
               {errors.comments && (
                 <p className="mt-2 text-sm text-red-600">{errors.comments}</p>
+              )}
+            </div>
+
+            {/* New Shares field */}
+            <div>
+              <label htmlFor="shares" className="block text-sm font-medium text-gray-700 mb-2">
+                Shares
+              </label>
+              <input
+                type="number"
+                id="shares"
+                min="0"
+                value={manualFormData.shares}
+                onChange={(e) => handleManualInputChange('shares', parseInt(e.target.value) || 0)}
+                placeholder="0"
+                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-colors duration-200 ${
+                  errors.shares 
+                    ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
+                    : 'border-gray-300 focus:ring-pink-500 focus:border-pink-500'
+                }`}
+              />
+              {errors.shares && (
+                <p className="mt-2 text-sm text-red-600">{errors.shares}</p>
               )}
             </div>
 
@@ -819,7 +863,7 @@ const AddVideoModal: React.FC<AddVideoModalProps> = ({ campaignId, onClose, onSu
                 </div>
               )}
               
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-4 gap-3">
                 <div className="bg-gradient-to-r from-red-50 to-pink-50 rounded-lg p-3 text-center">
                   <div className="flex items-center justify-center mb-1">
                     <svg className="w-4 h-4 text-red-500 mr-1" fill="currentColor" viewBox="0 0 24 24">
@@ -837,6 +881,16 @@ const AddVideoModal: React.FC<AddVideoModalProps> = ({ campaignId, onClose, onSu
                     <p className="text-xs font-medium text-gray-600">Comments</p>
                   </div>
                   <p className="text-sm font-bold text-gray-900">{formatNumber(instagramData.post.comments_count)}</p>
+                </div>
+                {/* Shares metric - Added */}
+                <div className="bg-gradient-to-r from-yellow-50 to-amber-50 rounded-lg p-3 text-center">
+                  <div className="flex items-center justify-center mb-1">
+                    <svg className="w-4 h-4 text-yellow-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+                    </svg>
+                    <p className="text-xs font-medium text-gray-600">Shares</p>
+                  </div>
+                  <p className="text-sm font-bold text-gray-900">{formatNumber(instagramData.post.shares_count || 0)}</p>
                 </div>
                 {instagramData.post.view_counts ? (
                   <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-3 text-center">
