@@ -31,12 +31,12 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ analyticsData
       // From topPosts array
       ...analyticsData.topPosts,
       // From postsByDate array (flattened)
-      ...analyticsData.postsByDate.flatMap(dateGroup => dateGroup.posts.map(post => ({
-        likes: post.likes,
-        views: post.views,
-        followers: 0, // Will need to be populated from topPerformers or other source
-        ...post
-      })))
+      ...analyticsData.postsByDate.flatMap(dateGroup => 
+        dateGroup.posts.map(post => ({
+          ...post,
+          followers: 0 // Will need to be populated from topPerformers or other source
+        }))
+      )
     ];
 
     // Filter posts with positive likes
@@ -59,10 +59,8 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ analyticsData
       ...analyticsData.topPosts,
       ...analyticsData.postsByDate.flatMap(dateGroup => 
         dateGroup.posts.map(post => ({
-          likes: post.likes,
-          views: post.views,
-          username: post.username,
-          ...post
+          ...post,
+          username: post.username
         }))
       )
     ];
