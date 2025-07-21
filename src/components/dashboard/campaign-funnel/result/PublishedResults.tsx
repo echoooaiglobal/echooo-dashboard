@@ -132,7 +132,7 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
     }).format(amount);
   };
 
-  // UPDATED: Enhanced getPostData function with proper shares handling
+  // UPDATED: Enhanced getPostData function with video_play_count focus for views
   const getPostData = (video: VideoResult) => {
     const postData = video.post_result_obj?.data;
     if (!postData) {
@@ -151,6 +151,9 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
       const totalEngagements = likes + comments + (shares > 0 ? shares : 0);
       const cpe = totalEngagements > 0 ? collaborationPrice / totalEngagements : 0;
       
+      // UPDATED: Use plays for video_play_count when no post data
+      const videoPlayCount = playsFromAPI;
+      
       return {
         likes,
         comments,
@@ -165,7 +168,8 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
         duration: video.duration || 0,
         collaborationPrice,
         cpv: finalViews > 0 ? collaborationPrice / finalViews : 0,
-        cpe
+        cpe,
+        videoPlayCount // UPDATED: Added specific video_play_count field
       };
     }
 
@@ -186,7 +190,10 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
       0                                            // Default: 0 if no data
     );
     
-    // UPDATED: Match AnalyticsView logic exactly for consistent views calculation
+    // UPDATED: Focus on video_play_count from API for the Views column
+    const videoPlayCount = Math.max(0, postData.video_play_count || 0);
+    
+    // Keep existing logic for other view calculations (for backwards compatibility)
     const videoPlaysFromAPI = Math.max(0, postData.video_view_count || postData.video_play_count || 0);
     const generalViewsFromAPI = Math.max(0, video.views_count || 0);
     const playsFromVideo = Math.max(0, video.plays_count || 0);
@@ -204,8 +211,8 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
     // Get collaboration price from multiple sources
     const collaborationPrice = video.collaboration_price || postData.collaboration_price || 0;
     
-    // Calculate CPV (Cost Per View)
-    const cpv = views > 0 ? collaborationPrice / views : 0;
+    // Calculate CPV (Cost Per View) - use video_play_count for consistency
+    const cpv = videoPlayCount > 0 ? collaborationPrice / videoPlayCount : 0;
     
     // Calculate CPE (Cost Per Engagement) - include shares if > 0
     const totalEngagements = likes + comments + (shares > 0 ? shares : 0);
@@ -247,7 +254,8 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
       duration: postData.video_duration || video.duration || 0,
       collaborationPrice,
       cpv,
-      cpe
+      cpe,
+      videoPlayCount // UPDATED: Added specific video_play_count field
     };
   };
 
@@ -713,9 +721,9 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
           aValue = Number(aData.shares) || 0;
           bValue = Number(bData.shares) || 0;
           break;
-        case 'views':
-          aValue = Number(aData.actualViews) || 0;
-          bValue = Number(bData.actualViews) || 0;
+        case 'views': // UPDATED: Use videoPlayCount for sorting the Views column
+          aValue = Number(aData.videoPlayCount) || 0;
+          bValue = Number(bData.videoPlayCount) || 0;
           break;
         case 'engagementRate':
           aValue = parseFloat(aData.engagementRate.replace('%', '')) || 0;
@@ -1229,9 +1237,9 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
                         <td className="px-2 py-4 whitespace-nowrap text-xs text-gray-500">
                           {formatNumber(postData.shares)}
                         </td>
-                        {/* Views Column (combining actual views and plays data) */}
+                        {/* UPDATED: Views Column - Now displays video_play_count */}
                         <td className="px-2 py-4 whitespace-nowrap text-xs text-gray-500">
-                          {postData.actualViews > 0 ? formatNumber(postData.actualViews) : 'N/A'}
+                          {postData.videoPlayCount > 0 ? formatNumber(postData.videoPlayCount) : 'N/A'}
                         </td>
                         <td className="px-2 py-4 whitespace-nowrap text-xs text-gray-500">
                           {postData.engagementRate}
@@ -1470,7 +1478,7 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
                     <div className="flex items-center justify-center">
                       <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
                       Deleting...
                     </div>
@@ -1584,8 +1592,9 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
                         <p className="font-medium text-gray-900">{formatNumber(postData.shares)}</p>
                         <p className="text-gray-500">Shares</p>
                       </div>
+                      {/* UPDATED: Modal now shows video_play_count for consistency */}
                       <div className="text-center">
-                        <p className="font-medium text-gray-900">{postData.actualViews > 0 ? formatNumber(postData.actualViews) : 'N/A'}</p>
+                        <p className="font-medium text-gray-900">{postData.videoPlayCount > 0 ? formatNumber(postData.videoPlayCount) : 'N/A'}</p>
                         <p className="text-gray-500">Views</p>
                       </div>
                     </>

@@ -268,6 +268,315 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
     return sortedData;
   };
 
+  // NEW: Prepare pyramid data for follower reachability
+  const preparePyramidData = () => {
+    const reachabilityData = profile?.audience?.follower_reachability || [];
+    
+    // Sort data by following range (ascending order for pyramid)
+    const sortedData = [...reachabilityData].sort((a, b) => {
+      // Custom sort order for following ranges
+      const order: { [key: string]: number } = {
+        '-500': 1,
+        '500-1000': 2,
+        '1000-1500': 3,
+        '1500-': 4
+      };
+      return (order[a.following_range] || 0) - (order[b.following_range] || 0);
+    });
+
+    return sortedData.map((item, index) => ({
+      label: item.following_range === '-500' ? 'Under 500' :
+             item.following_range === '1500-' ? 'Over 1500' :
+             item.following_range,
+      value: item.value || 0,
+      level: index + 1,
+      color: `hsl(${120 + (index * 60)}, 70%, ${60 - (index * 5)}%)` // Different shades
+    }));
+  };
+
+  // NEW: Fixed Pyramid Chart with Proper Text Display
+  const PyramidChart = () => {
+    const pyramidData = preparePyramidData();
+    
+    // Define professional colors for pyramid levels
+    const pyramidColors = [
+      '#22C55E', // Green (smallest - top)
+      '#EAB308', // Yellow
+      '#F97316', // Orange  
+      '#EF4444'  // Red (largest - bottom)
+    ];
+
+    // Sort data by value (ascending) so smallest is at top, largest at bottom
+    const sortedData = [...pyramidData].sort((a, b) => a.value - b.value);
+
+    return (
+      <div className="w-full h-full py-4">
+        {/* True Pyramid Chart */}
+        <div className="flex flex-col items-center space-y-0.5 mb-6">
+          {sortedData.map((level, index) => {
+            // Calculate pyramid widths
+            const baseWidth = 320; // Increased for better text visibility
+            const topWidth = 120;   // Increased minimum width
+            const totalLevels = sortedData.length;
+            
+            // Calculate width progression for pyramid shape
+            const widthStep = (baseWidth - topWidth) / (totalLevels - 1);
+            const currentWidth = topWidth + (index * widthStep);
+            
+            const height = 50; // Increased height for better text space
+            
+            return (
+              <div 
+                key={index}
+                className="relative group transform transition-all duration-500 hover:scale-105 hover:z-10"
+                style={{ 
+                  animation: `pyramidSlideIn 0.8s ease-out ${index * 0.2}s both`,
+                  width: `${currentWidth}px`,
+                  height: `${height}px`
+                }}
+              >
+                {/* Main Pyramid Section */}
+                <div
+                  className="relative w-full h-full cursor-pointer overflow-hidden"
+                  style={{
+                    backgroundColor: pyramidColors[index] || '#6B7280',
+                    clipPath: index === 0 
+                      ? 'polygon(25% 0%, 75% 0%, 100% 100%, 0% 100%)' // Top (trapezoid)
+                      : index === sortedData.length - 1
+                      ? 'polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)' // Bottom (rectangle)
+                      : `polygon(${15 - (index * 3)}% 0%, ${85 + (index * 3)}% 0%, 100% 100%, 0% 100%)`, // Progressive trapezoids
+                    borderRadius: '8px',
+                    boxShadow: '0 6px 20px rgba(0, 0, 0, 0.15)',
+                    transform: 'translateZ(0)', // Hardware acceleration
+                    animation: `pyramidExpand 1s ease-out ${index * 0.2 + 0.4}s both`
+                  }}
+                >
+                  {/* Animated Background Gradient */}
+                  <div 
+                    className="absolute inset-0 opacity-30 group-hover:opacity-50 transition-opacity duration-500"
+                    style={{
+                      background: `linear-gradient(135deg, 
+                        rgba(255,255,255,0.4) 0%, 
+                        rgba(255,255,255,0.1) 50%, 
+                        rgba(0,0,0,0.1) 100%)`,
+                      clipPath: 'inherit'
+                    }}
+                  ></div>
+                  
+                  {/* Hover Glow Effect */}
+                  <div 
+                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-all duration-500"
+                    style={{
+                      background: `radial-gradient(circle at center, 
+                        rgba(255,255,255,0.3) 0%, 
+                        rgba(255,255,255,0.1) 50%, 
+                        transparent 100%)`,
+                      clipPath: 'inherit',
+                      filter: 'blur(1px)'
+                    }}
+                  ></div>
+                  
+                  {/* Text Content - Properly Positioned */}
+                  <div className="absolute inset-0 flex items-center justify-center px-4 z-20">
+                    <div className="text-center w-full">
+                      {/* Label */}
+                      <div 
+                        className="text-white font-bold drop-shadow-lg mb-1"
+                        style={{ 
+                          fontSize: currentWidth > 200 ? '14px' : '12px',
+                          animation: `textFadeIn 1s ease-out ${index * 0.2 + 0.8}s both`,
+                          textShadow: '0 2px 4px rgba(0,0,0,0.5)'
+                        }}
+                      >
+                        {level.label}
+                      </div>
+                      
+                      {/* Percentage */}
+                      <div 
+                        className="text-white font-black drop-shadow-lg"
+                        style={{ 
+                          fontSize: currentWidth > 200 ? '18px' : '16px',
+                          animation: `textFadeIn 1s ease-out ${index * 0.2 + 1}s both`,
+                          textShadow: '0 2px 4px rgba(0,0,0,0.7)'
+                        }}
+                      >
+                        {level.value.toFixed(1)}%
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Animated Shine Effect */}
+                  <div 
+                    className="absolute inset-0 pointer-events-none group-hover:animate-pulse"
+                    style={{
+                      background: 'linear-gradient(45deg, transparent 20%, rgba(255,255,255,0.4) 50%, transparent 80%)',
+                      clipPath: 'inherit',
+                      transform: 'translateX(-100%)',
+                      animation: `shineMove 3s ease-in-out ${index * 0.5 + 2}s infinite`
+                    }}
+                  ></div>
+                  
+                  {/* Floating Particles Effect */}
+                  <div className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-700">
+                    {[...Array(3)].map((_, i) => (
+                      <div
+                        key={i}
+                        className="absolute w-1 h-1 bg-white rounded-full"
+                        style={{
+                          left: `${20 + (i * 30)}%`,
+                          top: `${30 + (i * 20)}%`,
+                          animation: `floatUp 2s ease-out ${i * 0.3}s infinite`
+                        }}
+                      ></div>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* Enhanced Hover Tooltip */}
+                <div className="absolute -top-16 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-all duration-500 pointer-events-none z-30">
+                  <div className="bg-gray-900 text-white text-sm px-4 py-3 rounded-xl shadow-2xl border border-gray-700">
+                    <div className="text-center">
+                      <div className="font-bold text-yellow-300 mb-1">{level.value.toFixed(1)}% of audience</div>
+                      <div className="text-xs text-gray-300">follows {level.label} accounts</div>
+                    </div>
+                    {/* Tooltip Arrow */}
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-t-8 border-transparent border-t-gray-900"></div>
+                  </div>
+                </div>
+                
+                {/* Progress Ring Animation */}
+                <div className="absolute -inset-2 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
+                  <div 
+                    className="w-full h-full border-2 border-white/50 rounded-lg"
+                    style={{
+                      clipPath: 'inherit',
+                      animation: `ringPulse 2s ease-in-out infinite`
+                    }}
+                  ></div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        
+        {/* Enhanced Legend with Animation */}
+        <div className="border-t border-gray-200 pt-4">
+          <div className="grid grid-cols-2 gap-4">
+            {sortedData.map((level, index) => (
+              <div 
+                key={index}
+                className="flex items-center justify-between p-3 rounded-xl hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 transition-all duration-300 cursor-pointer group border border-transparent hover:border-gray-200 hover:shadow-md"
+                style={{ 
+                  animation: `legendSlideIn 0.6s ease-out ${index * 0.15 + 1.8}s both` 
+                }}
+              >
+                <div className="flex items-center space-x-3">
+                  <div 
+                    className="w-4 h-4 rounded-md flex-shrink-0 group-hover:scale-125 transition-all duration-300 shadow-lg"
+                    style={{ 
+                      backgroundColor: pyramidColors[index] || '#6B7280',
+                      boxShadow: `0 0 20px ${pyramidColors[index]}40`
+                    }}
+                  ></div>
+                  <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900 transition-colors duration-300">
+                    {level.label}
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm font-bold text-gray-900 group-hover:text-black transition-colors duration-300">
+                    {level.value.toFixed(1)}%
+                  </span>
+                  <div className="w-2 h-2 rounded-full bg-gray-300 group-hover:bg-gray-500 transition-colors duration-300"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        {/* Enhanced CSS Animations */}
+        <style jsx>{`
+          @keyframes pyramidSlideIn {
+            from {
+              transform: translateY(-30px) scale(0.8);
+              opacity: 0;
+            }
+            to {
+              transform: translateY(0) scale(1);
+              opacity: 1;
+            }
+          }
+          
+          @keyframes pyramidExpand {
+            from {
+              transform: scaleX(0.3) scaleY(0.1);
+              transform-origin: bottom center;
+            }
+            to {
+              transform: scaleX(1) scaleY(1);
+              transform-origin: bottom center;
+            }
+          }
+          
+          @keyframes textFadeIn {
+            from {
+              opacity: 0;
+              transform: translateY(10px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+          
+          @keyframes shineMove {
+            0% {
+              transform: translateX(-100%) skewX(-15deg);
+            }
+            50% {
+              transform: translateX(0%) skewX(-15deg);
+            }
+            100% {
+              transform: translateX(100%) skewX(-15deg);
+            }
+          }
+          
+          @keyframes floatUp {
+            0% {
+              transform: translateY(0) scale(0);
+              opacity: 1;
+            }
+            100% {
+              transform: translateY(-20px) scale(1);
+              opacity: 0;
+            }
+          }
+          
+          @keyframes ringPulse {
+            0%, 100% {
+              transform: scale(1);
+              opacity: 0.5;
+            }
+            50% {
+              transform: scale(1.05);
+              opacity: 0.8;
+            }
+          }
+          
+          @keyframes legendSlideIn {
+            from {
+              transform: translateX(-20px);
+              opacity: 0;
+            }
+            to {
+              transform: translateX(0);
+              opacity: 1;
+            }
+          }
+        `}</style>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-8">
       {/* Audience Summary - Moved to top */}
@@ -999,7 +1308,7 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
           </div>
         </div>
 
-        {/* Follower Reachability - Added top margin */}
+        {/* NEW: Follower Reachability - Updated with Pyramid Chart */}
         <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
           <h3 className="text-lg font-semibold mb-4 flex items-center group">
             <Eye className="w-5 h-5 mr-2" />
@@ -1016,23 +1325,10 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
               </div>
             </div>
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
-            {profile?.audience?.follower_reachability?.map((reach, index) => (
-              <div key={index} className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-lg border">
-                <div className="text-sm font-medium text-gray-700 mb-2">
-                  {reach.following_range === '-500' ? 'Under 500' :
-                   reach.following_range === '1500-' ? 'Over 1500' :
-                   reach.following_range} following
-                </div>
-                <div className="text-2xl font-bold text-emerald-600">{reach.value?.toFixed(1) || '0.0'}%</div>
-                <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                  <div
-                    className="bg-emerald-500 h-2 rounded-full transition-all duration-500"
-                    style={{ width: `${reach.value || 0}%` }}
-                  ></div>
-                </div>
-              </div>
-            ))}
+          
+          {/* Compact Pyramid Chart Implementation */}
+          <div className="h-80 w-full overflow-hidden">
+            <PyramidChart />
           </div>
         </div>
       </div>

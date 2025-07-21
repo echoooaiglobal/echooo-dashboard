@@ -99,8 +99,9 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ analyticsData
     };
   };
 
-  // Helper function to calculate adjusted views (excluding views from posts with 0 likes)
-  const calculateAdjustedViews = (): { adjusted: number; excluded: number } => {
+  // UPDATED: Helper function to calculate adjusted views for engagement rate calculations only
+  // This excludes views from posts with 0 or negative likes, but Total Views still shows all views
+  const calculateAdjustedViewsForEngagement = (): { adjusted: number; excluded: number } => {
     // Try to use pre-calculated adjusted value first
     if (analyticsData.adjustedTotalViews !== undefined && analyticsData.adjustedTotalViews > 0) {
       return {
@@ -109,15 +110,46 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ analyticsData
       };
     }
 
-    // Fallback: Calculate from individual posts if available
-    const validPosts = getValidPosts();
-    if (validPosts.length > 0) {
-      // Sum views from posts with positive likes only
-      const adjustedViews = validPosts.reduce((sum, post) => sum + (post.views || 0), 0);
+    // Calculate from individual posts focusing on video_play_count equivalents
+    // Get all posts (including those with 0/negative likes for comparison)
+    const allPosts = [
+      ...analyticsData.topPosts,
+      ...analyticsData.postsByDate.flatMap(dateGroup => 
+        dateGroup.posts.map(post => ({
+          ...post,
+          username: post.username
+        }))
+      )
+    ];
+
+    if (allPosts.length > 0) {
+      // Calculate total views from ALL posts (for exclusion calculation)
+      const totalViewsFromPosts = allPosts.reduce((sum, post) => {
+        const videoPlayCount = post.videoPlayCount || post.video_play_count || 0;
+        const generalViews = post.views || 0;
+        const finalViews = Math.max(videoPlayCount, generalViews);
+        return sum + finalViews;
+      }, 0);
+
+      // Calculate adjusted views from posts with positive likes only
+      const validPosts = allPosts.filter(post => post.likes > 0);
+      const adjustedViews = validPosts.reduce((sum, post) => {
+        const videoPlayCount = post.videoPlayCount || post.video_play_count || 0;
+        const generalViews = post.views || 0;
+        const finalViews = Math.max(videoPlayCount, generalViews);
+        return sum + finalViews;
+      }, 0);
+      
+      console.log('🔍 Views Calculation Debug (for engagement rate only):');
+      console.log(`Total posts: ${allPosts.length}`);
+      console.log(`Valid posts (likes > 0): ${validPosts.length}`);
+      console.log(`Total views from all posts: ${totalViewsFromPosts}`);
+      console.log(`Adjusted views (excluding 0 likes posts): ${adjustedViews}`);
+      console.log(`Views excluded from engagement calculation: ${totalViewsFromPosts - adjustedViews}`);
       
       return {
         adjusted: adjustedViews > 0 ? adjustedViews : analyticsData.totalViews,
-        excluded: analyticsData.totalViews - (adjustedViews > 0 ? adjustedViews : analyticsData.totalViews)
+        excluded: totalViewsFromPosts - adjustedViews
       };
     }
 
@@ -133,21 +165,36 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ analyticsData
     const totalEngagement = analyticsData.totalLikes + analyticsData.totalComments + analyticsData.totalShares;
     const { adjusted: adjustedFollowers } = calculateAdjustedFollowers();
     
-    return adjustedFollowers > 0 ? (totalEngagement / adjustedFollowers) * 100 : 0;
+    const engagementRate = adjustedFollowers > 0 ? (totalEngagement / adjustedFollowers) * 100 : 0;
+    
+    console.log('🔍 Engagement Rate Calculation:');
+    console.log(`Total engagement: ${totalEngagement}`);
+    console.log(`Adjusted followers: ${adjustedFollowers}`);
+    console.log(`Calculated engagement rate: ${engagementRate.toFixed(2)}%`);
+    
+    return engagementRate;
   };
 
-  // UPDATED: Enhanced calculation for Avg Engagement Rate (Views) with direct exclusion logic
+  // UPDATED: Enhanced calculation for Avg Engagement Rate (Views) using adjusted views for engagement calculation only
   const calculateEngagementRateByViews = (): number => {
     const totalEngagement = analyticsData.totalLikes + analyticsData.totalComments + analyticsData.totalShares;
-    const { adjusted: adjustedViews } = calculateAdjustedViews();
+    const { adjusted: adjustedViews } = calculateAdjustedViewsForEngagement();
     
-    return adjustedViews > 0 ? (totalEngagement / adjustedViews) * 100 : 0;
+    const engagementRateByViews = adjustedViews > 0 ? (totalEngagement / adjustedViews) * 100 : 0;
+    
+    console.log('🔍 Engagement Rate by Views Calculation (excludes views from 0-like posts):');
+    console.log(`Total engagement: ${totalEngagement}`);
+    console.log(`Adjusted views for engagement calculation: ${adjustedViews}`);
+    console.log(`Total Views (displayed): ${analyticsData.totalViews} (includes all views)`);
+    console.log(`Calculated engagement rate by views: ${engagementRateByViews.toFixed(2)}%`);
+    
+    return engagementRateByViews;
   };
 
   // Helper function to determine exclusion status
   const getExclusionStatus = () => {
     const followerData = calculateAdjustedFollowers();
-    const viewsData = calculateAdjustedViews();
+    const viewsData = calculateAdjustedViewsForEngagement(); // UPDATED: Use engagement-specific views calculation
     
     const hasFollowerExclusions = followerData.excluded > 0;
     const hasViewsExclusions = viewsData.excluded > 0;
@@ -219,11 +266,7 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ analyticsData
       value: formatNumber(analyticsData.totalViews),
       change: getPercentageChange(analyticsData.totalViews, 200000),
       changeType: analyticsData.totalViews > 200000 ? "positive" : "negative" as const,
-      tooltip: `Sum of all video views across all posts. Uses the highest available count from Instagram's API. ${
-        exclusionStatus.isUsingAdjustedViews 
-          ? `Note: ${formatNumber(exclusionStatus.excludedViews)} views are excluded from engagement rate calculations due to posts with 0 likes.`
-          : 'Includes all views from all posts in the campaign.'
-      }`,
+      tooltip: `Sum of all video views across ALL posts in the Published Results table. Displays the complete total including posts with 0 or negative likes. Uses video_play_count from Instagram's API where available. Note: For engagement rate calculations, views from posts with 0 likes are excluded, but this total shows all views.`,
       icon: (
         <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-emerald-600 rounded-full flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform duration-300">
           <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -256,7 +299,7 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ analyticsData
       value: formatNumber(analyticsData.totalImpressions),
       change: getPercentageChange(analyticsData.totalImpressions, 500000),
       changeType: "positive" as const,
-      tooltip: "Total number of times content was displayed. Calculated as: (Video Views × 1.3) + (Photo Posts × Avg Followers × 40% reach rate). Accounts for repeat views and organic reach.",
+      tooltip: "Total number of times content was displayed. Calculated as: (Video Views × 1.3) + (Photo Posts × Avg Followers × 40% reach rate). Accounts for repeat views and organic reach. Based on total views from all posts including those with 0 likes.",
       icon: (
         <div className="w-16 h-16 bg-gradient-to-br from-yellow-400 to-orange-600 rounded-full flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform duration-300">
           <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -270,7 +313,7 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ analyticsData
       value: formatNumber(analyticsData.totalReach), 
       change: getPercentageChange(analyticsData.totalReach, 300000),
       changeType: "positive" as const,
-      tooltip: "Estimated unique users who saw your content. Calculated as 65% of total impressions, but capped at actual engagement levels. Always lower than impressions.",
+      tooltip: "Estimated unique users who saw your content. Calculated as 65% of total impressions, but capped at actual engagement levels. Always lower than impressions. Based on total views from all posts.",
       icon: (
         <div className="w-16 h-16 bg-gradient-to-br from-teal-400 to-cyan-600 rounded-full flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform duration-300">
           <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -298,14 +341,14 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ analyticsData
     }
   ];
 
-  // Third row - UPDATED with direct exclusion logic for Avg Engagement Rate (Views)
+  // UPDATED: Third row with enhanced video_play_count focus for Avg Engagement Rate (Views)
   const thirdRowData = [
     {
       title: "Total CPV",
       value: `${analyticsData.totalCPV.toFixed(4)}`,
       change: "+12.3%",
       changeType: "positive" as const,
-      tooltip: "Total Cost Per View across all campaign posts. Calculated by summing all individual CPV values (collaboration price ÷ views per post).",
+      tooltip: "Total Cost Per View across all campaign posts. Calculated by summing all individual CPV values (collaboration price ÷ views per post). Now uses video_play_count for more accurate CPV calculations on video content.",
       icon: (
         <div className="w-16 h-16 bg-gradient-to-br from-indigo-400 to-blue-600 rounded-full flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform duration-300">
           <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -333,7 +376,7 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ analyticsData
       value: `${analyticsData.viewsToFollowersRatio.toFixed(1)}%`,
       change: analyticsData.viewsToFollowersRatio > 50 ? "+25.6%" : "-10.2%",
       changeType: analyticsData.viewsToFollowersRatio > 50 ? "positive" : "negative" as const,
-      tooltip: "Ratio of total views to total followers (Views ÷ Followers × 100). Shows how well content resonates beyond the immediate follower base. Higher ratios indicate viral potential.",
+      tooltip: "Ratio of total views to total followers (Views ÷ Followers × 100). Shows how well content resonates beyond the immediate follower base. Higher ratios indicate viral potential. Now based on video_play_count for more accurate video performance measurement.",
       icon: (
         <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-orange-600 rounded-full flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform duration-300">
           <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -348,9 +391,9 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ analyticsData
       change: calculateEngagementRateByViews() > 5 ? "+18.4%" : "-5.3%",
       changeType: calculateEngagementRateByViews() > 5 ? "positive" : "negative" as const,
       tooltip: `${exclusionStatus.isUsingAdjustedViews 
-        ? `Enhanced calculation: (Total Likes + Comments + Shares) ÷ Adjusted Total Views (${formatNumber(exclusionStatus.adjustedViews)}) × 100. Excludes ${formatNumber(exclusionStatus.excludedViews)} views from posts with 0 or negative likes.`
-        : 'Standard calculation: (Total Likes + Comments + Shares) ÷ Total Views × 100.'
-      } Shows engagement quality relative to view count.`,
+        ? `Enhanced calculation: (Total Likes + Comments + Shares) ÷ Adjusted Views for Engagement (${formatNumber(exclusionStatus.adjustedViews)}) × 100. Excludes ${formatNumber(exclusionStatus.excludedViews)} views from posts with 0 or negative likes. Note: Total Views above shows ALL views including excluded ones.`
+        : 'Standard calculation: (Total Likes + Comments + Shares) ÷ Total Views × 100. Uses all views since no posts have 0 likes.'
+      } Shows engagement quality relative to view count from engaging posts only.`,
       icon: (
         <div className="w-16 h-16 bg-gradient-to-br from-violet-400 to-purple-600 rounded-full flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform duration-300">
           <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -426,7 +469,7 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ analyticsData
         {secondRowData.map((item, index) => renderCard(item, index, 4))}
       </div>
 
-      {/* Third Row - Unchanged */}
+      {/* Third Row - Enhanced with video_play_count focus */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {thirdRowData.map((item, index) => renderCard(item, index, 8))}
       </div>
