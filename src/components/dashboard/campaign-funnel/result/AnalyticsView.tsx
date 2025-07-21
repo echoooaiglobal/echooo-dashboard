@@ -63,7 +63,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
     return originalUrl;
   };
 
-  // Get post data with consistent calculations
+  // UPDATED: Enhanced getPostData function to match PublishedResults exactly
   const getPostData = (video: VideoResult) => {
     const postData = video.post_result_obj?.data;
     if (!postData) {
@@ -74,13 +74,16 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
       const comments = Math.max(0, video.comments_count || 0);
       
       // FIXED: Use actual shares data if available, otherwise show 0 (no calculation)
-      const shares = Math.max(0, video.shares_count || 0); // Use actual shares or 0
+      const shares = Math.max(0, video.shares_count || 0);
       const collaborationPrice = video.collaboration_price || 0;
+      
+      // UPDATED: Use plays for videoPlayCount when no post data (matching PublishedResults)
+      const videoPlayCount = playsFromAPI;
       
       return {
         likes,
         comments,
-        views: finalViews,
+        views: finalViews, // Keep this for backwards compatibility
         plays: playsFromAPI,
         shares,
         followers: 0,
@@ -89,8 +92,9 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
         isVerified: false,
         thumbnailUrl: getProxiedImageUrl(video.thumbnail || video.media_preview || ''),
         collaborationPrice,
-        cpv: finalViews > 0 ? collaborationPrice / finalViews : 0,
-        cpe: (likes + comments + (shares > 0 ? shares : 0)) > 0 ? collaborationPrice / (likes + comments + (shares > 0 ? shares : 0)) : 0
+        cpv: videoPlayCount > 0 ? collaborationPrice / videoPlayCount : 0, // UPDATED: Use videoPlayCount for CPV
+        cpe: (likes + comments + (shares > 0 ? shares : 0)) > 0 ? collaborationPrice / (likes + comments + (shares > 0 ? shares : 0)) : 0,
+        videoPlayCount // UPDATED: Added videoPlayCount field
       };
     }
 
@@ -103,6 +107,10 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                      postData.edge_media_to_parent_comment?.count ||
                      video.comments_count || 0);
     
+    // UPDATED: Focus on video_play_count from API (matching PublishedResults exactly)
+    const videoPlayCount = Math.max(0, postData.video_play_count || 0);
+    
+    // Keep existing logic for other view calculations (for backwards compatibility)
     const videoPlaysFromAPI = Math.max(0, postData.video_view_count || postData.video_play_count || 0);
     const generalViewsFromAPI = Math.max(0, video.views_count || 0);
     const playsFromVideo = Math.max(0, video.plays_count || 0);
@@ -147,7 +155,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
     return {
       likes,
       comments,
-      views,
+      views, // Keep this for backwards compatibility
       plays,
       shares,
       followers,
@@ -156,8 +164,9 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
       isVerified: postData.owner?.is_verified || false,
       thumbnailUrl: getProxiedImageUrl(thumbnailUrl),
       collaborationPrice,
-      cpv: views > 0 ? collaborationPrice / views : 0,
-      cpe: (likes + comments + (shares > 0 ? shares : 0)) > 0 ? collaborationPrice / (likes + comments + (shares > 0 ? shares : 0)) : 0
+      cpv: videoPlayCount > 0 ? collaborationPrice / videoPlayCount : 0, // UPDATED: Use videoPlayCount for CPV
+      cpe: (likes + comments + (shares > 0 ? shares : 0)) > 0 ? collaborationPrice / (likes + comments + (shares > 0 ? shares : 0)) : 0,
+      videoPlayCount // UPDATED: Added videoPlayCount field to match PublishedResults
     };
   };
 
@@ -180,14 +189,16 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
       const avgEngagement = filtered.reduce((sum, post) => sum + post.totalEngagement, 0) / filtered.length;
       filtered = filtered.filter(post => post.totalEngagement > avgEngagement);
     } else if (postsFilterBy === 'high-views') {
-      const avgViews = filtered.reduce((sum, post) => sum + post.views, 0) / filtered.length;
-      filtered = filtered.filter(post => post.views > avgViews);
+      // UPDATED: Use videoPlayCount for filtering high-views posts
+      const avgViews = filtered.reduce((sum, post) => sum + (post.videoPlayCount || post.views), 0) / filtered.length;
+      filtered = filtered.filter(post => (post.videoPlayCount || post.views) > avgViews);
     }
     
     filtered.sort((a, b) => {
       switch (postsSortBy) {
         case 'views':
-          return b.views - a.views;
+          // UPDATED: Use videoPlayCount for sorting by views
+          return (b.videoPlayCount || b.views) - (a.videoPlayCount || a.views);
         case 'likes':
           return b.likes - a.likes;
         case 'comments':
@@ -217,7 +228,8 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
     filtered.sort((a, b) => {
       switch (influencersSortBy) {
         case 'views':
-          return b.totalViews - a.totalViews;
+          // UPDATED: Use totalVideoPlayCount for sorting by views (will be added in processing)
+          return (b.totalVideoPlayCount || b.totalViews) - (a.totalVideoPlayCount || a.totalViews);
         case 'followers':
           return b.followers - a.followers;
         case 'posts':
@@ -370,8 +382,8 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
         // Initialize totals
         let totalLikes = 0;
         let totalComments = 0;
-        let totalViews = 0;
-        let totalShares = 0; // This will include all shares values (including 0) to match PublishedResults table
+        let totalViews = 0; // This will be based on videoPlayCount for consistency
+        let totalShares = 0;
         let totalFollowers = 0;
         let totalCPV = 0;
         let totalCPE = 0;
@@ -405,6 +417,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
           totalLikes: number;
           totalComments: number;
           totalViews: number;
+          totalVideoPlayCount: number; // UPDATED: Added for consistency with PublishedResults
           totalShares: number;
           avgEngagementRate: number;
           totalEngagement: number;
@@ -420,6 +433,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
           likes: number;
           comments: number;
           views: number;
+          videoPlayCount: number; // UPDATED: Added videoPlayCount field
           plays: number;
           shares: number;
           engagementRate: number;
@@ -434,6 +448,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
           let influencerTotalLikes = 0;
           let influencerTotalComments = 0;
           let influencerTotalViews = 0;
+          let influencerTotalVideoPlayCount = 0; // UPDATED: Track videoPlayCount separately
           let influencerTotalShares = 0;
           let influencerFollowers = 0;
           let influencerAvatar = '';
@@ -446,16 +461,16 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
             // Sum post metrics
             totalLikes += postDataDetail.likes;
             totalComments += postDataDetail.comments;
-            totalViews += postDataDetail.views;
-            // FIXED: Always add shares to total (including 0 values) to match PublishedResults table
+            // UPDATED: Use videoPlayCount for totalViews calculation
+            totalViews += postDataDetail.videoPlayCount || postDataDetail.views;
             totalShares += postDataDetail.shares;
             totalCPV += postDataDetail.cpv;
             totalCPE += postDataDetail.cpe;
             
             influencerTotalLikes += postDataDetail.likes;
             influencerTotalComments += postDataDetail.comments;
-            influencerTotalViews += postDataDetail.views;
-            // FIXED: Always add shares (including 0 values) to match PublishedResults table
+            influencerTotalViews += postDataDetail.views; // Keep original views for backwards compatibility
+            influencerTotalVideoPlayCount += postDataDetail.videoPlayCount || 0; // UPDATED: Track videoPlayCount
             influencerTotalShares += postDataDetail.shares;
             
             // Take the maximum followers count for this influencer
@@ -469,7 +484,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
               isVerified = postDataDetail.isVerified;
             }
 
-            // Enhanced date processing
+            // Enhanced date processing - UPDATED: Use videoPlayCount for views
             let postDate = null;
             if (video.post_created_at) {
               postDate = video.post_created_at;
@@ -477,21 +492,22 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
               postDate = video.created_at;
             }
             
-            if (postDate && postDataDetail.views > 0) {
+            const postViews = postDataDetail.videoPlayCount || postDataDetail.views;
+            if (postDate && postViews > 0) {
               try {
                 const dateKey = new Date(postDate).toISOString().split('T')[0];
                 const existing = postDateMap.get(dateKey) || { count: 0, views: 0, posts: [] };
                 
                 postDateMap.set(dateKey, {
                   count: existing.count + 1,
-                  views: existing.views + postDataDetail.views,
+                  views: existing.views + postViews, // UPDATED: Use postViews (videoPlayCount or fallback)
                   posts: [
                     ...existing.posts,
                     {
                       influencerName: video.full_name || video.influencer_username,
                       username: video.influencer_username,
                       avatar: postDataDetail.avatarUrl,
-                      views: postDataDetail.views,
+                      views: postViews, // UPDATED: Use postViews
                       likes: postDataDetail.likes,
                       comments: postDataDetail.comments,
                       shares: postDataDetail.shares,
@@ -513,6 +529,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
               likes: postDataDetail.likes,
               comments: postDataDetail.comments,
               views: postDataDetail.views,
+              videoPlayCount: postDataDetail.videoPlayCount || 0, // UPDATED: Add videoPlayCount field
               plays: postDataDetail.plays,
               shares: postDataDetail.shares,
               engagementRate: postDataDetail.engagementRate,
@@ -548,6 +565,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
             totalLikes: influencerTotalLikes,
             totalComments: influencerTotalComments,
             totalViews: influencerTotalViews,
+            totalVideoPlayCount: influencerTotalVideoPlayCount, // UPDATED: Add videoPlayCount tracking
             totalShares: influencerTotalShares,
             avgEngagementRate,
             totalEngagement: influencerTotalEngagement,
@@ -592,21 +610,21 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
         // Calculate impressions using industry standard formulas
         const videoPosts = results.filter(video => {
           const postData = getPostData(video);
-          return postData.views > 0 || postData.plays > 0;
+          return (postData.videoPlayCount || postData.views) > 0 || postData.plays > 0;
         }).length;
         const photoPosts = totalPosts - videoPosts;
         
+        // UPDATED: Use totalViews (which is now based on videoPlayCount) for impression calculation
         const videoImpressions = Math.round(totalViews * 1.3);
         const photoImpressions = Math.round((photoPosts * totalFollowers * 0.4) / totalInfluencers);
         const totalImpressions = videoImpressions + photoImpressions;
         
-        // Calculate reach (unique users who saw content)
+        // Calculate reach (unique users who saw content) - UPDATED: Use new totalViews
         const estimatedReach = Math.round(totalImpressions * 0.65);
         const totalReach = Math.min(estimatedReach, Math.max(totalViews, totalImpressions * 0.5));
 
-        // Calculate new metrics
+        // Calculate new metrics - UPDATED: Use new totalViews for ratios
         const viewsToFollowersRatio = totalFollowers > 0 ? (totalViews / totalFollowers) * 100 : 0;
-        // Updated calculation for Avg Engagement Rate (Views)
         const commentToViewsRatio = totalViews > 0 ? (totalEngagement / totalViews) * 100 : 0;
 
         setAnalyticsData({
@@ -615,8 +633,8 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
           totalReach,
           totalLikes,
           totalComments,
-          totalViews,
-          totalShares, // This now includes all shares (including 0 values) to match PublishedResults
+          totalViews, // This is now based on videoPlayCount for consistency
+          totalShares,
           totalFollowers,
           totalPosts,
           totalInfluencers,
@@ -874,7 +892,8 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                               </svg>
-                              <span className="font-medium text-gray-700">{formatNumber(Math.max(0, post.views))}</span>
+                              {/* UPDATED: Display videoPlayCount if available, otherwise fall back to views */}
+                              <span className="font-medium text-gray-700">{formatNumber(Math.max(0, post.videoPlayCount || post.views))}</span>
                             </div>
                           </div>
                           <div className="text-center">
@@ -1029,7 +1048,8 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                             <div className="text-xs text-gray-500">Engagement</div>
                           </div>
                           <div className="bg-white rounded-lg p-2 border border-gray-100 text-center">
-                            <div className="text-sm font-semibold text-gray-900">{formatNumber(Math.max(0, influencer.totalViews))}</div>
+                            {/* UPDATED: Display totalVideoPlayCount if available, otherwise fall back to totalViews */}
+                            <div className="text-sm font-semibold text-gray-900">{formatNumber(Math.max(0, influencer.totalVideoPlayCount || influencer.totalViews))}</div>
                             <div className="text-xs text-gray-500">Views</div>
                           </div>
                         </div>
