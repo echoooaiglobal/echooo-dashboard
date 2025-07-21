@@ -25,26 +25,148 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ analyticsData
     return change >= 0 ? `+${change.toFixed(1)}%` : `${change.toFixed(1)}%`;
   };
 
-  // Enhanced calculation for Avg Engagement Rate with special logic for zero/negative likes
+  // Helper function to get posts with positive likes for exclusion logic
+  const getValidPosts = () => {
+    const allPosts = [
+      // From topPosts array
+      ...analyticsData.topPosts,
+      // From postsByDate array (flattened)
+      ...analyticsData.postsByDate.flatMap(dateGroup => dateGroup.posts.map(post => ({
+        likes: post.likes,
+        views: post.views,
+        followers: 0, // Will need to be populated from topPerformers or other source
+        ...post
+      })))
+    ];
+
+    // Filter posts with positive likes
+    return allPosts.filter(post => post.likes > 0);
+  };
+
+  // Helper function to calculate adjusted followers (excluding followers from posts with 0 or negative likes)
+  const calculateAdjustedFollowers = (): { adjusted: number; excluded: number } => {
+    // Try to use pre-calculated adjusted value first
+    if (analyticsData.adjustedTotalFollowers !== undefined && analyticsData.adjustedTotalFollowers > 0) {
+      return {
+        adjusted: analyticsData.adjustedTotalFollowers,
+        excluded: analyticsData.totalFollowers - analyticsData.adjustedTotalFollowers
+      };
+    }
+
+    // Calculate from individual posts and performers if available
+    // Get all posts from topPosts and postsByDate
+    const allPosts = [
+      ...analyticsData.topPosts,
+      ...analyticsData.postsByDate.flatMap(dateGroup => 
+        dateGroup.posts.map(post => ({
+          likes: post.likes,
+          views: post.views,
+          username: post.username,
+          ...post
+        }))
+      )
+    ];
+
+    if (allPosts.length > 0 && analyticsData.topPerformers.length > 0) {
+      // Find posts with positive likes
+      const postsWithPositiveLikes = allPosts.filter(post => post.likes > 0);
+      
+      // Get unique usernames from posts with positive likes
+      const validUsernames = new Set(postsWithPositiveLikes.map(post => post.username));
+      
+      // Sum followers only from performers who have posts with positive likes
+      const adjustedFollowers = analyticsData.topPerformers
+        .filter(performer => validUsernames.has(performer.username))
+        .reduce((sum, performer) => sum + performer.followers, 0);
+
+      console.log('🔍 Followers Calculation Debug:');
+      console.log(`Total posts: ${allPosts.length}`);
+      console.log(`Posts with positive likes: ${postsWithPositiveLikes.length}`);
+      console.log(`Valid usernames: ${Array.from(validUsernames).join(', ')}`);
+      console.log(`Original total followers: ${analyticsData.totalFollowers}`);
+      console.log(`Adjusted followers (excluding 0 likes): ${adjustedFollowers}`);
+      console.log(`Followers excluded: ${analyticsData.totalFollowers - adjustedFollowers}`);
+      
+      return {
+        adjusted: adjustedFollowers > 0 ? adjustedFollowers : analyticsData.totalFollowers,
+        excluded: analyticsData.totalFollowers - (adjustedFollowers > 0 ? adjustedFollowers : analyticsData.totalFollowers)
+      };
+    }
+
+    // Final fallback: No exclusions possible
+    console.log('⚠️ No individual post/performer data available for followers adjustment');
+    return {
+      adjusted: analyticsData.totalFollowers,
+      excluded: 0
+    };
+  };
+
+  // Helper function to calculate adjusted views (excluding views from posts with 0 likes)
+  const calculateAdjustedViews = (): { adjusted: number; excluded: number } => {
+    // Try to use pre-calculated adjusted value first
+    if (analyticsData.adjustedTotalViews !== undefined && analyticsData.adjustedTotalViews > 0) {
+      return {
+        adjusted: analyticsData.adjustedTotalViews,
+        excluded: analyticsData.totalViews - analyticsData.adjustedTotalViews
+      };
+    }
+
+    // Fallback: Calculate from individual posts if available
+    const validPosts = getValidPosts();
+    if (validPosts.length > 0) {
+      // Sum views from posts with positive likes only
+      const adjustedViews = validPosts.reduce((sum, post) => sum + (post.views || 0), 0);
+      
+      return {
+        adjusted: adjustedViews > 0 ? adjustedViews : analyticsData.totalViews,
+        excluded: analyticsData.totalViews - (adjustedViews > 0 ? adjustedViews : analyticsData.totalViews)
+      };
+    }
+
+    // Final fallback: No exclusions possible
+    return {
+      adjusted: analyticsData.totalViews,
+      excluded: 0
+    };
+  };
+
+  // UPDATED: Enhanced calculation for Avg Engagement Rate with direct exclusion logic
   const calculateAdjustedEngagementRate = (): number => {
-    // This would need to be implemented with access to individual video/post data
-    // For now, we'll use the existing calculation but note this needs video-level data
-    // The actual implementation would require iterating through individual posts
-    // and excluding followers of posts with 0 or negative likes
-    
-    // Placeholder calculation - in real implementation, you'd need access to individual post data
-    // to properly exclude followers from posts with 0/negative likes
     const totalEngagement = analyticsData.totalLikes + analyticsData.totalComments + analyticsData.totalShares;
-    const adjustedFollowers = analyticsData.totalFollowers; // This would be adjusted based on posts with 0/negative likes
+    const { adjusted: adjustedFollowers } = calculateAdjustedFollowers();
     
     return adjustedFollowers > 0 ? (totalEngagement / adjustedFollowers) * 100 : 0;
   };
 
-  // Corrected calculation for Avg Engagement Rate (Views)
+  // UPDATED: Enhanced calculation for Avg Engagement Rate (Views) with direct exclusion logic
   const calculateEngagementRateByViews = (): number => {
     const totalEngagement = analyticsData.totalLikes + analyticsData.totalComments + analyticsData.totalShares;
-    return analyticsData.totalViews > 0 ? (totalEngagement / analyticsData.totalViews) * 100 : 0;
+    const { adjusted: adjustedViews } = calculateAdjustedViews();
+    
+    return adjustedViews > 0 ? (totalEngagement / adjustedViews) * 100 : 0;
   };
+
+  // Helper function to determine exclusion status
+  const getExclusionStatus = () => {
+    const followerData = calculateAdjustedFollowers();
+    const viewsData = calculateAdjustedViews();
+    
+    const hasFollowerExclusions = followerData.excluded > 0;
+    const hasViewsExclusions = viewsData.excluded > 0;
+    const hasAnyExclusions = hasFollowerExclusions || hasViewsExclusions;
+    
+    return {
+      hasExclusions: hasAnyExclusions,
+      excludedFollowers: followerData.excluded,
+      excludedViews: viewsData.excluded,
+      adjustedFollowers: followerData.adjusted,
+      adjustedViews: viewsData.adjusted,
+      isUsingAdjustedFollowers: hasFollowerExclusions,
+      isUsingAdjustedViews: hasViewsExclusions
+    };
+  };
+
+  const exclusionStatus = getExclusionStatus();
 
   // First row - Basic Insights (4 cards)
   const basicInsightsData = [
@@ -53,7 +175,11 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ analyticsData
       value: formatNumber(analyticsData.totalFollowers),
       change: getPercentageChange(analyticsData.totalFollowers, 100000),
       changeType: "positive" as const,
-      tooltip: "Total unique followers across all participating influencers. Each influencer is counted once with their maximum follower count to avoid double counting.",
+      tooltip: `Total unique followers across all participating influencers. ${
+        exclusionStatus.isUsingAdjustedFollowers 
+          ? `Note: ${formatNumber(exclusionStatus.excludedFollowers)} followers are excluded from engagement rate calculations due to posts with 0 likes.`
+          : 'Each influencer is counted once with their maximum follower count to avoid double counting.'
+      }`,
       icon: (
         <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform duration-300">
           <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -95,7 +221,11 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ analyticsData
       value: formatNumber(analyticsData.totalViews),
       change: getPercentageChange(analyticsData.totalViews, 200000),
       changeType: analyticsData.totalViews > 200000 ? "positive" : "negative" as const,
-      tooltip: "Sum of all video views across all posts. Uses the highest available count from Instagram's API (video_view_count, plays_count, or views_count).",
+      tooltip: `Sum of all video views across all posts. Uses the highest available count from Instagram's API. ${
+        exclusionStatus.isUsingAdjustedViews 
+          ? `Note: ${formatNumber(exclusionStatus.excludedViews)} views are excluded from engagement rate calculations due to posts with 0 likes.`
+          : 'Includes all views from all posts in the campaign.'
+      }`,
       icon: (
         <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-emerald-600 rounded-full flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform duration-300">
           <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -156,7 +286,10 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ analyticsData
       value: `${calculateAdjustedEngagementRate().toFixed(2)}%`,
       change: calculateAdjustedEngagementRate() > 3 ? "+15.2%" : "-5.1%",
       changeType: calculateAdjustedEngagementRate() > 3 ? "positive" : "negative" as const,
-      tooltip: "Enhanced calculation: (Total Likes + Comments + Shares) ÷ Adjusted Total Followers × 100. Excludes followers from influencers whose posts have 0 or negative likes. Rates above 3% are considered good for Instagram.",
+      tooltip: `${exclusionStatus.isUsingAdjustedFollowers 
+        ? `Enhanced calculation: (Total Likes + Comments + Shares) ÷ Adjusted Total Followers (${formatNumber(exclusionStatus.adjustedFollowers)}) × 100. Excludes ${formatNumber(exclusionStatus.excludedFollowers)} followers from influencers whose posts have 0 or negative likes.`
+        : 'Standard calculation: (Total Likes + Comments + Shares) ÷ Total Followers × 100.'
+      } Rates above 3% are considered good for Instagram.`,
       icon: (
         <div className="w-16 h-16 bg-gradient-to-br from-rose-400 to-pink-600 rounded-full flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform duration-300">
           <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -167,7 +300,7 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ analyticsData
     }
   ];
 
-  // Third row remains the same
+  // Third row - UPDATED with direct exclusion logic for Avg Engagement Rate (Views)
   const thirdRowData = [
     {
       title: "Total CPV",
@@ -216,7 +349,10 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ analyticsData
       value: `${calculateEngagementRateByViews().toFixed(2)}%`,
       change: calculateEngagementRateByViews() > 5 ? "+18.4%" : "-5.3%",
       changeType: calculateEngagementRateByViews() > 5 ? "positive" : "negative" as const,
-      tooltip: "Corrected engagement rate based on views: (Total Likes + Comments + Shares) ÷ Total Views × 100. Shows engagement quality relative to view count rather than follower count.",
+      tooltip: `${exclusionStatus.isUsingAdjustedViews 
+        ? `Enhanced calculation: (Total Likes + Comments + Shares) ÷ Adjusted Total Views (${formatNumber(exclusionStatus.adjustedViews)}) × 100. Excludes ${formatNumber(exclusionStatus.excludedViews)} views from posts with 0 or negative likes.`
+        : 'Standard calculation: (Total Likes + Comments + Shares) ÷ Total Views × 100.'
+      } Shows engagement quality relative to view count.`,
       icon: (
         <div className="w-16 h-16 bg-gradient-to-br from-violet-400 to-purple-600 rounded-full flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform duration-300">
           <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -271,6 +407,15 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ analyticsData
     <div>
       <div className="flex items-center space-x-2 mb-6 no-print">
         <h2 className="text-xl font-bold text-gray-800">Performance Overview</h2>
+        {/* Visual indicator when exclusions are active */}
+        {exclusionStatus.hasExclusions && (
+          <div className="flex items-center text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full">
+            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+            Excluding posts with 0 likes
+          </div>
+        )}
       </div>
 
       {/* First Row - Basic Insights */}
