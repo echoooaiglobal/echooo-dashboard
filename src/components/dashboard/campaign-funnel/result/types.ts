@@ -17,6 +17,11 @@ export interface AnalyticsData {
   totalCPE: number;
   viewsToFollowersRatio: number;
   commentToViewsRatio: number;
+  
+  // ADDED: Optional adjusted values for exclusion logic (excluding posts with 0 likes)
+  adjustedTotalFollowers?: number;  // Followers excluding those from posts with 0 likes
+  adjustedTotalViews?: number;      // Views excluding those from posts with 0 likes
+  
   postsByDate: Array<{
     date: string;
     count: number;
