@@ -207,8 +207,7 @@ export async function fetchInstagramPostDetails(postCode: string): Promise<Proce
       30000 // 30 second timeout
     );
 
-    console.log('📦 Instagram Server: 3rd party API response received');
-    console.log('✅ Instagram Server: 3rd party API call successful');
+    console.log('Instagram Post API Server:', rawResponse);
 
     // Process the response
     const processedData = processInstagramResponse(rawResponse);

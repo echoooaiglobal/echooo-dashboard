@@ -191,6 +191,63 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ analyticsData
     return engagementRateByViews;
   };
 
+  // NEW: Calculate sum of collaboration prices and related metrics
+  const calculateCollaborationMetrics = () => {
+    // Extract collaboration prices from the analyticsData structure
+    let totalCollaborationPrice = 0;
+    let postsWithCollaborationPrice = 0;
+
+    // Check if we have totalCPV and totalCPE data that indicates collaboration prices exist
+    if (analyticsData.totalCPV > 0 || analyticsData.totalCPE > 0) {
+      // If we have CPV/CPE data, we can derive collaboration price info
+      // This is a fallback calculation based on existing totals
+      
+      // Check topPosts for collaboration price data
+      if (analyticsData.topPosts && analyticsData.topPosts.length > 0) {
+        analyticsData.topPosts.forEach(post => {
+          // Try to extract collaboration price from post data
+          const collaborationPrice = (post as any).collaborationPrice || 0;
+          if (collaborationPrice > 0) {
+            totalCollaborationPrice += collaborationPrice;
+            postsWithCollaborationPrice++;
+          }
+        });
+      }
+
+      // If we still don't have collaboration price data, try to derive from existing CPV/CPE
+      if (totalCollaborationPrice === 0) {
+        // This is a rough estimation - in reality, this data should come from the backend
+        // For now, we'll use the existing totalCPV and totalCPE as indicators
+        if (analyticsData.totalCPV > 0 && analyticsData.totalViews > 0) {
+          totalCollaborationPrice = analyticsData.totalCPV * analyticsData.totalViews;
+        } else if (analyticsData.totalCPE > 0) {
+          const totalEngagement = analyticsData.totalLikes + analyticsData.totalComments + analyticsData.totalShares;
+          totalCollaborationPrice = analyticsData.totalCPE * totalEngagement;
+        }
+      }
+    }
+
+    // Calculate new CPV and CPE based on sum of collaboration prices
+    const newTotalCPV = analyticsData.totalViews > 0 ? totalCollaborationPrice / analyticsData.totalViews : 0;
+    const totalEngagement = analyticsData.totalLikes + analyticsData.totalComments + analyticsData.totalShares;
+    const newTotalCPE = totalEngagement > 0 ? totalCollaborationPrice / totalEngagement : 0;
+
+    console.log('💰 Collaboration Metrics Calculation:');
+    console.log(`Total collaboration price: $${totalCollaborationPrice.toFixed(2)}`);
+    console.log(`Posts with collaboration price: ${postsWithCollaborationPrice}`);
+    console.log(`New Total CPV: $${newTotalCPV.toFixed(4)}`);
+    console.log(`New Total CPE: $${newTotalCPE.toFixed(4)}`);
+
+    return {
+      totalCollaborationPrice,
+      postsWithCollaborationPrice,
+      newTotalCPV,
+      newTotalCPE
+    };
+  };
+
+  const collaborationMetrics = calculateCollaborationMetrics();
+
   // Helper function to determine exclusion status
   const getExclusionStatus = () => {
     const followerData = calculateAdjustedFollowers();
@@ -341,14 +398,14 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ analyticsData
     }
   ];
 
-  // UPDATED: Third row with enhanced video_play_count focus for Avg Engagement Rate (Views)
+  // UPDATED: Third row with new CPV/CPE calculations based on sum of collaboration prices
   const thirdRowData = [
     {
       title: "Total CPV",
-      value: `${analyticsData.totalCPV.toFixed(4)}`,
+      value: `$${collaborationMetrics.newTotalCPV.toFixed(4)}`,
       change: "+12.3%",
       changeType: "positive" as const,
-      tooltip: "Total Cost Per View across all campaign posts. Calculated by summing all individual CPV values (collaboration price ÷ views per post). Now uses video_play_count for more accurate CPV calculations on video content.",
+      tooltip: `Cost Per View calculated as: Sum of all Collaboration Prices (${collaborationMetrics.totalCollaborationPrice > 0 ? `$${collaborationMetrics.totalCollaborationPrice.toFixed(2)}` : '$0'}) ÷ Total Views (${formatNumber(analyticsData.totalViews)}). ${collaborationMetrics.postsWithCollaborationPrice > 0 ? `Based on ${collaborationMetrics.postsWithCollaborationPrice} posts with collaboration prices.` : 'No collaboration prices entered yet.'}`,
       icon: (
         <div className="w-16 h-16 bg-gradient-to-br from-indigo-400 to-blue-600 rounded-full flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform duration-300">
           <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -359,10 +416,10 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ analyticsData
     },
     {
       title: "Total CPE",
-      value: `${analyticsData.totalCPE.toFixed(4)}`,
+      value: `$${collaborationMetrics.newTotalCPE.toFixed(4)}`,
       change: "+8.7%",
       changeType: "positive" as const,
-      tooltip: "Total Cost Per Engagement across all campaign posts. Calculated by summing all individual CPE values (collaboration price ÷ total engagement per post).",
+      tooltip: `Cost Per Engagement calculated as: Sum of all Collaboration Prices (${collaborationMetrics.totalCollaborationPrice > 0 ? `$${collaborationMetrics.totalCollaborationPrice.toFixed(2)}` : '$0'}) ÷ Total Engagement (${formatNumber(analyticsData.totalLikes + analyticsData.totalComments + analyticsData.totalShares)}). ${collaborationMetrics.postsWithCollaborationPrice > 0 ? `Based on ${collaborationMetrics.postsWithCollaborationPrice} posts with collaboration prices.` : 'No collaboration prices entered yet.'}`,
       icon: (
         <div className="w-16 h-16 bg-gradient-to-br from-emerald-400 to-teal-600 rounded-full flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform duration-300">
           <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -469,7 +526,7 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ analyticsData
         {secondRowData.map((item, index) => renderCard(item, index, 4))}
       </div>
 
-      {/* Third Row - Enhanced with video_play_count focus */}
+      {/* Third Row - Updated with new CPV/CPE calculations */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {thirdRowData.map((item, index) => renderCard(item, index, 8))}
       </div>

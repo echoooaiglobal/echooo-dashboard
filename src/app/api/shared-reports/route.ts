@@ -4,7 +4,8 @@ import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * POST /api/shared-reports
- * Create a shared analytics report
+ * Create a shared analytics report with live data
+ * Note: This creates a shareable link but data is fetched live from the campaign
  */
 export async function POST(request: NextRequest) {
   try {
@@ -18,34 +19,29 @@ export async function POST(request: NextRequest) {
       campaignId,
       campaignName: campaignName?.substring(0, 50) + '...',
       hasAnalyticsData: !!analyticsData,
+      totalPosts: analyticsData?.totalPosts || 0,
+      totalInfluencers: analyticsData?.totalInfluencers || 0,
       createdAt,
       expiresAt
     });
     
     // Validate required fields
-    if (!shareId || !campaignId || !campaignName || !analyticsData) {
+    if (!shareId || !campaignId || !campaignName) {
       return NextResponse.json(
         { 
           success: false,
-          error: 'Missing required fields: shareId, campaignId, campaignName, or analyticsData' 
+          error: 'Missing required fields: shareId, campaignId, or campaignName' 
         },
         { status: 400 }
       );
     }
     
-    // Here you would typically save this to a database
-    // For now, we'll simulate success and generate the share URL
-    
-    // Generate the public share URL
+    // Generate the public share URL - data will be fetched live by the page
     const baseUrl = process.env.NEXTAUTH_URL || process.env.VERCEL_URL || 'http://localhost:3000';
     const shareUrl = `${baseUrl}/campaign-analytics-report/${campaignId}`;
     
-    console.log('🔗 Generated share URL:', shareUrl);
-    
-    // In a real implementation, you would:
-    // 1. Save the shared report data to your database with the shareId
-    // 2. Set up proper expiration handling
-    // 3. Implement access controls and validation
+    console.log('🔗 Generated share URL (live data):', shareUrl);
+    console.log('📊 Share will fetch live analytics data with same calculations as AnalyticsView');
     
     const responseData = {
       success: true,
@@ -57,11 +53,12 @@ export async function POST(request: NextRequest) {
         campaignName,
         createdAt,
         expiresAt,
-        isPublic: true
+        isPublic: true,
+        note: 'Report uses live data from campaign - same as View Analytics'
       }
     };
     
-    console.log('✅ Shared report created successfully');
+    console.log('✅ Shared report link created successfully (fetches live data)');
     
     return NextResponse.json(responseData, { status: 201 });
     
@@ -89,36 +86,73 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * GET /api/shared-reports/[shareId]
- * Retrieve a shared analytics report (optional, for future use)
+ * GET /api/shared-reports?campaignId=xxx
+ * Retrieve a shared analytics report by campaign ID
  */
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const shareId = searchParams.get('shareId');
+    const campaignId = searchParams.get('campaignId');
     
-    if (!shareId) {
+    if (!campaignId) {
       return NextResponse.json(
         { 
           success: false,
-          error: 'Share ID is required' 
+          error: 'Campaign ID is required' 
         },
         { status: 400 }
       );
     }
     
-    console.log('🔍 Retrieving shared report:', shareId);
+    console.log('🔍 Retrieving shared report for campaign:', campaignId);
     
-    // In a real implementation, you would:
-    // 1. Query your database for the shared report by shareId
-    // 2. Check if it's expired
-    // 3. Return the analytics data if valid
+    // Retrieve the shared report from storage
+    const sharedReport = sharedReports.get(campaignId);
     
-    // For now, we'll return a placeholder response
+    if (!sharedReport) {
+      console.log('❌ Shared report not found for campaign:', campaignId);
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'Shared report not found or expired' 
+        },
+        { status: 404 }
+      );
+    }
+    
+    // Check if the report has expired
+    const now = new Date();
+    const expiresAt = new Date(sharedReport.expiresAt);
+    
+    if (now > expiresAt) {
+      console.log('⏰ Shared report expired for campaign:', campaignId);
+      sharedReports.delete(campaignId); // Clean up expired report
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'Shared report has expired' 
+        },
+        { status: 410 }
+      );
+    }
+    
+    console.log('✅ Retrieved shared report successfully:', {
+      campaignId,
+      campaignName: sharedReport.campaignName,
+      totalPosts: sharedReport.analyticsData?.totalPosts || 0,
+      totalInfluencers: sharedReport.analyticsData?.totalInfluencers || 0,
+      createdAt: sharedReport.createdAt
+    });
+    
     return NextResponse.json({
       success: true,
-      message: 'This endpoint is for future use. Reports are currently accessed directly via campaign ID.',
-      data: null
+      data: {
+        campaignId: sharedReport.campaignId,
+        campaignName: sharedReport.campaignName,
+        analyticsData: sharedReport.analyticsData,
+        createdAt: sharedReport.createdAt,
+        expiresAt: sharedReport.expiresAt
+      }
     });
     
   } catch (error) {

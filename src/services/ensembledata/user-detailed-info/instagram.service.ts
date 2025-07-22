@@ -81,7 +81,7 @@ export async function getInstagramPostDetails(
       body: JSON.stringify(input),
     });
 
-    console.log('📦 Instagram Service: API response received, status:', response.status);
+    console.log('Instagram Post API Service:', response);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ 
