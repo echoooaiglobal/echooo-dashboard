@@ -385,8 +385,10 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
         let totalViews = 0; // This will be based on videoPlayCount for consistency
         let totalShares = 0;
         let totalFollowers = 0;
-        let totalCPV = 0;
-        let totalCPE = 0;
+        
+        // NEW: Track collaboration price metrics
+        let totalCollaborationPrice = 0;
+        let postsWithCollaborationPrice = 0;
 
         // For calculating average engagement rate
         let totalEngagementRate = 0;
@@ -441,6 +443,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
           postId: string;
           totalEngagement: number;
           postDate: string;
+          collaborationPrice: number; // NEW: Added collaboration price
         }> = [];
 
         // Process each unique influencer
@@ -464,8 +467,12 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
             // UPDATED: Use videoPlayCount for totalViews calculation
             totalViews += postDataDetail.videoPlayCount || postDataDetail.views;
             totalShares += postDataDetail.shares;
-            totalCPV += postDataDetail.cpv;
-            totalCPE += postDataDetail.cpe;
+            
+            // NEW: Track collaboration prices
+            if (postDataDetail.collaborationPrice > 0) {
+              totalCollaborationPrice += postDataDetail.collaborationPrice;
+              postsWithCollaborationPrice++;
+            }
             
             influencerTotalLikes += postDataDetail.likes;
             influencerTotalComments += postDataDetail.comments;
@@ -536,7 +543,8 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
               isVerified: postDataDetail.isVerified,
               postId: video.post_result_obj?.data?.shortcode || video.post_id,
               totalEngagement,
-              postDate: video.post_created_at || video.created_at
+              postDate: video.post_created_at || video.created_at,
+              collaborationPrice: postDataDetail.collaborationPrice // NEW: Added collaboration price
             });
           });
 
@@ -627,6 +635,16 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
         const viewsToFollowersRatio = totalFollowers > 0 ? (totalViews / totalFollowers) * 100 : 0;
         const commentToViewsRatio = totalViews > 0 ? (totalEngagement / totalViews) * 100 : 0;
 
+        // NEW: Calculate CPV and CPE based on total collaboration price
+        const newTotalCPV = totalViews > 0 ? totalCollaborationPrice / totalViews : 0;
+        const newTotalCPE = totalEngagement > 0 ? totalCollaborationPrice / totalEngagement : 0;
+
+        console.log('💰 AnalyticsView Collaboration Metrics:');
+        console.log(`Total collaboration price: ${totalCollaborationPrice.toFixed(2)}`);
+        console.log(`Posts with collaboration price: ${postsWithCollaborationPrice}`);
+        console.log(`New Total CPV: ${newTotalCPV.toFixed(4)}`);
+        console.log(`New Total CPE: ${newTotalCPE.toFixed(4)}`);
+
         setAnalyticsData({
           totalClicks,
           totalImpressions,
@@ -639,8 +657,8 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
           totalPosts,
           totalInfluencers,
           averageEngagementRate,
-          totalCPV,
-          totalCPE,
+          totalCPV: newTotalCPV, // UPDATED: Use new calculation based on collaboration prices
+          totalCPE: newTotalCPE, // UPDATED: Use new calculation based on collaboration prices
           viewsToFollowersRatio,
           commentToViewsRatio,
           postsByDate,
@@ -857,228 +875,228 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                         <div className="absolute top-2 left-2 w-6 h-6 bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 rounded-full flex items-center justify-center shadow-md">
                           <svg className="w-3 h-3 text-white" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.40s-.644-1.44-1.439-1.40z"/>
-                          </svg>
-                        </div>
-                        {/* Rank badge */}
-                        <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded-full font-medium">
-                          #{index + 1}
-                        </div>
-                      </div>
-                      
-                      {/* Post Stats */}
-                      <div className="p-3">
-                        <div className="flex items-center space-x-1 mb-2">
-                          <img
-                            src={post.avatar}
-                            alt={post.username}
-                            className="w-5 h-5 rounded-full object-cover"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = '/user/profile-placeholder.png';
-                            }}
-                          />
-                          <span className="text-xs font-medium text-gray-700">{post.username}</span>
-                          {post.isVerified && (
-                            <svg className="w-3 h-3 text-blue-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                            </svg>
-                          )}
-                        </div>
-                        
-                        {/* Stats grid - Show shares only if > 0 */}
-                        <div className={`grid gap-1 text-xs ${post.shares > 0 ? 'grid-cols-4' : 'grid-cols-3'}`}>
-                          <div className="text-center">
-                            <div className="flex items-center justify-center space-x-1">
-                              <svg className="w-3 h-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                              </svg>
-                              {/* UPDATED: Display videoPlayCount if available, otherwise fall back to views */}
-                              <span className="font-medium text-gray-700">{formatNumber(Math.max(0, post.videoPlayCount || post.views))}</span>
-                            </div>
-                          </div>
-                          <div className="text-center">
-                            <div className="flex items-center justify-center space-x-1">
-                              <svg className="w-3 h-3 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
-                              </svg>
-                              <span className="font-medium text-gray-700">{formatNumber(post.likes)}</span>
-                            </div>
-                          </div>
-                          <div className="text-center">
-                            <div className="flex items-center justify-center space-x-1">
-                              <svg className="w-3 h-3 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                              </svg>
-                              <span className="font-medium text-gray-700">{formatNumber(post.comments)}</span>
-                            </div>
-                          </div>
-                          {/* Only show shares if post has shares > 0 */}
-                          {post.shares > 0 && (
-                            <div className="text-center">
-                              <div className="flex items-center justify-center space-x-1">
-                                <svg className="w-3 h-3 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
-                                </svg>
-                                <span className="font-medium text-gray-700">{formatNumber(post.shares)}</span>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="col-span-full text-center py-8">
-                    <p className="text-gray-500">No posts found with current filters</p>
-                  </div>
-                );
-              })()}
-            </div>
-          </div>
-        </div>
-
-        {/* Top Performing Influencers Section */}
-        <div className="mb-0">
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-gray-800">Top Performing Influencers</h3>
-              <div className="flex items-center space-x-4">
-                {/* Influencers Filters */}
-                <div className="flex items-center space-x-2 no-print">
-                  <select
-                    value={influencersFilterBy}
-                    onChange={(e) => setInfluencersFilterBy(e.target.value as any)}
-                    className="text-xs border border-gray-300 rounded-lg px-3 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="all">All Influencers</option>
-                    <option value="verified">Verified Only</option>
-                    <option value="top-performers">Top Performers</option>
-                  </select>
-                  <select
-                    value={influencersSortBy}
-                    onChange={(e) => setInfluencersSortBy(e.target.value as any)}
-                    className="text-xs border border-gray-300 rounded-lg px-3 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="engagement">Sort by Engagement</option>
-                    <option value="views">Sort by Views</option>
-                    <option value="followers">Sort by Followers</option>
-                    <option value="posts">Sort by Posts</option>
-                  </select>
-                </div>
-                <div className="relative group">
-                  <button className="text-gray-400 hover:text-gray-600 transition-colors duration-200 no-print">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                  </button>
-                  <div className="absolute bottom-full right-0 mb-2 w-72 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
-                    <div className="relative">
-                      All influencers ranked by total engagement (likes + comments + shares). Shows which creators generated the most interaction with their audience and delivered the best performance for your campaign.
-                      <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+                  </div>
+                  {/* Rank badge */}
+                  <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded-full font-medium">
+                    #{index + 1}
+                  </div>
+                </div>
+                
+                {/* Post Stats */}
+                <div className="p-3">
+                  <div className="flex items-center space-x-1 mb-2">
+                    <img
+                      src={post.avatar}
+                      alt={post.username}
+                      className="w-5 h-5 rounded-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/user/profile-placeholder.png';
+                      }}
+                    />
+                    <span className="text-xs font-medium text-gray-700">{post.username}</span>
+                    {post.isVerified && (
+                      <svg className="w-3 h-3 text-blue-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </div>
+                  
+                  {/* Stats grid - Show shares only if > 0 */}
+                  <div className={`grid gap-1 text-xs ${post.shares > 0 ? 'grid-cols-4' : 'grid-cols-3'}`}>
+                    <div className="text-center">
+                      <div className="flex items-center justify-center space-x-1">
+                        <svg className="w-3 h-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                        {/* UPDATED: Display videoPlayCount if available, otherwise fall back to views */}
+                        <span className="font-medium text-gray-700">{formatNumber(Math.max(0, post.videoPlayCount || post.views))}</span>
+                      </div>
                     </div>
+                    <div className="text-center">
+                      <div className="flex items-center justify-center space-x-1">
+                        <svg className="w-3 h-3 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                        </svg>
+                        <span className="font-medium text-gray-700">{formatNumber(post.likes)}</span>
+                      </div>
+                    </div>
+                    <div className="text-center">
+                      <div className="flex items-center justify-center space-x-1">
+                        <svg className="w-3 h-3 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                        <span className="font-medium text-gray-700">{formatNumber(post.comments)}</span>
+                      </div>
+                    </div>
+                    {/* Only show shares if post has shares > 0 */}
+                    {post.shares > 0 && (
+                      <div className="text-center">
+                        <div className="flex items-center justify-center space-x-1">
+                          <svg className="w-3 h-3 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+                          </svg>
+                          <span className="font-medium text-gray-700">{formatNumber(post.shares)}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
+            ))
+          ) : (
+            <div className="col-span-full text-center py-8">
+              <p className="text-gray-500">No posts found with current filters</p>
             </div>
+          );
+        })()}
+      </div>
+    </div>
+  </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
-              {(() => {
-                const filteredAndSortedInfluencers = getFilteredAndSortedInfluencers();
-                return filteredAndSortedInfluencers.length > 0 ? (
-                  filteredAndSortedInfluencers.map((influencer, index) => (
-                    <div key={index} className="bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-2xl p-6 hover:shadow-lg transition-all duration-300 group">
-                      {/* Rank Badge */}
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="bg-gradient-to-r from-pink-500 to-purple-600 text-white text-xs font-bold px-3 py-1 rounded-full">
-                          #{index + 1}
-                        </div>
-                        {influencer.isVerified && (
-                          <svg className="w-5 h-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                          </svg>
-                        )}
-                      </div>
-
-                      {/* Profile Image */}
-                      <div className="relative mb-4">
-                        <div className="w-20 h-20 mx-auto relative">
-                          <img 
-                            src={influencer.avatar}
-                            alt={influencer.name}
-                            className="w-full h-full rounded-full object-cover border-4 border-white shadow-lg group-hover:scale-105 transition-transform duration-300"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = '/user/profile-placeholder.png';
-                            }}
-                          />
-                          {/* Instagram gradient ring */}
-                          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 p-1">
-                            <div className="w-full h-full rounded-full bg-white"></div>
-                          </div>
-                          <img 
-                            src={influencer.avatar}
-                            alt={influencer.name}
-                            className="absolute inset-1 w-[calc(100%-8px)] h-[calc(100%-8px)] rounded-full object-cover"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = '/user/profile-placeholder.png';
-                            }}
-                          />
-                        </div>
-                      </div>
-                      
-                      {/* Influencer Info */}
-                      <div className="text-center mb-4">
-                        <h4 className="font-bold text-gray-900 mb-1 text-sm">{influencer.name}</h4>
-                        <p className="text-xs text-gray-500">@{influencer.username}</p>
-                      </div>
-                      
-                      {/* Stats Grid */}
-                      <div className="space-y-3">
-                        {/* Main metric - Followers */}
-                        <div className="bg-white rounded-lg p-3 border border-gray-100">
-                          <div className="text-center">
-                            <div className="text-xl font-bold text-gray-900">{formatNumber(influencer.followers)}</div>
-                            <div className="text-xs text-gray-500">Followers</div>
-                          </div>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-2">
-                          {/* Engagement */}
-                          <div className="bg-white rounded-lg p-2 border border-gray-100 text-center">
-                            <div className="text-sm font-semibold text-gray-900">{formatNumber(influencer.totalEngagement)}</div>
-                            <div className="text-xs text-gray-500">Engagement</div>
-                          </div>
-                          <div className="bg-white rounded-lg p-2 border border-gray-100 text-center">
-                            {/* UPDATED: Display totalVideoPlayCount if available, otherwise fall back to totalViews */}
-                            <div className="text-sm font-semibold text-gray-900">{formatNumber(Math.max(0, influencer.totalVideoPlayCount || influencer.totalViews))}</div>
-                            <div className="text-xs text-gray-500">Views</div>
-                          </div>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className="bg-white rounded-lg p-2 border border-gray-100 text-center">
-                            <div className="text-sm font-semibold text-gray-900">{influencer.totalPosts}</div>
-                            <div className="text-xs text-gray-500">Posts</div>
-                          </div>
-                          <div className="bg-white rounded-lg p-2 border border-gray-100 text-center">
-                            <div className="text-sm font-semibold text-gray-900">{influencer.avgEngagementRate.toFixed(1)}%</div>
-                            <div className="text-xs text-gray-500">Eng Rate</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="col-span-full text-center py-8">
-                    <p className="text-gray-500">No influencers found with current filters</p>
-                  </div>
-                );
-              })()}
+  {/* Top Performing Influencers Section */}
+  <div className="mb-0">
+    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-lg font-semibold text-gray-800">Top Performing Influencers</h3>
+        <div className="flex items-center space-x-4">
+          {/* Influencers Filters */}
+          <div className="flex items-center space-x-2 no-print">
+            <select
+              value={influencersFilterBy}
+              onChange={(e) => setInfluencersFilterBy(e.target.value as any)}
+              className="text-xs border border-gray-300 rounded-lg px-3 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="all">All Influencers</option>
+              <option value="verified">Verified Only</option>
+              <option value="top-performers">Top Performers</option>
+            </select>
+            <select
+              value={influencersSortBy}
+              onChange={(e) => setInfluencersSortBy(e.target.value as any)}
+              className="text-xs border border-gray-300 rounded-lg px-3 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="engagement">Sort by Engagement</option>
+              <option value="views">Sort by Views</option>
+              <option value="followers">Sort by Followers</option>
+              <option value="posts">Sort by Posts</option>
+            </select>
+          </div>
+          <div className="relative group">
+            <button className="text-gray-400 hover:text-gray-600 transition-colors duration-200 no-print">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </button>
+            <div className="absolute bottom-full right-0 mb-2 w-72 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+              <div className="relative">
+                All influencers ranked by total engagement (likes + comments + shares). Shows which creators generated the most interaction with their audience and delivered the best performance for your campaign.
+                <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+              </div>
             </div>
           </div>
         </div>
       </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+        {(() => {
+          const filteredAndSortedInfluencers = getFilteredAndSortedInfluencers();
+          return filteredAndSortedInfluencers.length > 0 ? (
+            filteredAndSortedInfluencers.map((influencer, index) => (
+              <div key={index} className="bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-2xl p-6 hover:shadow-lg transition-all duration-300 group">
+                {/* Rank Badge */}
+                <div className="flex justify-between items-start mb-4">
+                  <div className="bg-gradient-to-r from-pink-500 to-purple-600 text-white text-xs font-bold px-3 py-1 rounded-full">
+                    #{index + 1}
+                  </div>
+                  {influencer.isVerified && (
+                    <svg className="w-5 h-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </div>
+
+                {/* Profile Image */}
+                <div className="relative mb-4">
+                  <div className="w-20 h-20 mx-auto relative">
+                    <img 
+                      src={influencer.avatar}
+                      alt={influencer.name}
+                      className="w-full h-full rounded-full object-cover border-4 border-white shadow-lg group-hover:scale-105 transition-transform duration-300"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/user/profile-placeholder.png';
+                      }}
+                    />
+                    {/* Instagram gradient ring */}
+                    <div className="absolute inset-0 rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 p-1">
+                      <div className="w-full h-full rounded-full bg-white"></div>
+                    </div>
+                    <img 
+                      src={influencer.avatar}
+                      alt={influencer.name}
+                      className="absolute inset-1 w-[calc(100%-8px)] h-[calc(100%-8px)] rounded-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/user/profile-placeholder.png';
+                      }}
+                    />
+                  </div>
+                </div>
+                
+                {/* Influencer Info */}
+                <div className="text-center mb-4">
+                  <h4 className="font-bold text-gray-900 mb-1 text-sm">{influencer.name}</h4>
+                  <p className="text-xs text-gray-500">@{influencer.username}</p>
+                </div>
+                
+                {/* Stats Grid */}
+                <div className="space-y-3">
+                  {/* Main metric - Followers */}
+                  <div className="bg-white rounded-lg p-3 border border-gray-100">
+                    <div className="text-center">
+                      <div className="text-xl font-bold text-gray-900">{formatNumber(influencer.followers)}</div>
+                      <div className="text-xs text-gray-500">Followers</div>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    {/* Engagement */}
+                    <div className="bg-white rounded-lg p-2 border border-gray-100 text-center">
+                      <div className="text-sm font-semibold text-gray-900">{formatNumber(influencer.totalEngagement)}</div>
+                      <div className="text-xs text-gray-500">Engagement</div>
+                    </div>
+                    <div className="bg-white rounded-lg p-2 border border-gray-100 text-center">
+                      {/* UPDATED: Display totalVideoPlayCount if available, otherwise fall back to totalViews */}
+                      <div className="text-sm font-semibold text-gray-900">{formatNumber(Math.max(0, influencer.totalVideoPlayCount || influencer.totalViews))}</div>
+                      <div className="text-xs text-gray-500">Views</div>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-white rounded-lg p-2 border border-gray-100 text-center">
+                      <div className="text-sm font-semibold text-gray-900">{influencer.totalPosts}</div>
+                      <div className="text-xs text-gray-500">Posts</div>
+                    </div>
+                    <div className="bg-white rounded-lg p-2 border border-gray-100 text-center">
+                      <div className="text-sm font-semibold text-gray-900">{influencer.avgEngagementRate.toFixed(1)}%</div>
+                      <div className="text-xs text-gray-500">Eng Rate</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="col-span-full text-center py-8">
+              <p className="text-gray-500">No influencers found with current filters</p>
+            </div>
+          );
+        })()}
+      </div>
     </div>
-  );
+  </div>
+</div>
+</div>
+);
 };
 
 export default AnalyticsView;

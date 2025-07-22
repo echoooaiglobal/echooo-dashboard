@@ -55,6 +55,8 @@ export async function POST(request: NextRequest) {
     // Call server handler to fetch from 3rd party API
     const processedData = await fetchInstagramPostDetails(postCode);
     
+    console.log('Instagram Post API Router:', processedData);
+
     if (!processedData.success) {
       console.log('❌ API Route: Failed to fetch Instagram data:', processedData.message);
       return NextResponse.json(
@@ -62,9 +64,7 @@ export async function POST(request: NextRequest) {
         { status: 422 }
       );
     }
-
-    console.log('✅ API Route: Successfully fetched and processed Instagram data');
-    console.log('📊 API Route: User:', processedData.user.username, 'Post:', processedData.post.post_id);
+    
 
     return NextResponse.json(processedData);
 

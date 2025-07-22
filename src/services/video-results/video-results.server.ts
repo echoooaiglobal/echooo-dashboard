@@ -152,21 +152,14 @@ export async function updateAllVideoResultsWithDataServer(
       updates: updatesData
     };
     
-    console.log('Server: Request body structure:', {
-      updatesCount: updatesData.length,
-      sampleUpdate: updatesData[0] ? {
-        result_id: updatesData[0].result_id,
-        hasUpdateData: !!updatesData[0].update_data,
-        updateDataKeys: Object.keys(updatesData[0].update_data || {})
-      } : null
-    });
-    
     const response = await serverApiClient.put<GetVideoResultsResponse>(
       endpoint,
       requestBody, // ← Now sending actual batch update data
       {},
       authToken
     );
+
+    console.log('Server: Batch update response:', response);
     
     if (response.error) {
       console.error('Server: FastAPI Error batch updating video results:', response.error);

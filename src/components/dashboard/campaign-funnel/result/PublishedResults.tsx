@@ -524,7 +524,7 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
           }
           
           const freshInstagramData = await getInstagramPostDetails(postInput);
-
+          console.log('Instagram Post API Component:', freshInstagramData)
           if (!freshInstagramData.success) {
             console.warn(`⚠️ Failed to fetch fresh data for ${video.influencer_username}: ${freshInstagramData.message}`);
             setProgressData(prev => ({ ...prev, errors: prev.errors + 1 }));
