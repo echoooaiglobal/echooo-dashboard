@@ -55,6 +55,10 @@ export interface VideoResult {
   user_ig_id: string;
   full_name: string;
   influencer_username: string;
+  campaign_name: string;
+  campaign: string;
+  campaign_title: string;
+  name: string;
   profile_pic_url: string;
   post_id: string;
   title: string;

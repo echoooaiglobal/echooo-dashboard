@@ -2,6 +2,16 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
+// Add campaign name storage to the shared reports
+const sharedReports = new Map<string, {
+  shareId: string;
+  campaignId: string;
+  campaignName: string;
+  analyticsData: any;
+  createdAt: string;
+  expiresAt: string;
+}>();
+
 /**
  * POST /api/shared-reports
  * Create a shared analytics report with live data
@@ -36,12 +46,22 @@ export async function POST(request: NextRequest) {
       );
     }
     
+    // Store the shared report data including campaign name
+    sharedReports.set(campaignId, {
+      shareId,
+      campaignId,
+      campaignName, // IMPORTANT: Store the actual campaign name
+      analyticsData,
+      createdAt,
+      expiresAt
+    });
+    
     // Generate the public share URL - data will be fetched live by the page
     const baseUrl = process.env.NEXTAUTH_URL || process.env.VERCEL_URL || 'http://localhost:3000';
     const shareUrl = `${baseUrl}/campaign-analytics-report/${campaignId}`;
     
     console.log('🔗 Generated share URL (live data):', shareUrl);
-    console.log('📊 Share will fetch live analytics data with same calculations as AnalyticsView');
+    console.log('📊 Stored campaign name for public access:', campaignName);
     
     const responseData = {
       success: true,
