@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
-import { getVideoResults } from '@/services/video-results';
+import { getPublicVideoResults } from '@/services/video-results/public-video-results';
 import { VideoResult } from '@/types/user-detailed-info';
 import { exportToPDF, exportToPrint, generateExportFilename } from '@/utils/pdfExportUtils';
 import PerformanceOverview from '@/components/dashboard/campaign-funnel/result/PerformanceOverview';
@@ -286,16 +286,29 @@ export default function CampaignAnalyticsReportPage() {
 
       try {
         setIsLoading(true);
-        console.log('🔍 Fetching shared analytics data for campaign:', campaignId);
+        console.log('🔍 PUBLIC PAGE: Fetching shared analytics data for campaign:', campaignId);
         
-        // Use the EXACT SAME data fetching logic as AnalyticsView.tsx
-        const results = await getVideoResults(campaignId);
+        // CRITICAL: Use the public video results service
+        const results = await getPublicVideoResults(campaignId);
+        
+        if (!results || results.length === 0) {
+          console.warn('⚠️ PUBLIC PAGE: No results found for campaign:', campaignId);
+          setError('No data found for this campaign. The campaign may not exist or may not have any published content yet.');
+          return;
+        }
+
+        console.log(`✅ PUBLIC PAGE: Successfully fetched ${results.length} video results`);
         setVideoResults(results);
 
         // Extract campaign name if available
         if (results.length > 0) {
-          // Try to get campaign name from first result
-          setCampaignName(`Campaign ${campaignId}`);
+          // Try to get campaign name from the first result or use campaign ID
+          const firstResult = results[0];
+          if (firstResult.campaign_name) {
+            setCampaignName(firstResult.campaign_name);
+          } else {
+            setCampaignName(`Campaign ${campaignId}`);
+          }
         }
 
         // EXACT SAME: Processing logic as AnalyticsView.tsx
@@ -568,7 +581,7 @@ export default function CampaignAnalyticsReportPage() {
         const newTotalCPV = totalViews > 0 ? totalCollaborationPrice / totalViews : 0;
         const newTotalCPE = totalEngagement > 0 ? totalCollaborationPrice / totalEngagement : 0;
 
-        console.log('💰 Shared Report Collaboration Metrics:');
+        console.log('💰 PUBLIC PAGE: Collaboration Metrics:');
         console.log(`Total collaboration price: $${totalCollaborationPrice.toFixed(2)}`);
         console.log(`Posts with collaboration price: ${postsWithCollaborationPrice}`);
         console.log(`New Total CPV: $${newTotalCPV.toFixed(4)}`);
@@ -595,11 +608,24 @@ export default function CampaignAnalyticsReportPage() {
           topPosts
         });
 
-        console.log('✅ Shared analytics data processed successfully (same as AnalyticsView)');
+        console.log('✅ PUBLIC PAGE: Shared analytics data processed successfully (same as AnalyticsView)');
 
       } catch (error) {
-        console.error('💥 Error fetching shared analytics data:', error);
-        setError(error instanceof Error ? error.message : 'Failed to load analytics data');
+        console.error('💥 PUBLIC PAGE: Error fetching shared analytics data:', error);
+        
+        if (error instanceof Error) {
+          if (error.message.includes('authentication') || error.message.includes('Unauthorized')) {
+            setError('This shared report link has expired or is invalid. Please contact the campaign owner for a new link.');
+          } else if (error.message.includes('not found') || error.message.includes('404')) {
+            setError('Campaign not found. The shared link may be expired or the campaign may have been deleted.');
+          } else if (error.message.includes('not available for public sharing')) {
+            setError('This campaign is not available for public sharing. Please contact the campaign owner.');
+          } else {
+            setError(`Failed to load campaign analytics: ${error.message}`);
+          }
+        } else {
+          setError('An unexpected error occurred while loading the campaign analytics. Please try again later.');
+        }
       } finally {
         setIsLoading(false);
       }
@@ -617,6 +643,7 @@ export default function CampaignAnalyticsReportPage() {
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
           <p className="text-gray-500">Loading shared campaign analytics...</p>
+          <p className="text-xs text-gray-400 mt-2">Campaign ID: {campaignId}</p>
         </div>
       </div>
     );
@@ -632,7 +659,10 @@ export default function CampaignAnalyticsReportPage() {
           <h1 className="text-2xl font-bold text-gray-800 mb-2">Report Not Available</h1>
           <p className="text-gray-600 mb-4">{error}</p>
           <p className="text-sm text-gray-500">
-            This report may have expired or the link is invalid. Please contact the campaign owner for a new link.
+            Campaign ID: {campaignId}
+          </p>
+          <p className="text-sm text-gray-500 mt-2">
+            If you believe this is an error, please contact the campaign owner for a new link.
           </p>
         </div>
       </div>
@@ -642,7 +672,7 @@ export default function CampaignAnalyticsReportPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
       {/* Public Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200 no-print">
+      {/* <div className="bg-white shadow-sm border-b border-gray-200 no-print">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-4">
             <div className="flex items-center space-x-3">
@@ -683,12 +713,12 @@ export default function CampaignAnalyticsReportPage() {
             </div>
           </div>
         </div>
-      </div>
+      </div> */}
 
       {/* Content to be exported */}
       <div ref={exportContentRef} className="px-6 py-8">
         {/* PDF-only header section */}
-        <div className="print-only mb-8">
+        {/* <div className="print-only mb-8">
           <h1 className="text-2xl font-bold text-gray-800 mb-2">Campaign Analytics Report</h1>
           <div className="flex items-center text-sm text-gray-600 mb-4">
             <span className="mr-3">Campaign: {campaignName}</span>
@@ -696,7 +726,7 @@ export default function CampaignAnalyticsReportPage() {
             <span className="ml-3">Generated: {new Date().toLocaleDateString()}</span>
           </div>
           <div className="border-b border-gray-200 mb-6"></div>
-        </div>
+        </div> */}
 
         {/* Campaign Info Banner */}
         <div className="mb-8">
