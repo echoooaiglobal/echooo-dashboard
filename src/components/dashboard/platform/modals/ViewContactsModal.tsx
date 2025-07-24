@@ -2,14 +2,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Mail, Phone, MessageSquare, Star, RefreshCw, Plus, ExternalLink } from 'react-feather';
-import { AssignmentMember } from '@/types/assignment-members';
+import { X, Mail, Phone, MessageSquare, Star, RefreshCw, Plus, ExternalLink, CheckCircle } from 'react-feather';
+import { AssignmentInfluencer } from '@/types/assignment-influencers';
 import { InfluencerContact, ContactType } from '@/types/influencer-contacts';
 import { getInfluencerContacts } from '@/services/influencer-contacts/influencer-contacts.service';
-import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import InlineSpinner from '@/components/ui/InlineSpinner';
 
 interface ViewContactsModalProps {
-  member: AssignmentMember | null;
+  member: AssignmentInfluencer | null;
   isOpen: boolean;
   onClose: () => void;
   onAddContact: () => void;
@@ -44,11 +44,6 @@ const getContactTypeColor = (type: ContactType): string => {
 
 const formatContactValue = (type: ContactType, value: string): string => {
   switch (type) {
-    case 'email':
-      return value;
-    case 'phone':
-    case 'whatsapp':
-      return value;
     case 'telegram':
       return value.startsWith('@') ? value : `@${value}`;
     default:
@@ -83,7 +78,6 @@ export default function ViewContactsModal({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch contacts when modal opens
   useEffect(() => {
     if (isOpen && member) {
       fetchContacts();
@@ -97,7 +91,7 @@ export default function ViewContactsModal({
       setIsLoading(true);
       setError(null);
       
-      const fetchedContacts = await getInfluencerContacts(member.social_account.id);
+      const fetchedContacts = await getInfluencerContacts(member.campaign_influencer.social_account.id);
       setContacts(fetchedContacts);
       
     } catch (error) {
@@ -108,187 +102,192 @@ export default function ViewContactsModal({
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+  const handleContactClick = (contact: InfluencerContact) => {
+    if (isClickableContact(contact.contact_type)) {
+      const link = getContactLink(contact.contact_type, contact.contact_value);
+      if (link !== '#') {
+        window.open(link, '_blank');
+      }
+    }
+  };
+
+  const formatNumber = (num: number) => {
+    if (num >= 1000000) {
+      return (num / 1000000).toFixed(1) + 'M';
+    } else if (num >= 1000) {
+      return (num / 1000).toFixed(1) + 'K';
+    }
+    return num.toString();
   };
 
   if (!isOpen || !member) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b border-gray-200">
-          <div>
-            <h3 className="text-xl font-bold text-gray-900">Contact Information</h3>
-            <p className="text-sm text-gray-500 mt-1">
-              Manage contacts for {member.social_account.full_name}
-            </p>
-          </div>
-          <div className="flex items-center space-x-2">
+        <div className="flex justify-between items-center p-4 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900">Contacts</h3>
+          <div className="flex items-center space-x-1">
             <button
               onClick={fetchContacts}
               disabled={isLoading}
-              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+              className="p-1.5 rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50"
               title="Refresh contacts"
             >
-              <RefreshCw className={`w-5 h-5 text-gray-500 ${isLoading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 text-gray-500 ${isLoading ? 'animate-spin' : ''}`} />
             </button>
             <button
               onClick={onClose}
-              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+              className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
             >
-              <X className="w-5 h-5 text-gray-500" />
+              <X className="w-4 h-4 text-gray-500" />
             </button>
           </div>
         </div>
 
-        {/* Influencer Info */}
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <img 
-                className="h-12 w-12 rounded-full object-cover" 
-                src={member.social_account.profile_pic_url} 
-                alt={member.social_account.full_name}
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(member.social_account.full_name)}&background=random`;
+        <div className="p-4">
+          {/* Influencer Info */}
+          <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg mb-4">
+            <img
+              src={member.campaign_influencer.social_account.profile_pic_url}
+              alt={member.campaign_influencer.social_account.full_name}
+              className="w-10 h-10 rounded-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = '/default-avatar.png';
+              }}
+            />
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium text-gray-900 truncate">
+                {member.campaign_influencer.social_account.full_name}
+              </div>
+              <div className="text-xs text-gray-500 flex items-center">
+                <a
+                  href={member.campaign_influencer.social_account.account_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-teal-600 flex items-center"
+                >
+                  @{member.campaign_influencer.social_account.account_handle}
+                  <ExternalLink className="w-3 h-3 ml-1" />
+                </a>
+                {member.campaign_influencer.social_account.is_verified && (
+                  <CheckCircle className="w-3 h-3 ml-1 text-blue-500" />
+                )}
+              </div>
+              <div className="text-xs text-gray-400">
+                {formatNumber(member.campaign_influencer.social_account.followers_count)} followers
+              </div>
+            </div>
+          </div>
+
+          {/* Header with Add Button */}
+          <div className="flex justify-between items-center mb-3">
+            <h4 className="text-sm font-medium text-gray-900">Contact Methods</h4>
+            {contacts.length !== 0 && (
+              <button
+                onClick={() => {
+                  onClose(); // Close view modal first
+                  onAddContact(); // Then open add modal
                 }}
-              />
-              <div className="ml-4">
-                <h4 className="font-medium text-gray-900 flex items-center">
-                  {member.social_account.full_name}
-                  {member.social_account.is_verified && (
-                    <svg className="w-4 h-4 ml-1 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                  )}
-                </h4>
-                <p className="text-sm text-gray-500">@{member.social_account.account_handle}</p>
-                <p className="text-xs text-gray-400">
-                  {(member.social_account.followers_count / 1000000).toFixed(1)}M followers • {member.platform.name}
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={onAddContact}
-              className="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 transition-colors flex items-center"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Contact
-            </button>
-          </div>
-        </div>
-
-        {/* Contacts Content */}
-        <div className="p-6">
-          {/* Loading State */}
-          {isLoading && (
-            <div className="flex justify-center items-center py-12">
-              <LoadingSpinner size="md" />
-              <span className="ml-3 text-gray-500">Loading contacts...</span>
-            </div>
-          )}
-
-          {/* Error State */}
-          {error && (
-            <div className="text-center py-8">
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-                <p className="text-red-600 text-sm font-medium">Error Loading Contacts</p>
-                <p className="text-red-500 text-sm mt-1">{error}</p>
-              </div>
-              <button 
-                onClick={fetchContacts}
-                className="text-sm text-teal-600 hover:text-teal-800 font-medium"
+                className="px-3 py-1.5 bg-teal-600 text-white rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 flex items-center text-sm"
               >
-                Try again
+                <Plus className="w-4 h-4 mr-1" />
+                Add
+              </button>
+            )}
+          </div>
+
+          {/* Content */}
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <InlineSpinner />
+              <span className="ml-2 text-sm text-gray-500">Loading...</span>
+            </div>
+          ) : error ? (
+            <div className="text-center py-6">
+              <Mail className="w-8 h-8 text-red-400 mx-auto mb-2" />
+              <p className="text-sm text-red-800 font-medium">Failed to load contacts</p>
+              <p className="text-xs text-red-600 mt-1 mb-3">{error}</p>
+              <button
+                onClick={fetchContacts}
+                className="px-3 py-1.5 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm"
+              >
+                Try Again
               </button>
             </div>
-          )}
-
-          {/* Contacts List */}
-          {!isLoading && !error && (
-            <>
-              {contacts.length > 0 ? (
-                <div className="space-y-4">
-                  {contacts.map((contact) => (
-                    <div key={contact.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-3 mb-2">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getContactTypeColor(contact.contact_type)}`}>
-                              {getContactTypeIcon(contact.contact_type)}
-                              <span className="ml-1 capitalize">{contact.contact_type}</span>
-                            </span>
-                            {contact.is_primary && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                <Star className="w-3 h-3 mr-1" />
-                                Primary
-                              </span>
-                            )}
-                            {contact.platform_specific && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                                Platform
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-sm font-medium text-gray-900">{contact.name}</p>
-                              <div className="flex items-center mt-1">
-                                {isClickableContact(contact.contact_type) ? (
-                                  <a
-                                    href={getContactLink(contact.contact_type, contact.contact_value)}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-sm text-teal-600 hover:text-teal-800 flex items-center"
-                                  >
-                                    {formatContactValue(contact.contact_type, contact.contact_value)}
-                                    <ExternalLink className="w-3 h-3 ml-1" />
-                                  </a>
-                                ) : (
-                                  <span className="text-sm text-gray-600">
-                                    {formatContactValue(contact.contact_type, contact.contact_value)}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                          <p className="text-xs text-gray-400 mt-2">
-                            Added {formatDate(contact.created_at)}
+          ) : contacts.length === 0 ? (
+            <div className="text-center py-6">
+              <Mail className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+              <p className="text-sm text-gray-500 font-medium">No contacts found</p>
+              <p className="text-xs text-gray-400 mb-3">
+                Add contact information to reach this influencer
+              </p>
+              <button
+                onClick={() => {
+                  onClose(); // Close view modal first
+                  onAddContact(); // Then open add modal
+                }}
+                className="px-3 py-1.5 bg-teal-600 text-white rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm"
+              >
+                Add First Contact
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {contacts.map((contact) => (
+                <div
+                  key={contact.id}
+                  className={`p-2.5 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors ${
+                    isClickableContact(contact.contact_type) ? 'cursor-pointer hover:bg-gray-50' : ''
+                  }`}
+                  onClick={() => handleContactClick(contact)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2.5 min-w-0 flex-1">
+                      <div className={`p-1 rounded-full ${getContactTypeColor(contact.contact_type)}`}>
+                        {getContactTypeIcon(contact.contact_type)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center space-x-1.5">
+                          <p className="font-medium text-gray-900 text-sm truncate">
+                            {formatContactValue(contact.contact_type, contact.contact_value)}
                           </p>
+                          {contact.is_primary && (
+                            <Star className="w-3 h-3 text-yellow-500 fill-current flex-shrink-0" />
+                          )}
+                          <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${getContactTypeColor(contact.contact_type)}`}>
+                            {contact.contact_type}
+                          </span>
+                          {contact.name && (
+                            <span className="text-xs text-gray-500 truncate">{contact.name}</span>
+                          )}
                         </div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <div className="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                    <MessageSquare className="w-8 h-8 text-gray-400" />
+                    <div className="flex items-center space-x-2 flex-shrink-0">
+                      <span className="text-xs text-gray-400">
+                        {new Date(contact.created_at).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric'
+                        })}
+                      </span>
+                    </div>
                   </div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-1">No contacts found</h3>
-                  <p className="text-gray-500 text-sm mb-4">
-                    No contact information has been added for this influencer yet.
-                  </p>
-                  <button
-                    onClick={onAddContact}
-                    className="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 transition-colors flex items-center mx-auto"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add First Contact
-                  </button>
                 </div>
-              )}
-            </>
+              ))}
+            </div>
           )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-end p-4 border-t border-gray-200">
+          <button
+            onClick={onClose}
+            className="px-3 py-1.5 text-sm text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
+          >
+            Close
+          </button>
         </div>
       </div>
     </div>

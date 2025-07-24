@@ -20,7 +20,8 @@ export type PlatformRole =
   | 'platform_agent';
 
 export type CompanyRole = 
-  | 'company_admin'
+  | 'b2c_company_owner'
+  | 'b2c_company_admin'
   | 'company_user'
   | 'company_manager'
   | 'company_accountant'

@@ -15,6 +15,13 @@ export interface CampaignLists {
   id: string;
   name: string;
   description: string;
+  total_influencers_count: number;
+  total_onboarded_count: number;
+  total_contacted_count: number;
+  avg_collaboration_price: string;
+  completion_percentage: string;
+  days_since_created: string;
+  last_activity_date: string;
 }
 
 export interface CampaignTemplates {

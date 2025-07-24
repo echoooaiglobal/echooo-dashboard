@@ -128,8 +128,8 @@ export default function CompanyRegistrationForm({ onSuccess }: CompanyRegistrati
         password: form.password,
         full_name: form.full_name,
         phone_number: form.phone_number || undefined,
-        user_type: 'company',
-        role_name: 'company_admin',
+        user_type: 'b2c',
+        role_name: 'b2c_company_owner',
         company_name: form.company_name,
         company_domain: form.company_domain
       };

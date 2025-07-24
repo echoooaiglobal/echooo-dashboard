@@ -1,18 +1,18 @@
 // src/components/dashboard/platform/modals/AddContactModal.tsx
 'use client';
-
 import { useState, useEffect } from 'react';
-import { X, Save, AlertCircle, User, Mail, Phone, MessageSquare } from 'react-feather';
-import { AssignmentMember } from '@/types/assignment-members';
+import { X, Save, AlertCircle, Mail, Phone, MessageSquare, ExternalLink, CheckCircle, Eye } from 'react-feather';
+import { AssignmentInfluencer } from '@/types/assignment-influencers';
 import { ContactType, CreateInfluencerContactRequest } from '@/types/influencer-contacts';
 import { createInfluencerContact } from '@/services/influencer-contacts/influencer-contacts.service';
-import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import InlineSpinner from '@/components/ui/InlineSpinner';
 
 interface AddContactModalProps {
-  member: AssignmentMember | null;
+  member: AssignmentInfluencer | null;
   isOpen: boolean;
   onClose: () => void;
   onContactAdded: () => void;
+  onViewContacts?: () => void; // Add this prop
 }
 
 const CONTACT_TYPES: { value: ContactType; label: string; icon: React.ReactNode }[] = [
@@ -27,7 +27,8 @@ export default function AddContactModal({
   member,
   isOpen,
   onClose,
-  onContactAdded
+  onContactAdded,
+  onViewContacts
 }: AddContactModalProps) {
   const [formData, setFormData] = useState({
     contact_type: 'email' as ContactType,
@@ -41,7 +42,6 @@ export default function AddContactModal({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  // Initialize form data when member changes
   useEffect(() => {
     if (member && isOpen) {
       setFormData({
@@ -56,7 +56,6 @@ export default function AddContactModal({
     }
   }, [member, isOpen]);
 
-  // Reset form when modal closes
   useEffect(() => {
     if (!isOpen) {
       setError(null);
@@ -83,225 +82,220 @@ export default function AddContactModal({
     return phoneRegex.test(phone.replace(/[\s\-\(\)]/g, ''));
   };
 
-  const validateContactValue = (type: ContactType, value: string): boolean => {
-    switch (type) {
-      case 'email':
-        return validateEmail(value);
-      case 'phone':
-      case 'whatsapp':
-        return validatePhone(value);
-      default:
-        return value.trim().length > 0;
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!member) return;
     
+    // Validation
+    if (!formData.contact_value.trim()) {
+      setError('Contact value is required');
+      return;
+    }
+    
+    if (formData.contact_type === 'email' && !validateEmail(formData.contact_value)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+    
+    if (formData.contact_type === 'phone' && !validatePhone(formData.contact_value)) {
+      setError('Please enter a valid phone number');
+      return;
+    }
+    
     setIsSubmitting(true);
     setError(null);
     
     try {
-      // Validate contact value based on type
-      if (!validateContactValue(formData.contact_type, formData.contact_value)) {
-        let errorMessage = 'Invalid contact value';
-        if (formData.contact_type === 'email') {
-          errorMessage = 'Please enter a valid email address';
-        } else if (formData.contact_type === 'phone' || formData.contact_type === 'whatsapp') {
-          errorMessage = 'Please enter a valid phone number';
-        }
-        throw new Error(errorMessage);
-      }
-
-      // Prepare create data
-      const createData: CreateInfluencerContactRequest = {
-        social_account_id: member.social_account.id,
+      const contactData: CreateInfluencerContactRequest = {
+        social_account_id: member.campaign_influencer.social_account.id,
         contact_type: formData.contact_type,
         contact_value: formData.contact_value.trim(),
-        name: formData.name.trim() || `${formData.contact_type} contact`,
+        name: formData.name.trim() || '',
         is_primary: formData.is_primary,
         platform_specific: formData.platform_specific
       };
-
-      console.log('Creating contact with data:', createData);
-
-      // Call API to create contact
-      await createInfluencerContact(createData);
+      
+      await createInfluencerContact(contactData);
       
       setSuccess(true);
-      
-      // Call parent handler
       onContactAdded();
       
-      // Close modal after short delay
       setTimeout(() => {
         onClose();
       }, 1500);
       
     } catch (error) {
-      console.error('Error creating contact:', error);
-      setError(error instanceof Error ? error.message : 'Failed to create contact');
+      console.error('Error adding contact:', error);
+      setError(error instanceof Error ? error.message : 'Failed to add contact');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const getContactTypeIcon = (type: ContactType) => {
-    const contactType = CONTACT_TYPES.find(ct => ct.value === type);
-    return contactType?.icon || <MessageSquare className="w-4 h-4" />;
-  };
-
-  const getPlaceholder = (type: ContactType): string => {
-    switch (type) {
-      case 'email':
-        return 'manager@influencer.com';
-      case 'phone':
-      case 'whatsapp':
-        return '+1234567890';
-      case 'telegram':
-        return '@username';
-      default:
-        return 'Contact information';
+  const formatNumber = (num: number) => {
+    if (num >= 1000000) {
+      return (num / 1000000).toFixed(1) + 'M';
+    } else if (num >= 1000) {
+      return (num / 1000).toFixed(1) + 'K';
     }
+    return num.toString();
   };
-
+  
   if (!isOpen || !member) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b border-gray-200">
-          <div>
-            <h3 className="text-xl font-bold text-gray-900">Add Contact Information</h3>
-            <p className="text-sm text-gray-500 mt-1">
-              Add contact details for {member.social_account.full_name}
-            </p>
-          </div>
+        <div className="flex justify-between items-center p-4 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900">Add Contact</h3>
           <button
             onClick={onClose}
-            className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+            className="p-1 rounded-full hover:bg-gray-100 transition-colors"
             disabled={isSubmitting}
           >
-            <X className="w-5 h-5 text-gray-500" />
+            <X className="w-4 h-4 text-gray-500" />
           </button>
         </div>
 
-        {/* Success Message */}
+        {/* Success/Error Messages */}
         {success && (
-          <div className="mx-6 mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-            <p className="text-green-800 text-sm font-medium">
-              ✅ Contact added successfully!
-            </p>
+          <div className="mx-4 mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex items-center text-green-800 text-sm">
+              <CheckCircle className="w-4 h-4 mr-2" />
+              Contact added successfully!
+            </div>
           </div>
         )}
 
-        {/* Error Message */}
         {error && (
-          <div className="mx-6 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start">
-            <AlertCircle className="w-5 h-5 text-red-500 mr-2 mt-0.5 flex-shrink-0" />
-            <p className="text-red-800 text-sm">{error}</p>
+          <div className="mx-4 mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-center text-red-800 text-sm">
+              <AlertCircle className="w-4 h-4 mr-2" />
+              {error}
+            </div>
           </div>
         )}
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6">
+        <form onSubmit={handleSubmit} className="p-4 space-y-4">
           {/* Influencer Info */}
-          <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-            <div className="flex items-center">
-              <img 
-                className="h-12 w-12 rounded-full object-cover" 
-                src={member.social_account.profile_pic_url} 
-                alt={member.social_account.full_name}
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(member.social_account.full_name)}&background=random`;
-                }}
-              />
-              <div className="ml-4">
-                <h4 className="font-medium text-gray-900 flex items-center">
-                  {member.social_account.full_name}
-                  {member.social_account.is_verified && (
-                    <svg className="w-4 h-4 ml-1 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                  )}
-                </h4>
-                <p className="text-sm text-gray-500">@{member.social_account.account_handle}</p>
-                <p className="text-xs text-gray-400">
-                  {(member.social_account.followers_count / 1000000).toFixed(1)}M followers • {member.platform.name}
-                </p>
+          <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+            <img
+              src={member.campaign_influencer.social_account.profile_pic_url}
+              alt={member.campaign_influencer.social_account.full_name}
+              className="w-8 h-8 rounded-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = '/default-avatar.png';
+              }}
+            />
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium text-gray-900 truncate">
+                {member.campaign_influencer.social_account.full_name}
+              </div>
+              <div className="text-xs text-gray-500 flex items-center">
+                <a
+                  href={member.campaign_influencer.social_account.account_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-teal-600 flex items-center"
+                >
+                  @{member.campaign_influencer.social_account.account_handle}
+                  <ExternalLink className="w-3 h-3 ml-1" />
+                </a>
+                {member.campaign_influencer.social_account.is_verified && (
+                  <CheckCircle className="w-3 h-3 ml-1 text-blue-500" />
+                )}
+              </div>
+              <div className="text-xs text-gray-400">
+                {formatNumber(member.campaign_influencer.social_account.followers_count)} followers
               </div>
             </div>
           </div>
 
-          <div className="space-y-4">
-            {/* Contact Type */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Contact Type *
-              </label>
-              <select
-                name="contact_type"
-                value={formData.contact_type}
-                onChange={handleInputChange}
-                required
-                disabled={isSubmitting}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:bg-gray-100"
+          {/* Header with View All Button */}
+          <div className="flex justify-between items-center">
+            <h4 className="text-sm font-medium text-gray-900">Contact Details</h4>
+            {onViewContacts && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose(); // Close add modal first
+                  onViewContacts(); // Then open view modal
+                }}
+                className="px-2 py-1 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center text-xs"
               >
-                {CONTACT_TYPES.map((type) => (
-                  <option key={type.value} value={type.value}>
-                    {type.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+                <Eye className="w-3 h-3 mr-1" />
+                View All
+              </button>
+            )}
+          </div>
 
-            {/* Contact Value */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Contact Information *
-              </label>
-              <div className="relative">
-                <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-                  {getContactTypeIcon(formData.contact_type)}
-                </div>
-                <input
-                  type="text"
-                  name="contact_value"
-                  value={formData.contact_value}
-                  onChange={handleInputChange}
-                  placeholder={getPlaceholder(formData.contact_type)}
-                  required
-                  disabled={isSubmitting}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:bg-gray-100"
-                />
-              </div>
-            </div>
+          {/* Contact Type */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Contact Type
+            </label>
+            <select
+              name="contact_type"
+              value={formData.contact_type}
+              onChange={handleInputChange}
+              required
+              disabled={isSubmitting}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:bg-gray-100"
+            >
+              {CONTACT_TYPES.map((type) => (
+                <option key={type.value} value={type.value}>
+                  {type.label}
+                </option>
+              ))}
+            </select>
+          </div>
 
-            {/* Name */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <User className="w-4 h-4 inline mr-1" />
-                Contact Name
-              </label>
-              <input
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleInputChange}
-                placeholder="e.g., Business Manager, Agent, Personal"
-                disabled={isSubmitting}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:bg-gray-100"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Optional - Leave empty to auto-generate from contact type
-              </p>
-            </div>
+          {/* Contact Value */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {formData.contact_type === 'email' ? 'Email Address' : 
+               formData.contact_type === 'phone' ? 'Phone Number' : 
+               formData.contact_type === 'whatsapp' ? 'WhatsApp Number' :
+               formData.contact_type === 'telegram' ? 'Telegram Username' : 'Contact Value'}
+            </label>
+            <input
+              type={formData.contact_type === 'email' ? 'email' : 'text'}
+              name="contact_value"
+              value={formData.contact_value}
+              onChange={handleInputChange}
+              required
+              disabled={isSubmitting}
+              placeholder={
+                formData.contact_type === 'email' ? 'example@email.com' :
+                formData.contact_type === 'phone' ? '+1234567890' :
+                formData.contact_type === 'whatsapp' ? '+1234567890' :
+                formData.contact_type === 'telegram' ? '@username' :
+                'Enter contact information'
+              }
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:bg-gray-100"
+            />
+          </div>
 
-            {/* Primary Contact */}
+          {/* Contact Name */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Contact Name <span className="text-gray-400 font-normal">(optional)</span>
+            </label>
+            <input
+              type="text"
+              name="name"
+              value={formData.name}
+              onChange={handleInputChange}
+              disabled={isSubmitting}
+              placeholder="Manager, Assistant, etc."
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:bg-gray-100"
+            />
+          </div>
+
+          {/* Checkboxes */}
+          <div className="space-y-2">
             <div className="flex items-center">
               <input
                 type="checkbox"
@@ -311,12 +305,11 @@ export default function AddContactModal({
                 disabled={isSubmitting}
                 className="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded"
               />
-              <label className="ml-2 block text-sm text-gray-700">
-                Mark as primary contact
+              <label className="ml-2 text-sm text-gray-700">
+                Primary contact
               </label>
             </div>
 
-            {/* Platform Specific */}
             <div className="flex items-center">
               <input
                 type="checkbox"
@@ -326,35 +319,37 @@ export default function AddContactModal({
                 disabled={isSubmitting}
                 className="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded"
               />
-              <label className="ml-2 block text-sm text-gray-700">
-                Platform-specific contact
+              <label className="ml-2 text-sm text-gray-700">
+                Platform-specific
               </label>
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex justify-end space-x-3 mt-8 pt-6 border-t border-gray-200">
+          {/* Actions */}
+          <div className="flex justify-end space-x-2 pt-3 border-t border-gray-200">
             <button
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="px-6 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 transition-colors"
+              className="px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={isSubmitting}
-              className="px-6 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 disabled:opacity-50 transition-colors flex items-center"
+              disabled={isSubmitting || success}
+              className="px-3 py-2 text-sm bg-teal-600 text-white rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50 flex items-center"
             >
               {isSubmitting ? (
                 <>
-                  <LoadingSpinner size="sm" color="white" />
+                  <InlineSpinner size="sm" />
                   <span className="ml-2">Adding...</span>
                 </>
+              ) : success ? (
+                <span>Added</span>
               ) : (
                 <>
-                  <Save className="w-4 h-4 mr-2" />
+                  <Save className="w-4 h-4 mr-1" />
                   Add Contact
                 </>
               )}

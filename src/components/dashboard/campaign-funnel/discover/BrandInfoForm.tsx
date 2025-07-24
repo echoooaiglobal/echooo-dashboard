@@ -4,7 +4,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { ChevronDown, Search, X } from 'react-feather';
 import { fetchCategories, Category } from '@/services/category/category.service';
-import { createCampaign, CreateCampaignRequest } from '@/services/campaign/campaign.service';
+import { createCampaign } from '@/services/campaign/campaign.service';
+import { CreateCampaignRequest } from '@/types/campaign';
 import { useApiCall } from '@/hooks/useApiCall';
 import { useAuth } from '@/context/AuthContext';
 import { getStoredCompany } from '@/services/auth/auth.utils';

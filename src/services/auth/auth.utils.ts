@@ -193,7 +193,7 @@ export const getStoredUserType = (): 'platform' | 'company' | 'influencer' | nul
  */
 export const getUserTypeFromRole = (detailedRole: DetailedRole): 'platform' | 'company' | 'influencer' => {
   if (detailedRole.startsWith('platform_')) return 'platform';
-  if (detailedRole.startsWith('company_')) return 'company';
+  if (detailedRole.startsWith('b2c_')) return 'company';
   if (detailedRole.startsWith('influencer')) return 'influencer';
   throw new Error(`Unknown role: ${detailedRole}`);
 };
@@ -256,7 +256,7 @@ export const isPlatformAgent = (): boolean => {
  * Check if user is company admin
  */
 export const isCompanyAdmin = (): boolean => {
-  return hasDetailedRole('company_admin');
+  return hasDetailedRole('b2c_company_admin');
 };
 
 /**
@@ -302,7 +302,8 @@ export const getRoleHierarchyLevel = (): number => {
     'platform_agent': 30,
     
     // Company hierarchy
-    'company_admin': 100,
+    'b2c_company_owner': 100,
+    'b2c_company_admin': 100,
     'company_manager': 80,
     'company_marketer': 60,
     'company_accountant': 50,
@@ -334,7 +335,8 @@ export const hasHigherHierarchyThan = (targetRole: DetailedRole): boolean => {
     'platform_agent': 30,
     
     // Company hierarchy
-    'company_admin': 100,
+    'b2c_company_owner': 100,
+    'b2c_company_admin': 100,
     'company_manager': 80,
     'company_marketer': 60,
     'company_accountant': 50,

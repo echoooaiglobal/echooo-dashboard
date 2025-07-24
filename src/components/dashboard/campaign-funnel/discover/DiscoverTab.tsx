@@ -59,7 +59,7 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
     const baseParams: Partial<InfluencerSearchFilter> = {
       work_platform_id: "9bb8913b-ddd9-430b-a66a-d74d846e6c66",
       sort_by: { field: "FOLLOWER_COUNT", order: "DESCENDING" },
-      limit: 10, offset: 0, post_type: "ALL",
+      limit: pageSize, offset: 0, post_type: "ALL",
     };
     
     // Only add default values if defaultFilters is true
@@ -455,11 +455,11 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-4">
         <div className="flex items-center space-x-4">
           <h2 className="text-2xl font-bold text-gray-700">Influencers Result</h2>
-          {selectedPlatform && (
+          {/* {selectedPlatform && (
             <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
               Platform: {selectedPlatform.name}
             </span>
-          )}
+          )} */}
         </div>
         
         {/* Tab Navigation */}
@@ -507,7 +507,7 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
           hasMore={influencers?.length < totalResults}
           nextBatchSize={getNextBatchSize()}
           onInfluencerAdded={refreshShortlistedInfluencers}
-          shortlistedMembers={shortlistedMembers?.members || []}
+          shortlistedMembers={shortlistedMembers?.influencers || []}
           // Platform-related props passed to DiscoveredInfluencers
           platforms={platforms}
           selectedPlatform={selectedPlatform}

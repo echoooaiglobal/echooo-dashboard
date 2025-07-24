@@ -1,20 +1,18 @@
 // src/components/dashboard/platform/components/AssignmentSelector.tsx
 'use client';
 
-import { Assignment } from '@/types/assignments';
+import { AgentAssignment } from '@/types/assignments';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import { RefreshCw } from 'react-feather';
+import { RefreshCw, Calendar, Users, BarChart, Clock } from 'react-feather';
 
 interface AssignmentSelectorProps {
-  assignments: Assignment[];
-  selectedAssignment: Assignment | null;
-  onAssignmentSelect: (assignment: Assignment) => void;
-  isLoading: boolean;
+  assignments: AgentAssignment[];
+  selectedAssignment: AgentAssignment | null;
+  onAssignmentSelect: (assignment: AgentAssignment) => void;
+  loading: boolean;
   error: string | null;
-  onRefresh: () => void;
 }
 
-// Assignment Status Badge Component
 const AssignmentStatusBadge = ({ status }: { status: string }) => {
   const getStatusConfig = (status: string) => {
     switch (status.toLowerCase()) {
@@ -43,12 +41,10 @@ export default function AssignmentSelector({
   assignments,
   selectedAssignment,
   onAssignmentSelect,
-  isLoading,
-  error,
-  onRefresh
+  loading,
+  error
 }: AssignmentSelectorProps) {
   
-  // Helper function to format date
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -60,88 +56,107 @@ export default function AssignmentSelector({
   return (
     <div className="bg-white rounded-xl shadow-md p-6 mb-8">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-bold text-gray-800">Your Assignments</h2>
+        <h2 className="text-xl font-bold text-gray-800">Your Agent Assignments</h2>
         <div className="flex items-center space-x-2">
-          {isLoading && (
+          {loading && (
             <div className="flex items-center">
               <LoadingSpinner size="sm" />
               <span className="ml-2 text-sm text-gray-500">Loading assignments...</span>
             </div>
           )}
-          <button
-            onClick={onRefresh}
-            disabled={isLoading}
-            className="p-2 rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50"
-            title="Refresh assignments"
-          >
-            <RefreshCw className={`w-4 h-4 text-gray-500 ${isLoading ? 'animate-spin' : ''}`} />
-          </button>
         </div>
       </div>
 
       {error ? (
-        <div className="text-center py-8">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-            <p className="text-red-600 text-sm font-medium">Error Loading Assignments</p>
-            <p className="text-red-500 text-sm mt-1">{error}</p>
-          </div>
-          <button 
-            onClick={onRefresh}
-            className="text-sm text-teal-600 hover:text-teal-800 font-medium"
-          >
-            Try again
-          </button>
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-center">
+          <p className="text-red-800 font-medium">Failed to load assignments</p>
+          <p className="text-red-600 text-sm mt-1">{error}</p>
         </div>
-      ) : assignments.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      ) : loading ? (
+        <div className="flex items-center justify-center py-8">
+          <LoadingSpinner />
+          <span className="ml-3 text-gray-500">Loading your assignments...</span>
+        </div>
+      ) : assignments.length === 0 ? (
+        <div className="text-center py-8">
+          <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+          <p className="text-gray-500 font-medium">No assignments found</p>
+          <p className="text-gray-400 text-sm">You don't have any campaign assignments yet.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
           {assignments.map((assignment) => (
-            <div 
+            <div
               key={assignment.id}
               onClick={() => onAssignmentSelect(assignment)}
-              className={`p-4 border-2 rounded-lg cursor-pointer transition-all hover:shadow-md ${
+              className={`p-4 rounded-lg border cursor-pointer transition-all duration-200 hover:shadow-md ${
                 selectedAssignment?.id === assignment.id
                   ? 'border-teal-500 bg-teal-50 shadow-md'
-                  : 'border-gray-200 hover:border-gray-300'
+                  : 'border-gray-200 bg-white hover:border-gray-300'
               }`}
             >
-              <div className="flex justify-between items-start mb-2">
-                <h3 className="font-bold text-gray-800 truncate pr-2">
-                  {assignment.campaign.name}
-                </h3>
-                <AssignmentStatusBadge status={assignment.status.name} />
+              <div className="flex items-start justify-between">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center space-x-3 mb-2">
+                    <h3 className="text-lg font-semibold text-gray-900 truncate">
+                      {assignment.campaign.name}
+                    </h3>
+                    <AssignmentStatusBadge status={assignment.status.name} />
+                  </div>
+                  
+                  <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
+                    <div className="flex items-center">
+                      <span className="font-medium text-gray-700">Brand:</span>
+                      <span className="ml-1">{assignment.campaign.brand_name}</span>
+                    </div>
+                    <div className="flex items-center">
+                      <Calendar className="w-4 h-4 mr-1" />
+                      <span>Assigned {formatDate(assignment.assigned_at)}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-6 text-sm">
+                    <div className="flex items-center">
+                      <Users className="w-4 h-4 text-blue-500 mr-1" />
+                      <span className="text-gray-600">
+                        <span className="font-medium text-gray-900">{assignment.assigned_influencers_count}</span> assigned
+                      </span>
+                    </div>
+                    <div className="flex items-center">
+                      <BarChart className="w-4 h-4 text-green-500 mr-1" />
+                      <span className="text-gray-600">
+                        <span className="font-medium text-gray-900">{assignment.completed_influencers_count}</span> completed
+                      </span>
+                    </div>
+                    <div className="flex items-center">
+                      <Clock className="w-4 h-4 text-orange-500 mr-1" />
+                      <span className="text-gray-600">
+                        <span className="font-medium text-gray-900">{assignment.pending_influencers_count}</span> pending
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-right flex-shrink-0 ml-4">
+                  <div className="text-lg font-bold text-gray-900">
+                    {Math.round((assignment.completed_influencers_count / assignment.assigned_influencers_count) * 100) || 0}%
+                  </div>
+                  <div className="text-sm text-gray-500">Complete</div>
+                </div>
               </div>
-              
-              <p className="text-sm text-gray-600 mb-2 truncate">
-                Brand: {assignment.campaign.brand_name}
-              </p>
-              
-              <div className="flex justify-between items-center mt-1 pt-1 border-t border-gray-100">
-                <p className="text-xs text-gray-500">
-                  Created: {formatDate(assignment.created_at)}
-                </p>
+
+              <div className="mt-3 bg-gray-200 rounded-full h-2 overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-teal-500 to-blue-500 transition-all duration-300"
+                  style={{
+                    width: `${(assignment.completed_influencers_count / assignment.assigned_influencers_count) * 100 || 0}%`
+                  }}
+                />
               </div>
             </div>
           ))}
         </div>
-      ) : !isLoading ? (
-        <div className="text-center py-12">
-          <div className="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
-            <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-          </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-1">No assignments found</h3>
-          <p className="text-gray-500 text-sm mb-4">
-            You don't have any campaign assignments yet.
-          </p>
-          <button 
-            onClick={onRefresh}
-            className="text-sm text-teal-600 hover:text-teal-800 font-medium"
-          >
-            Refresh to check for new assignments
-          </button>
-        </div>
-      ) : null}
+      )}
     </div>
   );
 }

@@ -3,7 +3,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { CampaignListMember, CampaignListMembersResponse, removeInfluencerFromList } from '@/services/campaign/campaign-list.service';
-import { formatNumber } from '@/utils/format';
+import ColumnVisibility, { ColumnDefinition } from '@/components/ui/table/ColumnVisibility';
+import { getColumnDefinitions } from './columnDefinitions';
 
 interface ShortlistedTableProps {
   shortlistedMembers: CampaignListMembersResponse;
@@ -16,16 +17,6 @@ interface ShortlistedTableProps {
   onPageSizeChange?: (pageSize: number) => void;
   onSelectionChange: (selected: string[]) => void;
   onRemovingChange: (removing: string[]) => void;
-}
-
-// Define all available columns with their properties
-interface ColumnDefinition {
-  key: string;
-  label: string;
-  width: string;
-  defaultVisible: boolean;
-  getValue: (member: CampaignListMember) => string | number | null;
-  render?: (value: any, member: CampaignListMember) => React.ReactNode;
 }
 
 const ShortlistedTable: React.FC<ShortlistedTableProps> = ({
@@ -48,8 +39,11 @@ const ShortlistedTable: React.FC<ShortlistedTableProps> = ({
     direction: 'asc' | 'desc' | null;
   }>({ key: null, direction: null });
 
+  // Get column definitions from separate file
+  const allColumns = getColumnDefinitions();
+
   // Ensure shortlistedMembers has proper structure
-  const members = shortlistedMembers?.members || [];
+  const members = shortlistedMembers?.influencers || [];
   const pagination = shortlistedMembers?.pagination || {
     page: 1,
     page_size: 10,
@@ -58,234 +52,6 @@ const ShortlistedTable: React.FC<ShortlistedTableProps> = ({
     has_next: false,
     has_previous: false
   };
-
-  // Truncate name function
-  const truncateName = (name: string, maxLength: number = 15): string => {
-    if (!name) return '';
-    if (name.length <= maxLength) return name;
-    return name.substring(0, maxLength) + '...';
-  };
-
-  // Get platform icon based on platform name
-  const getPlatformIcon = (platformName: string) => {
-    switch (platformName?.toLowerCase()) {
-      case 'instagram':
-        return (
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" className="w-5 h-5 text-pink-500 fill-current">
-            <path d="M224.1 141c-63.6 0-114.9 51.3-114.9 114.9s51.3 114.9 114.9 114.9S339 319.5 339 255.9 287.7 141 224.1 141zm0 189.6c-41.1 0-74.7-33.5-74.7-74.7s33.5-74.7 74.7-74.7 74.7 33.5 74.7 74.7-33.6 74.7-74.7 74.7zm146.4-194.3c0 14.9-12 26.8-26.8 26.8-14.9 0-26.8-12-26.8-26.8s12-26.8 26.8-26.8 26.8 12 26.8 26.8zm76.1 27.2c-1.7-35.9-9.9-67.7-36.2-93.9-26.2-26.2-58-34.4-93.9-36.2-37-2.1-147.9-2.1-184.9 0-35.8 1.7-67.6 9.9-93.9 36.1s-34.4 58-36.2 93.9c-2.1 37-2.1 147.9 0 184.9 1.7 35.9 9.9 67.7 36.2 93.9s58 34.4 93.9 36.2c37 2.1 147.9 2.1 184.9 0 35.9-1.7 67.7-9.9 93.9-36.2 26.2-26.2 34.4-58 36.2-93.9 2.1-37 2.1-147.8 0-184.8zM398.8 388c-7.8 19.6-22.9 34.7-42.6 42.6-29.5 11.7-99.5 9-132.1 9s-102.7 2.6-132.1-9c-19.6-7.8-34.7-22.9-42.6-42.6-11.7-29.5-9-99.5-9-132.1s-2.6-102.7 9-132.1c7.8-19.6 22.9-34.7 42.6-42.6 29.5-11.7 99.5-9 132.1-9s102.7-2.6 132.1 9c19.6 7.8 34.7 22.9 42.6 42.6 11.7 29.5 9 99.5 9 132.1s2.7 102.7-9 132.1z"/>
-          </svg>
-        );
-      case 'youtube':
-        return (
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" className="w-5 h-5 text-red-500 fill-current">
-            <path d="M549.655 124.083c-6.281-23.65-24.787-42.276-48.284-48.597C458.781 64 288 64 288 64S117.22 64 74.629 75.486c-23.497 6.322-42.003 24.947-48.284 48.597-11.412 42.867-11.412 132.305-11.412 132.305s0 89.438 11.412 132.305c6.281 23.65 24.787 41.5 48.284 47.821C117.22 448 288 448 288 448s170.78 0 213.371-11.486c23.497-6.321 42.003-24.171 48.284-47.821 11.412-42.867 11.412-132.305 11.412-132.305s0-89.438-11.412-132.305zm-317.51 213.508V175.185l142.739 81.205-142.739 81.201z"/>
-          </svg>
-        );
-      case 'tiktok':
-        return (
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" className="w-5 h-5 text-black fill-current">
-            <path d="M448,209.91a210.06,210.06,0,0,1-122.77-39.25V349.38A162.55,162.55,0,1,1,185,188.31V278.2a74.62,74.62,0,1,0,52.23,71.18V0l88,0a121.18,121.18,0,0,0,1.86,22.17h0A122.18,122.18,0,0,0,381,102.39a121.43,121.43,0,0,0,67,20.14Z"/>
-          </svg>
-        );
-      case 'twitter':
-      case 'x':
-        return (
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" className="w-5 h-5 text-blue-400 fill-current">
-            <path d="M389.2 48h70.6L305.6 224.2 487 464H345L233.7 318.6 106.5 464H35.8L200.7 275.5 26.8 48H172.4L272.9 180.9 389.2 48zM364.4 421.8h39.1L151.1 88h-42L364.4 421.8z"/>
-          </svg>
-        );
-      default:
-        return (
-          <div className="w-5 h-5 bg-gray-300 rounded flex items-center justify-center">
-            <span className="text-xs text-gray-600">?</span>
-          </div>
-        );
-    }
-  };
-
-  // Handle clicking on name to open account URL
-  const handleNameClick = (member: CampaignListMember) => {
-    const accountUrl = member.social_account?.account_url || member.social_account?.additional_metrics?.url;
-    if (accountUrl) {
-      window.open(accountUrl, '_blank', 'noopener,noreferrer');
-    }
-  };
-
-  // Define all available columns
-  const allColumns: ColumnDefinition[] = [
-    {
-      key: 'name',
-      label: 'Name',
-      width: 'w-32',
-      defaultVisible: true,
-      getValue: (member) => member.social_account?.full_name || '',
-      render: (value, member) => (
-        <div className="flex items-center min-w-0">
-          <div className="flex-shrink-0 h-8 w-8 relative">
-            <img
-              className="rounded-full object-cover h-8 w-8"
-              src={member.social_account?.profile_pic_url || `https://i.pravatar.cc/150?u=${member.social_account?.id}`}
-              alt={member.social_account?.full_name}
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = `https://i.pravatar.cc/150?u=${member.social_account?.id}`;
-              }}
-            /> 
-          </div>
-          <div className="ml-2 min-w-0 flex-1">
-            <div className="text-sm font-medium text-gray-900 flex items-center min-w-0">
-              <span 
-                className="truncate cursor-pointer"
-                title={member.social_account?.full_name || ''}
-                onClick={() => handleNameClick(member)}
-              >
-                {truncateName(member.social_account?.full_name || '', 20)}
-              </span>
-              {member.social_account?.is_verified && (
-                <span className="ml-1 flex-shrink-0 text-blue-500" title="Verified">
-                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm-1.177-7.86l-2.765-2.767L7 12.431l3.823 3.823 7.177-7.177-1.06-1.06-7.117 7.122z"/>
-                  </svg>
-                </span>
-              )}
-            </div>
-            <div 
-              className="text-xs text-gray-500 truncate cursor-pointer"
-              title={`@${member.social_account?.account_handle || ''}`}
-              onClick={() => handleNameClick(member)}
-            >
-              @{truncateName(member.social_account?.account_handle || '', 20)}
-            </div>
-          </div>
-        </div>
-      )
-    },
-    {
-      key: 'followers',
-      label: 'Followers',
-      width: 'w-20',
-      defaultVisible: true,
-      getValue: (member) => member.social_account?.followers_count || 0,
-      render: (value) => formatNumber(value) || 'N/A'
-    },
-    {
-      key: 'engagement_rate',
-      label: 'Eng Rate',
-      width: 'w-20',
-      defaultVisible: true,
-      getValue: (member) => member.social_account?.additional_metrics?.engagementRate,
-      render: (value) => {
-        if (typeof value === 'number') {
-          return `${(value * 100).toFixed(2)}%`;
-        }
-        return 'N/A';
-      }
-    },
-    {
-      key: 'avg_likes',
-      label: 'Avg Likes',
-      width: 'w-20',
-      defaultVisible: true,
-      getValue: (member) => member.social_account?.additional_metrics?.average_likes,
-      render: (value) => typeof value === 'number' ? formatNumber(value) : 'N/A'
-    },
-    {
-      key: 'platform',
-      label: 'Platform',
-      width: 'w-16',
-      defaultVisible: true,
-      getValue: (member) => member.platform?.name || '',
-      render: (value, member) => (
-        <div className="w-6 h-6 flex items-center justify-center rounded-md mx-auto">
-          {getPlatformIcon(member.platform?.name || '')}
-        </div>
-      )
-    },
-    {
-      key: 'gender',
-      label: 'Gender',
-      width: 'w-16',
-      defaultVisible: false,
-      getValue: (member) => member.social_account?.additional_metrics?.gender || member.social_account?.gender,
-      render: (value) => value ? String(value).charAt(0).toUpperCase() + String(value).slice(1) : 'N/A'
-    },
-    {
-      key: 'language',
-      label: 'Language',
-      width: 'w-20',
-      defaultVisible: false,
-      getValue: (member) => member.social_account?.additional_metrics?.language || member.social_account?.language,
-      render: (value) => value || 'N/A'
-    },
-    {
-      key: 'age_group',
-      label: 'Age Group',
-      width: 'w-20',
-      defaultVisible: false,
-      getValue: (member) => member.social_account?.additional_metrics?.age_group || member.social_account?.age_group,
-      render: (value) => value || 'N/A'
-    },
-    {
-      key: 'average_views',
-      label: 'Avg Views',
-      width: 'w-20',
-      defaultVisible: false,
-      getValue: (member) => member.social_account?.additional_metrics?.average_views,
-      render: (value) => typeof value === 'number' ? formatNumber(value) : 'N/A'
-    },
-    {
-      key: 'content_count',
-      label: 'Content Count',
-      width: 'w-20',
-      defaultVisible: false,
-      getValue: (member) => member.social_account?.additional_metrics?.content_count || member.social_account?.media_count,
-      render: (value) => typeof value === 'number' ? formatNumber(value) : 'N/A'
-    },
-    {
-      key: 'subscriber_count',
-      label: 'Subscribers',
-      width: 'w-20',
-      defaultVisible: false,
-      getValue: (member) => member.social_account?.subscribers_count || member.social_account?.additional_metrics?.subscriber_count,
-      render: (value) => typeof value === 'number' ? formatNumber(value) : 'N/A'
-    },
-    {
-      key: 'media_count',
-      label: 'Media Count',
-      width: 'w-20',
-      defaultVisible: false,
-      getValue: (member) => member.social_account?.media_count,
-      render: (value) => typeof value === 'number' ? formatNumber(value) : 'N/A'
-    },
-    {
-      key: 'following_count',
-      label: 'Following',
-      width: 'w-20',
-      defaultVisible: false,
-      getValue: (member) => member.social_account?.following_count,
-      render: (value) => typeof value === 'number' ? formatNumber(value) : 'N/A'
-    },
-    {
-      key: 'platform_account_type',
-      label: 'Account Type',
-      width: 'w-24',
-      defaultVisible: false,
-      getValue: (member) => member.social_account?.additional_metrics?.platform_account_type || member.social_account?.account_type,
-      render: (value) => value ? String(value).replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'N/A'
-    },
-    {
-      key: 'livestream_metrics',
-      label: 'Livestream',
-      width: 'w-20',
-      defaultVisible: false,
-      getValue: (member) => member.social_account?.additional_metrics?.livestream_metrics,
-      render: (value) => {
-        if (value && typeof value === 'object') {
-          return 'Available';
-        }
-        return 'N/A';
-      }
-    }
-  ];
 
   // Initialize visible columns based on data availability and default visibility
   useEffect(() => {
@@ -455,31 +221,31 @@ const ShortlistedTable: React.FC<ShortlistedTableProps> = ({
     currentPageIds.every(id => selectedInfluencers.includes(id));
 
   // Handle remove influencer
-  const handleRemoveInfluencer = async (member: CampaignListMember) => {
-    if (!member.id) {
+  const handleRemoveInfluencer = async (campaignInfluencer: CampaignListMember) => {
+    if (!campaignInfluencer.id) {
       console.error('Member ID is required to remove influencer');
       return;
     }
-
-    // Add member to removing state to show loading
-    onRemovingChange([...removingInfluencers, member.id]);
+    console.log('Removing influencer:', campaignInfluencer);
+    // Add campaignInfluencer to removing state to show loading
+    onRemovingChange([...removingInfluencers, campaignInfluencer.id]);
 
     try {
-      // Get the list ID from member
-      const listId = member?.list_id;
+      // Get the list ID from campaignInfluencer
+      const campaignListId = campaignInfluencer?.campaign_list_id;
       
-      if (!listId) {
+      if (!campaignListId) {
         throw new Error('List ID not found');
       }
 
       // Call the API to remove the influencer
-      const result = await removeInfluencerFromList(listId, member.id);
+      const result = await removeInfluencerFromList(campaignInfluencer.id);
 
       if (result.success) {
         console.log('Influencer removed successfully');
         
         // Remove from selected influencers if it was selected
-        onSelectionChange(selectedInfluencers.filter(id => id !== member.id));
+        onSelectionChange(selectedInfluencers.filter(id => id !== campaignInfluencer.id));
         
         // Call the callback to refresh the data
         if (onInfluencerRemoved) {
@@ -493,8 +259,8 @@ const ShortlistedTable: React.FC<ShortlistedTableProps> = ({
       console.error('Error removing influencer:', error);
       alert('An error occurred while removing the influencer');
     } finally {
-      // Remove member from removing state
-      onRemovingChange(removingInfluencers.filter(id => id !== member.id));
+      // Remove campaignInfluencer from removing state
+      onRemovingChange(removingInfluencers.filter(id => id !== campaignInfluencer.id));
     }
   };
 
@@ -574,17 +340,13 @@ const ShortlistedTable: React.FC<ShortlistedTableProps> = ({
       if (showPageSizeDropdown && !target.closest('.page-size-dropdown')) {
         setShowPageSizeDropdown(false);
       }
-      
-      if (showColumnDropdown && !target.closest('.column-dropdown')) {
-        setShowColumnDropdown(false);
-      }
     };
 
     document.addEventListener('click', handleClickOutside);
     return () => {
       document.removeEventListener('click', handleClickOutside);
     };
-  }, [showPageSizeDropdown, showColumnDropdown]);
+  }, [showPageSizeDropdown]);
 
   return (
     <div className="w-12/12 bg-white rounded-lg shadow overflow-hidden flex flex-col">
@@ -635,112 +397,16 @@ const ShortlistedTable: React.FC<ShortlistedTableProps> = ({
                         </svg>
                       </button>
                       
-                      {/* Column Toggle Dropdown */}
-                      {showColumnDropdown && (
-                        <>
-                          {/* Backdrop for visual separation */}
-                          <div className="fixed inset-0 z-40" onClick={() => setShowColumnDropdown(false)}></div>
-                          
-                          {/* Dropdown positioned independently */}
-                          <div className="fixed right-4 top-20 w-56 bg-white rounded-lg shadow-2xl border border-gray-300 z-50 max-h-[28rem] overflow-hidden">
-                            {/* Header */}
-                            <div className="px-4 py-3 bg-gradient-to-r from-purple-50 to-pink-50 border-b border-gray-200">
-                              <h3 className="text-sm font-semibold text-gray-800 flex items-center">
-                                <svg className="w-4 h-4 mr-2 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h2a2 2 0 002-2z" />
-                                </svg>
-                                Column Visibility
-                              </h3>
-                              <p className="text-xs text-gray-600 mt-1">Select columns to display</p>
-                            </div>
-                            
-                            {/* Column List */}
-                            <div className="py-3 max-h-80 overflow-y-auto">
-                              {allColumns.map((column, index) => {
-                                // Check if any member has data for this column
-                                const hasData = members.some(member => {
-                                  const value = column.getValue(member);
-                                  return value !== null && value !== undefined && value !== '';
-                                });
-                                
-                                return (
-                                  <label
-                                    key={column.key}
-                                    className="flex items-center px-5 py-3 hover:bg-gradient-to-r hover:from-purple-25 hover:to-pink-25 cursor-pointer transition-all duration-150 group"
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={visibleColumns.has(column.key)}
-                                      onChange={() => toggleColumnVisibility(column.key)}
-                                      className="h-4 w-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500 focus:ring-2 transition-colors"
-                                    />
-                                    <div className="ml-3 flex-1 min-w-0">
-                                      <span className={`text-sm font-medium block truncate transition-colors ${
-                                        hasData 
-                                          ? 'text-gray-900 group-hover:text-purple-700' 
-                                          : 'text-gray-400 group-hover:text-gray-500'
-                                      }`}>
-                                        {column.label}
-                                      </span>
-                                    </div>
-                                    {/* Data availability indicator */}
-                                    <div className="ml-2 flex-shrink-0">
-                                      {hasData ? (
-                                        <div className="w-2 h-2 bg-green-400 rounded-full" title="Data available"></div>
-                                      ) : (
-                                        <div className="w-2 h-2 bg-gray-300 rounded-full" title="No data"></div>
-                                      )}
-                                    </div>
-                                  </label>
-                                );
-                              })}
-                              {/* Extra spacing at bottom of column list */}
-                              <div className="h-2"></div>
-                            </div>
-                            
-                            {/* Footer */}
-                            <div className="px-4 py-4 bg-gray-50 border-t border-gray-200 flex justify-between items-center">
-                              <button
-                                onClick={() => {
-                                  // Select all columns with data
-                                  const columnsWithData = new Set<string>();
-                                  allColumns.forEach(column => {
-                                    const hasData = members.some(member => {
-                                      const value = column.getValue(member);
-                                      return value !== null && value !== undefined && value !== '';
-                                    });
-                                    if (hasData || column.defaultVisible) {
-                                      columnsWithData.add(column.key);
-                                    }
-                                  });
-                                  setVisibleColumns(columnsWithData);
-                                }}
-                                className="text-xs text-purple-600 hover:text-purple-700 font-medium transition-colors"
-                              >
-                                Select All
-                              </button>
-                              <button
-                                onClick={() => {
-                                  // Keep only default visible columns
-                                  const defaultColumns = new Set<string>();
-                                  allColumns.forEach(column => {
-                                    if (column.defaultVisible) {
-                                      defaultColumns.add(column.key);
-                                    }
-                                  });
-                                  setVisibleColumns(defaultColumns);
-                                }}
-                                className="text-xs text-gray-600 hover:text-gray-700 font-medium transition-colors"
-                              >
-                                Reset
-                              </button>
-                            </div>
-                            
-                            {/* Bottom spacing for visual separation */}
-                            <div className="h-3 bg-gray-50"></div>
-                          </div>
-                        </>
-                      )}
+                      {/* Use the reusable ColumnVisibility component */}
+                      <ColumnVisibility
+                        isOpen={showColumnDropdown}
+                        onClose={() => setShowColumnDropdown(false)}
+                        columns={allColumns}
+                        visibleColumns={visibleColumns}
+                        onToggleColumn={toggleColumnVisibility}
+                        data={members}
+                        position="top-right"
+                      />
                     </div>
                   </div>
                 </th>

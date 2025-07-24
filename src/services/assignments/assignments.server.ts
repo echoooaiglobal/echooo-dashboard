@@ -1,83 +1,138 @@
 // src/services/assignments/assignments.server.ts
-// Server-side service for calling FastAPI backend
 
 import { serverApiClient } from '@/lib/server-api';
 import { ENDPOINTS } from '@/services/api/endpoints';
-import { AssignmentsResponse, Assignment } from '@/types/assignments';
-import { AssignmentMembersResponse } from '@/types/assignment-members';
+import { AgentAssignmentsResponse } from '@/types/assignments';
+import { AssignmentInfluencersResponse } from '@/types/assignment-influencers';
+import { AssignmentInfluencer } from '@/types/assignment-influencers';
+
+export interface ContactAttemptResponse {
+  success: boolean;
+  message: string;
+  assigned_influencer: AssignmentInfluencer;
+  next_template_info: {
+    type: string;
+    template_id: string;
+    followup_sequence: number;
+    delay_hours: number;
+    subject: string;
+    next_contact_at: string;
+    message: string;
+    initial_template_id: string;
+    campaign_id: string;
+  };
+}
+
 
 /**
- * Get assignments from FastAPI backend (server-side)
+ * Record a contact attempt for a campaign influencer (server-side)
  * Calls FastAPI backend from Next.js API route
  */
-export async function getAssignmentsServer(authToken?: string): Promise<AssignmentsResponse> {
+export async function recordContactAttemptServer(
+  assignedInfluencerId: string, 
+  authToken?: string
+): Promise<ContactAttemptResponse> {
   try {
-    console.log('Server: Fetching assignments from FastAPI');
+    console.log(`Server: Recording contact attempt for influencer ${assignedInfluencerId}`);
     
-    const response = await serverApiClient.get<AssignmentsResponse>(
+    const response = await serverApiClient.post<ContactAttemptResponse>(
+      ENDPOINTS.ASSIGNED_INFLUENCERS.RECORD_CONTACT_ATTEMPT(assignedInfluencerId),
+      {}, // Empty body for POST request
+      {},
+      authToken
+    );
+    
+    if (response.error) {
+      console.error('Server: FastAPI Error recording contact attempt:', response.error);
+      throw new Error(response.error.message);
+    }
+    
+    if (!response.data) {
+      throw new Error('No data received from FastAPI server');
+    }
+    
+    console.log('Server: Contact attempt recorded successfully:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error(`Server: Error recording contact attempt for influencer ${assignedInfluencerId}:`, error);
+    throw error;
+  }
+}
+
+export async function getAgentAssignmentsServer(authToken?: string): Promise<AgentAssignmentsResponse> {
+  try {
+    console.log('Server: Fetching agent assignments from FastAPI');
+    
+    const response = await serverApiClient.get<AgentAssignmentsResponse>(
       ENDPOINTS.ASSIGNMENTS.LIST,
       {},
       authToken
     );
     
     if (response.error) {
-      console.error('Server: FastAPI Error fetching assignments:', response.error);
+      console.error('Server: FastAPI Error fetching agent assignments:', response.error);
       throw new Error(response.error.message);
     }
     
     if (!response.data) {
-      console.warn('Server: No assignments data received from FastAPI');
+      console.warn('Server: No agent assignments data received from FastAPI');
       return {
         assignments: [],
-        total_assignments: 0,
-        agent_info: null
+        pagination: {
+          page: 1,
+          page_size: 100,
+          total_items: 0,
+          total_pages: 1,
+          has_next: false,
+          has_previous: false
+        }
       };
     }
     
-    console.log(`Server: Assignments fetched successfully: ${response.data.assignments?.length || 0} assignments`);
+    console.log(`Server: Agent assignments fetched successfully: ${response.data.assignments?.length || 0} assignments`);
     return response.data;
   } catch (error) {
-    console.error('Server: Error fetching assignments:', error);
+    console.error('Server: Error fetching agent assignments:', error);
     throw error;
   }
 }
 
-/**
- * Get assignment members from FastAPI backend (server-side)
- * Calls FastAPI backend from Next.js API route
- */
-export async function getAssignmentMembersServer(
+export async function getAssignmentInfluencersServer(
   assignmentId: string, 
   page: number = 1,
   pageSize: number = 10,
+  type?: 'active' | 'archived' | 'completed',
   authToken?: string
-): Promise<AssignmentMembersResponse> {
+): Promise<AssignmentInfluencersResponse> {
   try {
-    console.log(`Server: Fetching assignment members for assignment ${assignmentId}`);
+    console.log(`Server: Fetching assignment influencers for assignment ${assignmentId}`);
     
-    // Build query parameters for pagination
     const queryParams = new URLSearchParams({
       page: page.toString(),
-      page_size: pageSize.toString()
+      size: pageSize.toString()
     });
+    
+    if (type) {
+      queryParams.append('type', type);
+    }
     
     const endpoint = `${ENDPOINTS.ASSIGNMENTS.INFLUENCERS_LIST(assignmentId)}?${queryParams}`;
     
-    const response = await serverApiClient.get<AssignmentMembersResponse>(
+    const response = await serverApiClient.get<AssignmentInfluencersResponse>(
       endpoint,
       {},
       authToken
     );
     
     if (response.error) {
-      console.error('Server: FastAPI Error fetching assignment members:', response.error);
+      console.error('Server: FastAPI Error fetching assignment influencers:', response.error);
       throw new Error(response.error.message);
     }
     
     if (!response.data) {
-      console.warn('Server: No assignment members data received from FastAPI');
+      console.warn('Server: No assignment influencers data received from FastAPI');
       return {
-        members: [],
+        influencers: [],
         pagination: {
           page: 1,
           page_size: pageSize,
@@ -89,10 +144,10 @@ export async function getAssignmentMembersServer(
       };
     }
     
-    console.log(`Server: Assignment members fetched successfully: ${response.data.members?.length || 0} members`);
+    console.log(`Server: Assignment influencers fetched successfully: ${response.data.influencers?.length || 0} influencers`);
     return response.data;
   } catch (error) {
-    console.error(`Server: Error fetching assignment members for ${assignmentId}:`, error);
+    console.error(`Server: Error fetching assignment influencers for ${assignmentId}:`, error);
     throw error;
   }
 }

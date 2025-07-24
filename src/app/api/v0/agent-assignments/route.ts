@@ -1,18 +1,13 @@
-// src/app/api/v0/assignments/route.ts
+// src/app/api/v0/agent-assignments/route.ts
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getAssignmentsServer } from '@/services/assignments/assignments.server';
+import { getAgentAssignmentsServer } from '@/services/assignments/assignments.server';
 import { extractBearerToken } from '@/lib/auth-utils';
 
-/**
- * GET /api/v0/assignments
- * Get all assignments
- */
 export async function GET(request: NextRequest) {
   try {
-    console.log('API Route: GET /api/v0/assignments called');
+    console.log('API Route: GET /api/v0/agent-assignments called');
     
-    // Extract Bearer token from request headers
     const authToken = extractBearerToken(request);
     console.log('API Route: Token extracted:', authToken ? 'Token found' : 'No token found');
     
@@ -25,11 +20,10 @@ export async function GET(request: NextRequest) {
     }
 
     console.log('API Route: Calling FastAPI backend...');
-    // Call FastAPI backend through server-side service with auth token
-    const assignmentsData = await getAssignmentsServer(authToken);
+    const agentAssignmentsData = await getAgentAssignmentsServer(authToken);
     
-    console.log(`API Route: Successfully fetched ${assignmentsData.assignments?.length || 0} assignments`);
-    return NextResponse.json(assignmentsData);
+    console.log(`API Route: Successfully fetched ${agentAssignmentsData.assignments?.length || 0} agent assignments`);
+    return NextResponse.json(agentAssignmentsData);
   } catch (error) {
     console.error('API Route Error:', error);
     
@@ -41,7 +35,7 @@ export async function GET(request: NextRequest) {
     }
     
     return NextResponse.json(
-      { error: 'Failed to fetch assignments' },
+      { error: 'Failed to fetch agent assignments' },
       { status: 500 }
     );
   }

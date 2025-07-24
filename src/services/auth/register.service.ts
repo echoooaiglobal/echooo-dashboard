@@ -7,7 +7,7 @@ export interface RegistrationData {
   password: string;
   full_name: string;
   phone_number?: string;
-  user_type: 'influencer' | 'company';
+  user_type: 'influencer' | 'b2c' | 'b2b';
   role_name: string,
   company_name?: string;
   company_domain?: string;

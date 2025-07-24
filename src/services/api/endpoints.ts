@@ -35,18 +35,39 @@ export const ENDPOINTS = {
     // Global deleted campaigns (if needed)
     DELETED: '/campaigns/deleted',
   },
+  //need to shift to CAMPAIGN_INFLUENCERS
   CAMPAIGN_LISTS: {
-    LIST_MEMBERS: (id: string) => `/campaign-list-members`,
-    LIST_MEMBER_DETAIL: (id: string) => `/campaign-list-members/${id}`,
-    LIST_MEMBER_DELETE: (id: string) => `/campaign-list-members/${id}`,
-    LIST_MEMBER_CREATE: '/campaign-list-members',
+    LIST_MEMBERS: (id: string) => `/campaign-influencers`,
+    LIST_MEMBER_DETAIL: (id: string) => `/campaign-influencers/${id}`,
+    LIST_MEMBER_DELETE: (id: string) => `/campaign-influencers/${id}`,
+    LIST_MEMBER_CREATE: '/campaign-influencers',
   },
-  CAMPAIGN_LIST_MEMBERS: {
-    DETAIL: (id: string) => `/campaign-list-members/${id}`,
-    UPDATE: (id: string) => `/campaign-list-members/${id}`,
-    DELETE: (id: string) => `/campaign-list-members/${id}`,
-    LIST: '/campaign-list-members',
-    CREATE: '/campaign-list-members',
+  // CAMPAIGN_LIST_MEMBERS: {
+  //   DETAIL: (id: string) => `/campaign-influencers/${id}`,
+  //   UPDATE: (id: string) => `/campaign-influencers/${id}`,
+  //   DELETE: (id: string) => `/campaign-influencers/${id}`,
+  //   LIST: '/campaign-influencers',
+  //   CREATE: '/campaign-influencers',
+  // },
+
+  // Campaign Influencer endpoints
+  // Need to shift CAMPAIGN_LISTS and CAMPAIGN_LIST_MEMBERS to this section
+  CAMPAIGN_INFLUENCERS: {
+    LIST: (id: string) => `/campaign-influencers`,
+    UPDATE: (id: string) => `/campaign-influencers/${id}`,
+    UPDATE_STATUS: (id: string) => `/campaign-influencers/${id}/status`,
+    UPDATE_NOTES: (id: string) => `/campaign-influencers/${id}/notes`,
+    UPDATE_PRICE: (id: string) => `/campaign-influencers/${id}/price`,
+    DETAIL: (id: string) => `/campaign-influencers/${id}`,
+    DELETE: (id: string) => `/campaign-influencers/${id}`,
+    CREATE: '/campaign-influencers',
+    // BASE: '/campaign-influencers',
+    // BY_ID: (id: string) => `/campaign-influencers/${id}`,
+    // CONTACT_ATTEMPTS: (influencerId: string) => `/campaign-influencers/${influencerId}/contact-attempts`
+  },
+
+  BULK_ASSIGNMENTS: {
+    EXECUTE: '/bulk-assignments/execute',
   },
   CATEGORIES: {
     LIST: '/categories',
@@ -104,8 +125,20 @@ export const ENDPOINTS = {
 
   //Platform Agent
   ASSIGNMENTS: {
-    LIST: '/assignments',
-    INFLUENCERS_LIST: (id: string) => `/assignments/${id}/members`,
+    LIST: '/agent-assignments',
+    INFLUENCERS_LIST: (id: string) => `/assigned-influencers/agent-assignment/${id}`,
+  },
+
+  ASSIGNED_INFLUENCERS: {
+    UPDATE_STATUS: (id: string) => `/assigned-influencers/${id}/status`,
+    RECORD_CONTACT_ATTEMPT: (assignedInfluencerId: string) => `/assigned-influencers/${assignedInfluencerId}/record-contact`
+    // LIST: '/assigned-influencers',
+    // DETAIL: (id: string) => `/assigned-influencers/${id}`,
+    // BY_ASSIGNMENT: (assignmentId: string) => `/assigned-influencers/assignment/${assignmentId}`,
+    // BY_AGENT: (agentId: string) => `/assigned-influencers/agent/${agentId}`,
+    // BY_STATUS: (status: string) => `/assigned-influencers?status=${status}`,
+    // UPDATE_STATUS: (id: string) => `/assigned-influencers/${id}/status`,
+    // UPDATE_ALL_BY_ASSIGNMENT: (assignmentId: string) => `/assigned-influencers/assignment/${assignmentId}/update-all`,
   },
 
   // Statuses

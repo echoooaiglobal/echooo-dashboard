@@ -68,6 +68,16 @@ export default function CampaignCard({
     });
   };
 
+  // Calculate total influencers count from campaign_lists
+  const getTotalInfluencersCount = () => {
+    if (!campaign.campaign_lists || campaign.campaign_lists.length === 0) {
+      return 0;
+    }
+    return campaign.campaign_lists.reduce((total, list) => {
+      return total + (list.total_influencers_count || 0);
+    }, 0);
+  };
+
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -96,6 +106,8 @@ export default function CampaignCard({
     isDeleted ? 'opacity-75 cursor-default' : ''
   }`;
 
+  const totalInfluencers = getTotalInfluencersCount();
+
   const cardContent = (
     <>
       {/* Campaign Header */}
@@ -109,7 +121,7 @@ export default function CampaignCard({
           </h3>
         </div>
 
-        {/* Action Buttons */}
+        {/* Action Buttons - NO INFLUENCER COUNT HERE */}
         <div className="flex space-x-1">
           {/* Edit Button - only for active campaigns */}
           {showEditButton && onEdit && !isDeleted && (
@@ -154,15 +166,23 @@ export default function CampaignCard({
         }
       </p>
 
-      {/* Bottom Section */}
+      {/* Bottom Section - INFLUENCER COUNT ONLY HERE */}
       <div className="flex justify-between items-center">
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-          isDeleted 
-            ? 'bg-red-100 text-red-800' 
-            : getStatusColor(campaign.status_id)
-        }`}>
-          {isDeleted ? 'Deleted' : getStatusProgress(campaign.status_id)}
-        </span>
+        {/* Status and Influencer Count */}
+        <div className="flex items-center space-x-2">
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+            isDeleted 
+              ? 'bg-red-100 text-red-800' 
+              : getStatusColor(campaign.status_id)
+          }`}>
+            {isDeleted ? 'Deleted' : getStatusProgress(campaign.status_id)}
+          </span>
+          
+          {/* Influencer Count Badge - ONLY LOCATION */}
+          <span className="bg-purple-50 text-purple-700 px-2 py-1 rounded-lg text-xs font-medium border border-purple-200">
+            {totalInfluencers} {totalInfluencers === 1 ? 'Influencer' : 'Influencers'}
+          </span>
+        </div>
 
         {/* Continue Button - only for active campaigns */}
         {!isDeleted && (

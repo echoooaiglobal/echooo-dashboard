@@ -1,8 +1,8 @@
 // src/components/dashboard/platform/components/AssignmentStatsCards.tsx
 'use client';
 
-import { AssignmentMember } from '@/types/assignment-members';
-import { Status, getStatusDisplayConfig } from '@/types/statuses';
+import { useState } from 'react';
+import { AgentAssignment } from '@/types/assignments';
 import { 
   Users, 
   Eye, 
@@ -10,137 +10,158 @@ import {
   Mail, 
   Clock, 
   CheckCircle, 
-  XCircle 
+  XCircle,
+  BarChart,
+  TrendingUp,
+  ChevronDown,
+  ChevronUp,
+  Archive
 } from 'react-feather';
 
 interface AssignmentStatsCardsProps {
-  assignmentMembers: AssignmentMember[];
-  availableStatuses: Status[];
+  assignment: AgentAssignment;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
+  showToggle?: boolean;
 }
 
 export default function AssignmentStatsCards({ 
-  assignmentMembers, 
-  availableStatuses 
+  assignment, 
+  isCollapsed = false, 
+  onToggleCollapse,
+  showToggle = true 
 }: AssignmentStatsCardsProps) {
+  // Internal state for collapse if not controlled externally
+  const [internalCollapsed, setInternalCollapsed] = useState(false);
   
-  // Calculate stats from actual assignment members data
-  const stats: { total: number; [key: string]: number } = {
-    total: assignmentMembers.length,
-    ...availableStatuses.reduce((acc, status) => {
-      const statusKey = status.name.toLowerCase();
-      acc[statusKey] = assignmentMembers.filter(m => 
-        m.status.name.toLowerCase() === statusKey
-      ).length;
-      return acc;
-    }, {} as Record<string, number>)
-  };
+  // Determine which collapse state to use
+  const collapsed = onToggleCollapse ? isCollapsed : internalCollapsed;
+  const toggleCollapse = onToggleCollapse || (() => setInternalCollapsed(!internalCollapsed));
+  
+  // Calculate completion rate: completed / (assigned - archived) * 100
+  // This way we calculate completion based on active work, not including archived ones
+  const activeInfluencers = assignment.assigned_influencers_count - (assignment.archived_influencers_count || 0);
+  const completionRate = activeInfluencers > 0 
+    ? Math.round((assignment.completed_influencers_count / activeInfluencers) * 100)
+    : 0;
 
-  // Icon mapping for different statuses
-  const getIcon = (statusName: string) => {
-    switch (statusName.toLowerCase()) {
-      case 'discovered':
-        return <Eye className="w-8 h-8 text-gray-500 mr-3" />;
-      case 'unreachable':
-        return <XCircle className="w-8 h-8 text-orange-500 mr-3" />;
-      case 'contacted':
-        return <MessageSquare className="w-8 h-8 text-blue-500 mr-3" />;
-      case 'responded':
-        return <Mail className="w-8 h-8 text-yellow-500 mr-3" />;
-      case 'info_requested':
-        return <Clock className="w-8 h-8 text-indigo-500 mr-3" />;
-      case 'info_received':
-        return <CheckCircle className="w-8 h-8 text-cyan-500 mr-3" />;
-      case 'declined':
-        return <XCircle className="w-8 h-8 text-red-500 mr-3" />;
-      case 'inactive':
-        return <Clock className="w-8 h-8 text-gray-400 mr-3" />;
-      default:
-        return <Users className="w-8 h-8 text-gray-500 mr-3" />;
+  const pendingRate = assignment.assigned_influencers_count > 0 
+    ? Math.round((assignment.pending_influencers_count / assignment.assigned_influencers_count) * 100)
+    : 0;
+
+  const archivedRate = assignment.assigned_influencers_count > 0 
+    ? Math.round(((assignment.archived_influencers_count || 0) / assignment.assigned_influencers_count) * 100)
+    : 0;
+
+  const cards = [
+    {
+      title: 'Total Assigned',
+      value: assignment.assigned_influencers_count.toString(),
+      icon: <Users className="w-8 h-8 text-blue-500" />,
+      bgColor: 'bg-blue-50',
+      borderColor: 'border-blue-500',
+      subtitle: 'Influencers assigned to you'
+    },
+    {
+      title: 'Completed',
+      value: assignment.completed_influencers_count.toString(),
+      icon: <CheckCircle className="w-8 h-8 text-green-500" />,
+      bgColor: 'bg-green-50',
+      borderColor: 'border-green-500',
+      subtitle: `${completionRate}% of active work`
+    },
+    {
+      title: 'Pending',
+      value: assignment.pending_influencers_count.toString(),
+      icon: <Clock className="w-8 h-8 text-orange-500" />,
+      bgColor: 'bg-orange-50',
+      borderColor: 'border-orange-500',
+      subtitle: `${pendingRate}% remaining work`
+    },
+    {
+      title: 'Archived',
+      value: (assignment.archived_influencers_count || 0).toString(),
+      icon: <Archive className="w-8 h-8 text-gray-500" />,
+      bgColor: 'bg-gray-50',
+      borderColor: 'border-gray-500',
+      subtitle: `${archivedRate}% archived`
+    },
+    {
+      title: 'Completion Rate',
+      value: `${completionRate}%`,
+      icon: <TrendingUp className="w-8 h-8 text-purple-500" />,
+      bgColor: 'bg-purple-50',
+      borderColor: 'border-purple-500',
+      subtitle: 'Based on active work'
     }
-  };
-
-  // Calculate percentage for each status
-  const getPercentage = (count: number) => {
-    if (stats.total === 0) return 0;
-    return Math.round((count / stats.total) * 100);
-  };
+  ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 mb-8">
-      {/* Total Members Card */}
-      <div className="bg-white rounded-lg shadow-md p-4 border-l-4 border-blue-500">
-        <div className="flex items-center">
-          <Users className="w-8 h-8 text-blue-500 mr-3" />
-          <div>
-            <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
-            <p className="text-sm text-gray-500">Total Members</p>
+    <div className="bg-white rounded-xl shadow-md overflow-hidden mb-6">
+      {/* Header with Toggle Button */}
+      {showToggle && (
+        <div className="px-6 py-2 border-b border-gray-200 bg-gray-50">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Assignment Statistics</h3>
+            </div>
+            <button
+              onClick={toggleCollapse}
+              className="flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded-lg transition-all duration-200 border border-gray-200 hover:border-gray-300"
+            >
+              {collapsed ? 'Show' : 'Hide'}
+              {collapsed ? (
+                <ChevronDown className="w-4 h-4 ml-1" />
+              ) : (
+                <ChevronUp className="w-4 h-4 ml-1" />
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Collapsible Content */}
+      <div className={`transition-all duration-300 ease-in-out overflow-hidden ${
+        collapsed ? 'max-h-0' : 'max-h-[400px]'
+      }`}>
+        <div className="p-6">
+          {/* Single row grid for all 5 cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            {cards.map((card, index) => (
+              <div 
+                key={index} 
+                className={`${card.bgColor} rounded-lg shadow-md p-4 border-l-4 ${card.borderColor} transform transition-all duration-200 hover:scale-105 hover:shadow-lg`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-xs font-medium text-gray-600 mb-1">{card.title}</p>
+                    <p className="text-2xl font-bold text-gray-900 mb-1">{card.value}</p>
+                    <p className="text-xs text-gray-500">{card.subtitle}</p>
+                  </div>
+                  <div className="flex-shrink-0 ml-2">
+                    {card.icon}
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
-      
-      {/* Dynamic Status Cards */}
-      {availableStatuses.map((status) => {
-        const statusKey = status.name.toLowerCase();
-        const count = stats[statusKey] || 0;
-        const percentage = getPercentage(count);
-        const config = getStatusDisplayConfig(status.name);
-        
-        // Get border color based on status
-        const getBorderColor = (statusName: string) => {
-          switch (statusName.toLowerCase()) {
-            case 'discovered':
-              return 'border-gray-500';
-            case 'unreachable':
-              return 'border-orange-500';
-            case 'contacted':
-              return 'border-blue-500';
-            case 'responded':
-              return 'border-yellow-500';
-            case 'info_requested':
-              return 'border-indigo-500';
-            case 'info_received':
-              return 'border-cyan-500';
-            case 'declined':
-              return 'border-red-500';
-            case 'inactive':
-              return 'border-gray-400';
-            default:
-              return 'border-gray-500';
-          }
-        };
-        
-        return (
-          <div 
-            key={status.id} 
-            className={`bg-white rounded-lg shadow-md p-4 border-l-4 ${getBorderColor(status.name)}`}
-          >
-            <div className="flex items-center">
-              {getIcon(status.name)}
-              <div>
-                <div className="flex items-baseline">
-                  <p className="text-2xl font-bold text-gray-900">{count}</p>
-                  {stats.total > 0 && (
-                    <span className="ml-2 text-xs text-gray-500">({percentage}%)</span>
-                  )}
-                </div>
-                <p className="text-sm text-gray-500">{config.label}</p>
-              </div>
-            </div>
-            
-            {/* Progress bar */}
-            {stats.total > 0 && (
-              <div className="mt-3">
-                <div className="w-full bg-gray-200 rounded-full h-1.5">
-                  <div 
-                    className={`h-1.5 rounded-full ${getBorderColor(status.name).replace('border-', 'bg-')}`}
-                    style={{ width: `${percentage}%` }}
-                  ></div>
-                </div>
-              </div>
-            )}
+
+      {/* Collapsed Summary (shown when collapsed) */}
+      {collapsed && showToggle && (
+        <div className="px-6 py-3 bg-gray-50 border-t border-gray-200">
+          <div className="flex items-center justify-between text-sm text-gray-600">
+            <span>
+              <strong>{assignment.assigned_influencers_count}</strong> assigned • 
+              <strong className="text-green-600 ml-1">{assignment.completed_influencers_count}</strong> completed • 
+              <strong className="text-orange-600 ml-1">{assignment.pending_influencers_count}</strong> pending •
+              <strong className="text-gray-600 ml-1">{assignment.archived_influencers_count || 0}</strong> archived
+            </span>
+            <span className="text-purple-600 font-medium">{completionRate}% complete</span>
           </div>
-        );
-      })}
+        </div>
+      )}
     </div>
   );
 }

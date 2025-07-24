@@ -9,7 +9,7 @@ export type CampaignListId = string;
 
 // Define the request body for adding an influencer to a list
 export interface AddToListRequest {
-  list_id: CampaignListId;
+  campaign_list_id: CampaignListId;
   platform_id: string;
   social_data: {
     id: string;
@@ -23,12 +23,17 @@ export interface AddToListRequest {
   };
 }
 
+export interface Platform {
+  id: string;
+  name: string;
+  logo_url: string;
+}
 // Define the response from the add to list API
 export interface CampaignListMember {
   success: boolean;
   message?: string;
   id?: string;
-  list_id?: string;
+  campaign_list_id?: string;
   social_account_id?: string;
   platform_id?: string;
   status_id?: string;
@@ -72,12 +77,13 @@ export interface CampaignListMember {
     subscribers_count?: number | null;
     likes_count?: number | null;
     account_url?: string;
+    platform?: Platform;
     additional_metrics?: {
       id?: string;
       url?: string;
       name?: string;
-      gender?: string;
-      language?: string;
+      gender?: string | null;
+      language?: string | null;
       username?: string;
       age_group?: string;
       followers?: string;
@@ -109,7 +115,7 @@ export interface PaginationInfo {
 
 export interface CampaignListMembersResponse {
   success: boolean;
-  members: CampaignListMember[];
+  influencers: CampaignListMember[];
   pagination: PaginationInfo;
   message?: string;
 }
@@ -117,19 +123,19 @@ export interface CampaignListMembersResponse {
 
 /**
  * Add an influencer to a campaign list
- * @param listId The campaign list ID
+ * @param campaign_list_id The campaign list ID
  * @param influencer The influencer to add
  * @returns Response indicating success/failure
  */
 export async function addInfluencerToList(
-  listId: CampaignListId,
+  campaign_list_id: CampaignListId,
   influencer: Influencer,
   platformId: string,
 ): Promise<CampaignListMember> {
   try {
     // Transform the influencer data to match the expected API format
     const requestData: AddToListRequest = {
-      list_id: listId,
+      campaign_list_id: campaign_list_id,
       platform_id: platformId,
       social_data: {
         id: influencer.id || '',
@@ -183,13 +189,13 @@ export async function addInfluencerToList(
 
 /**
  * Get paginated members of a campaign list
- * @param listId The campaign list ID
+ * @param campaign_list_id The campaign list ID
  * @param page Page number (1-based)
  * @param pageSize Items per page
  * @returns Response with paginated list members
  */
 export async function getCampaignListMembers(
-  listId: CampaignListId,
+  campaign_list_id: CampaignListId,
   page: number = 1,
   pageSize: number = 10
 ): Promise<CampaignListMembersResponse> {
@@ -197,11 +203,11 @@ export async function getCampaignListMembers(
     const queryParams = new URLSearchParams({
       page: page.toString(),
       page_size: pageSize.toString(),
-      list_id: listId
+      list_id: campaign_list_id
     });
 
     const response = await apiClient.get<{
-      members: CampaignListMember[];
+      influencers: CampaignListMember[];
       pagination: PaginationInfo;
     }>(`${ENDPOINTS.CAMPAIGN_LISTS.LIST_MEMBERS('')}?${queryParams}`);
 
@@ -209,7 +215,7 @@ export async function getCampaignListMembers(
       console.error('Error fetching paginated campaign list members:', response.error);
       return { 
         success: false, 
-        members: [],
+        influencers: [],
         pagination: {
           page: 1,
           page_size: pageSize,
@@ -224,7 +230,7 @@ export async function getCampaignListMembers(
 
     return {
       success: true,
-      members: response.data?.members || [],
+      influencers: response.data?.influencers || [],
       pagination: response.data?.pagination || {
         page: 1,
         page_size: pageSize,
@@ -238,7 +244,7 @@ export async function getCampaignListMembers(
     console.error('Unexpected error fetching paginated campaign list members:', error);
     return {
       success: false,
-      members: [],
+      influencers: [],
       pagination: {
         page: 1,
         page_size: pageSize,
@@ -255,18 +261,16 @@ export async function getCampaignListMembers(
 
 /**
  * Remove an influencer from a campaign list
- * @param listId The campaign list ID
- * @param influencerId The influencer ID to remove
+ * @param campaignInfluencerId The influencer ID to remove
  * @returns Response indicating success/failure
  */
 export async function removeInfluencerFromList(
-  listId: CampaignListId,
-  influencerId: string
+  campaignInfluencerId: string
 ): Promise<{ success: boolean; message?: string }> {
   try {
     // Call the API using the unified API client
     const response = await apiClient.delete<{ success: boolean; message?: string }>(
-      `${ENDPOINTS.CAMPAIGN_LISTS.LIST_MEMBER_DELETE(influencerId)}`
+      `${ENDPOINTS.CAMPAIGN_LISTS.LIST_MEMBER_DELETE(campaignInfluencerId)}`
     );
 
     // Handle errors
@@ -294,18 +298,18 @@ export async function removeInfluencerFromList(
 
 /**
  * Check if an influencer is already in a campaign list
- * @param listId The campaign list ID
+ * @param campaign_list_id The campaign list ID
  * @param influencerId The influencer ID to check
  * @returns Boolean indicating if the influencer is in the list
  */
 export async function checkInfluencerInList(
-  listId: CampaignListId,
+  campaign_list_id: CampaignListId,
   influencerId: string
 ): Promise<boolean> {
   try {
     // Call the API using the unified API client
     const response = await apiClient.get<{ exists: boolean }>(
-      `/api/v0/campaign-list-members/${listId}/${influencerId}/check`
+      `/api/v0/campaign-list-members/${campaign_list_id}/${influencerId}/check`
     );
 
     // Handle errors

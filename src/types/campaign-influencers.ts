@@ -1,12 +1,13 @@
-// src/types/campaign-list-members.ts
+// src/types/campaign-influencers.ts - Updated with currency support
 
-export interface UpdateCampaignListMemberRequest {
+export interface UpdateCampaignInfluencerRequest {
   status_id?: string;
   contact_attempts?: number;
   last_contacted_at?: string;
   next_contact_at?: string;
   responded_at?: string;
-  collaboration_price?: number;
+  collaboration_price?: number | null;
+  currency?: string;
   notes?: string;
 }
 
@@ -46,6 +47,7 @@ export interface CampaignListMember {
   contact_attempts: number;
   next_contact_at: string | null;
   collaboration_price: number | null;
+  collaboration_currency?: string; // Added currency field
   last_contacted_at: string | null;
   responded_at: string | null;
   ready_to_onboard: boolean;
@@ -58,8 +60,21 @@ export interface CampaignListMember {
   social_account: CampaignListMemberSocialAccount;
 }
 
-export interface UpdateCampaignListMemberResponse {
+export interface UpdateCampaignInfluencerResponse {
   success: boolean;
   data?: CampaignListMember;
   error?: string;
+}
+
+// New response types for specific endpoints
+export interface UpdateStatusResponse {
+  success: boolean;
+  message: string;
+  influencer_id: string;
+}
+
+export interface UpdatePriceResponse {
+  success: boolean;
+  message: string;
+  influencer_id: string;
 }

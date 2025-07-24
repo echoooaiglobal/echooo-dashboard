@@ -199,14 +199,14 @@ function CampaignsPage() {
         />
 
         {/* Error Messages */}
-        {currentError && (
+        {/* {currentError && (
           <ErrorMessage
             message={currentError}
             title={`Error Loading ${isTrashView ? 'Deleted ' : ''}Campaigns`}
             onRetry={handleRetry}
             className="mb-6"
           />
-        )}
+        )} */}
 
         {deleteError && (
           <ErrorMessage

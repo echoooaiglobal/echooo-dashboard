@@ -107,7 +107,7 @@ const LookalikeAI: React.FC<LookalikeAIProps> = ({
     try {
       // Remove @ prefix if present for API call
       const cleanQuery = query.replace(/^@/, '');
-      const url = `/api/v0/discover/userhandles?q=${encodeURIComponent(cleanQuery)}&type=lookalike&limit=10`;
+      const url = `/api/v0/discover/userhandles?q=${encodeURIComponent(cleanQuery)}&type=search&limit=10`;
 
       console.log(`🎯 Searching ${type} lookalikes:`, url);
 

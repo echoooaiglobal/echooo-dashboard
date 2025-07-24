@@ -14,7 +14,7 @@ export const getPrimaryRole = (roles: Role[]): DetailedRole | null => {
  */
 export const getUserTypeFromRole = (detailedRole: DetailedRole): UserType => {
   if (detailedRole.startsWith('platform_')) return 'platform';
-  if (detailedRole.startsWith('company_')) return 'company';
+  if (detailedRole.startsWith('b2c_')) return 'company';
   if (detailedRole.startsWith('influencer')) return 'influencer';
   throw new Error(`Unknown role: ${detailedRole}`);
 };
@@ -148,7 +148,7 @@ export const getNavigationItemsForRole = (role: DetailedRole) => {
         { name: 'Reports', href: '/reports', icon: 'FileText' },
       ];
       
-    case 'company_admin':
+    case 'b2c_company_owner':
       return [
         ...baseItems,
         { name: 'Discover', href: '/discover', icon: 'Compass' },

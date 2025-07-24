@@ -1,27 +1,27 @@
-// src/app/api/v0/campaign-list-members/[memberId]/route.ts
+// src/app/api/v0/campaign-influencers/[id]/route.ts
 
 import { NextRequest, NextResponse } from 'next/server';
 import { 
-  updateCampaignListMemberServer, 
-  getCampaignListMemberServer 
-} from '@/services/campaign-list-members/campaign-list-members.server';
+  updateCampaignInfluencerServer, 
+  getCampaignInfluencerServer 
+} from '@/services/campaign-influencers/campaign-influencers.server';
 import { extractBearerToken } from '@/lib/auth-utils';
-import { UpdateCampaignListMemberRequest } from '@/types/campaign-list-members';
+import { UpdateCampaignInfluencerRequest } from '@/types/campaign-influencers';
 
 /**
- * GET /api/v0/campaign-list-members/[memberId]
+ * GET /api/v0/campaign-influencers/[id]
  * Get campaign list member by ID
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { memberId: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { memberId } = params;
+    const { id } = params;
     
-    console.log(`API Route: GET /api/v0/campaign-list-members/${memberId} called`);
+    console.log(`API Route: GET /api/v0/campaign-influencers/${id} called`);
     
-    if (!memberId) {
+    if (!id) {
       return NextResponse.json(
         { error: 'Member ID parameter is required' },
         { status: 400 }
@@ -42,9 +42,9 @@ export async function GET(
 
     console.log('API Route: Calling FastAPI backend...');
     // Call FastAPI backend through server-side service with auth token
-    const memberData = await getCampaignListMemberServer(memberId, authToken);
+    const memberData = await getCampaignInfluencerServer(id, authToken);
     
-    console.log(`API Route: Successfully fetched campaign list member ${memberId}`);
+    console.log(`API Route: Successfully fetched campaign list member ${id}`);
     return NextResponse.json(memberData);
   } catch (error) {
     console.error('API Route Error:', error);
@@ -64,19 +64,19 @@ export async function GET(
 }
 
 /**
- * PATCH /api/v0/campaign-list-members/[memberId]
- * Update campaign list member
+ * PATCH /api/v0/campaign-influencers/[id]
+ * Update campaign influencer
  */
-export async function PATCH(
+export async function PUT(
   request: NextRequest,
-  { params }: { params: { memberId: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { memberId } = params;
+    const { id } = params;
     
-    console.log(`API Route: PATCH /api/v0/campaign-list-members/${memberId} called`);
+    console.log(`API Route: PATCH /api/v0/campaign-influencers/${id} called`);
     
-    if (!memberId) {
+    if (!id) {
       return NextResponse.json(
         { error: 'Member ID parameter is required' },
         { status: 400 }
@@ -84,7 +84,7 @@ export async function PATCH(
     }
     
     // Parse request body
-    const updateData: UpdateCampaignListMemberRequest = await request.json();
+    const updateData: UpdateCampaignInfluencerRequest = await request.json();
     console.log('API Route: Update data:', updateData);
     
     // Basic validation
@@ -109,9 +109,9 @@ export async function PATCH(
 
     console.log('API Route: Calling FastAPI backend...');
     // Call FastAPI backend through server-side service with auth token
-    const updatedMember = await updateCampaignListMemberServer(memberId, updateData, authToken);
+    const updatedMember = await updateCampaignInfluencerServer(id, updateData, authToken);
     
-    console.log(`API Route: Successfully updated campaign list member ${memberId}`);
+    console.log(`API Route: Successfully updated campaign list member ${id}`);
     return NextResponse.json({
       success: true,
       data: updatedMember

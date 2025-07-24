@@ -1,4 +1,4 @@
-// src/app/(dashboard)/@company/dashboard/page.tsx - FIXED redirect loop
+// src/app/(dashboard)/@company/dashboard/page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -36,22 +36,24 @@ export default function CompanyDashboardPage() {
       try {
         // Different behavior based on company role
         switch (primaryRole) {
-          case 'company_admin':
-          case 'company_manager':
           case 'company_marketer':
+          case 'b2c_company_admin':
+          case 'company_manager':
+          case 'b2c_company_owner':
             // These roles should redirect to campaigns
             console.log('🔄 Company Dashboard: Redirecting marketing roles to campaigns');
             const company = getStoredCompany();
             
-            if (company && company.id) {
+            if (company && company.id) { console.log('🔍 Company Dashboard: Found company, fetching campaigns...');
               try {
                 const campaigns = await getCompanyCampaigns(company.id);
                 
-                if (campaigns && campaigns.length > 0) {
+                if (campaigns && campaigns.length > 0) { console.log('✅ Company Dashboard: Found campaigns, redirecting to /campaigns');
                   // Navigate to campaigns list page, not a specific campaign
                   console.log('✅ Company Dashboard: Found campaigns, redirecting to /campaigns');
                   router.push('/campaigns');
                 } else {
+                  console.warn('⚠️ Company Dashboard: No campaigns found, redirecting to create new campaign');
                   // No campaigns, redirect to create new campaign
                   console.log('📝 Company Dashboard: No campaigns found, redirecting to /campaigns/new');
                   router.push('/campaigns/new');
@@ -104,7 +106,7 @@ export default function CompanyDashboardPage() {
   // Show dashboard with role-specific welcome message
   const getRoleSpecificMessage = () => {
     switch (primaryRole) {
-      case 'company_admin':
+      case 'b2c_company_owner':
         return 'Manage your company campaigns and team.';
       case 'company_manager':
         return 'Oversee marketing operations and team performance.';

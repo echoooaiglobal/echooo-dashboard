@@ -19,19 +19,19 @@ export type AllowedStatusName =
   | 'contacted'
   | 'responded'
   | 'info_requested'
-  | 'info_received'
+  | 'completed'
   | 'declined'
   | 'inactive';
 
 // Helper function to filter allowed statuses
 export function filterAllowedStatuses(statuses: Status[]): Status[] {
   const allowedStatuses: AllowedStatusName[] = [
-    'discovered',
+    // 'discovered',
     'unreachable',
     'contacted',
     'responded',
     'info_requested',
-    'info_received',
+    'completed',
     'declined',
     'inactive'
   ];
@@ -54,7 +54,7 @@ export function getStatusDisplayConfig(statusName: string) {
       return { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Responded' };
     case 'info_requested':
       return { bg: 'bg-indigo-100', text: 'text-indigo-800', label: 'Info Requested' };
-    case 'info_received':
+    case 'completed':
       return { bg: 'bg-cyan-100', text: 'text-cyan-800', label: 'Info Received' };
     case 'declined':
       return { bg: 'bg-red-100', text: 'text-red-800', label: 'Declined' };
