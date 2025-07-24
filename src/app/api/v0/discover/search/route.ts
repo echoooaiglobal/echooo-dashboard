@@ -187,7 +187,7 @@ export async function POST(request: Request) {
         average_views: item.average_views,
         contact_details: item.contact_details,
         content_count: item.content_count,
-        creator_locations: item.creator_locations,
+        creator_location: item.creator_location,
         external_id: item.external_id,
         gender: item.gender,
         introduction: item.introduction,
@@ -196,6 +196,8 @@ export async function POST(request: Request) {
         platform_account_type: item.platform_account_type,
         subscriber_count: item.subscriber_count,
         url: item.url,
+        filter_match: item.filter_match,
+        
         work_platform: {
           id: item.work_platform?.id,
           name: item.work_platform?.name,
@@ -209,6 +211,7 @@ export async function POST(request: Request) {
         metadata: data.metadata,
         total: influencers.length,
         cached: false,
+        alldata:data.data,
         cacheKey: cacheKey.substring(0, 16) + '...' // For debugging
       };
 
