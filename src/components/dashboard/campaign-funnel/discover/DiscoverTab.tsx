@@ -59,7 +59,7 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
     const baseParams: Partial<InfluencerSearchFilter> = {
       work_platform_id: "9bb8913b-ddd9-430b-a66a-d74d846e6c66",
       sort_by: { field: "FOLLOWER_COUNT", order: "DESCENDING" },
-      limit: 10, offset: 0, post_type: "ALL",
+      limit: 3, offset: 0, post_type: "ALL",
     };
     
     // Only add default values if defaultFilters is true

@@ -189,6 +189,44 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
     }));
   };
 
+  // NEW: Prepare Gender-Age Pie Data with enhanced colors and animations
+  const prepareGenderAgePieData = () => {
+    if (!profile?.audience?.gender_age_distribution) return [];
+    
+    // Define colors for different age ranges and genders
+    const colorScheme = {
+      'MALE': {
+        '13-17': '#1E3A8A', // Dark Blue
+        '18-24': '#3B82F6', // Blue
+        '25-34': '#60A5FA', // Light Blue
+        '35-44': '#93C5FD', // Lighter Blue
+        '45-64': '#DBEAFE'  // Very Light Blue
+      },
+      'FEMALE': {
+        '13-17': '#BE185D', // Dark Pink
+        '18-24': '#EC4899', // Pink
+        '25-34': '#F472B6', // Light Pink
+        '35-44': '#F9A8D4', // Lighter Pink
+        '45-64': '#FCE7F3'  // Very Light Pink
+      }
+    };
+    
+    return profile.audience.gender_age_distribution.map((item, index) => ({
+      id: `${item.gender}-${item.age_range}`,
+      label: `${item.gender === 'MALE' ? 'Male' : 'Female'} ${item.age_range}`,
+      value: item.value,
+      color: colorScheme[item.gender as keyof typeof colorScheme]?.[item.age_range as keyof typeof colorScheme['MALE']] || '#6B7280',
+      gender: item.gender,
+      ageRange: item.age_range
+    })).sort((a, b) => {
+      // Sort by age range first, then by gender (Male first)
+      const ageOrder = ['13-17', '18-24', '25-34', '35-44', '45-64'];
+      const ageComparison = ageOrder.indexOf(a.ageRange) - ageOrder.indexOf(b.ageRange);
+      if (ageComparison !== 0) return ageComparison;
+      return a.gender === 'MALE' ? -1 : 1;
+    });
+  };
+
   const prepareGenderAgeBarData = () => {
     if (!profile?.audience?.gender_age_distribution) return [];
     
@@ -268,203 +306,155 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
     return sortedData;
   };
 
-  // NEW: Prepare pyramid data for follower reachability
-  const preparePyramidData = () => {
+  // NEW: Prepare horizontal bar data for follower reachability
+  const prepareHorizontalBarData = () => {
     const reachabilityData = profile?.audience?.follower_reachability || [];
     
-    // Sort data by following range (ascending order for pyramid)
-    const sortedData = [...reachabilityData].sort((a, b) => {
-      // Custom sort order for following ranges
-      const order: { [key: string]: number } = {
-        '-500': 1,
-        '500-1000': 2,
-        '1000-1500': 3,
-        '1500-': 4
+    // Define specific order: Green at bottom, Red at top
+    const displayOrder = [
+      { range: '1000-1500', color: '#EF4444' },    // Red - Top position
+      { range: 'Over 1,500', color: '#F97316' },   // Orange - Second from top  
+      { range: '500-1000', color: '#EAB308' },     // Yellow - Third from top
+      { range: 'Under 500', color: '#22C55E' }     // Green - Bottom position
+    ];
+    
+    return displayOrder.map((orderItem, index) => {
+      // Find matching data by checking all possible range formats
+      const dataItem = reachabilityData.find(item => {
+        const itemLabel = item.following_range === '-500' ? 'Under 500' :
+                         item.following_range === '1500-' ? 'Over 1,500' :
+                         item.following_range === '500-1000' ? '500-1000' :
+                         item.following_range === '1000-1500' ? '1000-1500' :
+                         item.following_range;
+        return itemLabel === orderItem.range || 
+               (orderItem.range === '500-1000' && item.following_range === '500-1000') ||
+               (orderItem.range === '1000-1500' && item.following_range === '1000-1500');
+      });
+      
+      return {
+        id: dataItem?.following_range || orderItem.range,
+        label: orderItem.range,
+        value: dataItem?.value || 0,
+        color: orderItem.color,
+        index: index
       };
-      return (order[a.following_range] || 0) - (order[b.following_range] || 0);
     });
-
-    return sortedData.map((item, index) => ({
-      label: item.following_range === '-500' ? 'Under 500' :
-             item.following_range === '1500-' ? 'Over 1500' :
-             item.following_range,
-      value: item.value || 0,
-      level: index + 1,
-      color: `hsl(${120 + (index * 60)}, 70%, ${60 - (index * 5)}%)` // Different shades
-    }));
   };
 
-  // NEW: Fixed Pyramid Chart with Proper Text Display
-  const PyramidChart = () => {
-    const pyramidData = preparePyramidData();
+  // NEW: Updated Horizontal Bar Chart Component
+  const HorizontalBarChart = () => {
+    const barData = prepareHorizontalBarData();
     
-    // Define professional colors for pyramid levels
-    const pyramidColors = [
-      '#22C55E', // Green (smallest - top)
-      '#EAB308', // Yellow
-      '#F97316', // Orange  
-      '#EF4444'  // Red (largest - bottom)
-    ];
-
-    // Sort data by value (ascending) so smallest is at top, largest at bottom
-    const sortedData = [...pyramidData].sort((a, b) => a.value - b.value);
-
     return (
-      <div className="w-full h-full py-4">
-        {/* True Pyramid Chart */}
-        <div className="flex flex-col items-center space-y-0.5 mb-6">
-          {sortedData.map((level, index) => {
-            // Calculate pyramid widths
-            const baseWidth = 320; // Increased for better text visibility
-            const topWidth = 120;   // Increased minimum width
-            const totalLevels = sortedData.length;
-            
-            // Calculate width progression for pyramid shape
-            const widthStep = (baseWidth - topWidth) / (totalLevels - 1);
-            const currentWidth = topWidth + (index * widthStep);
-            
-            const height = 50; // Increased height for better text space
-            
-            return (
-              <div 
-                key={index}
-                className="relative group transform transition-all duration-500 hover:scale-105 hover:z-10"
-                style={{ 
-                  animation: `pyramidSlideIn 0.8s ease-out ${index * 0.2}s both`,
-                  width: `${currentWidth}px`,
-                  height: `${height}px`
-                }}
-              >
-                {/* Main Pyramid Section */}
-                <div
-                  className="relative w-full h-full cursor-pointer overflow-hidden"
-                  style={{
-                    backgroundColor: pyramidColors[index] || '#6B7280',
-                    clipPath: index === 0 
-                      ? 'polygon(25% 0%, 75% 0%, 100% 100%, 0% 100%)' // Top (trapezoid)
-                      : index === sortedData.length - 1
-                      ? 'polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)' // Bottom (rectangle)
-                      : `polygon(${15 - (index * 3)}% 0%, ${85 + (index * 3)}% 0%, 100% 100%, 0% 100%)`, // Progressive trapezoids
-                    borderRadius: '8px',
-                    boxShadow: '0 6px 20px rgba(0, 0, 0, 0.15)',
-                    transform: 'translateZ(0)', // Hardware acceleration
-                    animation: `pyramidExpand 1s ease-out ${index * 0.2 + 0.4}s both`
-                  }}
-                >
-                  {/* Animated Background Gradient */}
-                  <div 
-                    className="absolute inset-0 opacity-30 group-hover:opacity-50 transition-opacity duration-500"
+      <div className="w-full h-full">
+        {/* Custom Horizontal Bar Chart */}
+        <div className="space-y-3 py-4">
+          {barData.map((item, index) => (
+            <div 
+              key={item.id}
+              className="group relative"
+              style={{ 
+                animation: `slideInLeft 0.8s ease-out ${index * 0.2}s both` 
+              }}
+            >
+              {/* Bar Container */}
+              <div className="flex items-center space-x-4">
+                {/* Label */}
+                <div className="w-20 text-right">
+                  <div className="text-sm font-medium text-gray-700 group-hover:text-gray-900 transition-colors duration-300">
+                    {item.label}
+                  </div>
+                </div>
+                
+                {/* Bar Track */}
+                <div className="flex-1 relative rounded-full h-8 overflow-hidden">
+                  {/* Animated Bar */}
+                  <div
+                    className="h-full rounded-full transition-all duration-1000 ease-out group-hover:brightness-110 relative overflow-hidden"
                     style={{
-                      background: `linear-gradient(135deg, 
-                        rgba(255,255,255,0.4) 0%, 
+                      width: `${Math.max(item.value, 8)}%`, // Minimum 8% width for better text visibility
+                      backgroundColor: item.color,
+                      backgroundImage: `linear-gradient(45deg, 
+                        rgba(255,255,255,0.1) 25%, 
+                        transparent 25%, 
+                        transparent 50%, 
                         rgba(255,255,255,0.1) 50%, 
-                        rgba(0,0,0,0.1) 100%)`,
-                      clipPath: 'inherit'
+                        rgba(255,255,255,0.1) 75%, 
+                        transparent 75%, 
+                        transparent)`,
+                      backgroundSize: '20px 20px',
+                      animation: `barExpand 1.2s ease-out ${index * 0.3 + 0.5}s both, shimmer 3s ease-in-out ${index * 0.5 + 2}s infinite`,
+                      boxShadow: `0 2px 8px ${item.color}40, inset 0 1px 0 rgba(255,255,255,0.3)`
                     }}
-                  ></div>
+                  >
+                    {/* Shine Effect */}
+                    <div 
+                      className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                      style={{
+                        background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%)',
+                        animation: 'shine 2s ease-in-out infinite'
+                      }}
+                    ></div>
+                    
+                    {/* Percentage Text */}
+                    <div className="absolute inset-0 flex items-center justify-center px-2">
+                      <span 
+                        className="text-white font-bold text-sm drop-shadow-lg text-center"
+                        style={{ 
+                          textShadow: '0 1px 3px rgba(0,0,0,0.8)',
+                          animation: `textFadeIn 1s ease-out ${index * 0.3 + 1}s both`,
+                          minWidth: 'fit-content',
+                          whiteSpace: 'nowrap',
+                          zIndex: 10
+                        }}
+                      >
+                        {item.value.toFixed(1)}%
+                      </span>
+                    </div>
+                  </div>
                   
                   {/* Hover Glow Effect */}
                   <div 
-                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-all duration-500"
+                    className="absolute inset-0 opacity-0 group-hover:opacity-30 transition-opacity duration-500 pointer-events-none rounded-full"
                     style={{
-                      background: `radial-gradient(circle at center, 
-                        rgba(255,255,255,0.3) 0%, 
-                        rgba(255,255,255,0.1) 50%, 
-                        transparent 100%)`,
-                      clipPath: 'inherit',
-                      filter: 'blur(1px)'
+                      background: `radial-gradient(ellipse at center, ${item.color}60 0%, transparent 70%)`,
+                      filter: 'blur(4px)'
                     }}
                   ></div>
-                  
-                  {/* Text Content - Properly Positioned */}
-                  <div className="absolute inset-0 flex items-center justify-center px-4 z-20">
-                    <div className="text-center w-full">
-                      {/* Label */}
-                      <div 
-                        className="text-white font-bold drop-shadow-lg mb-1"
-                        style={{ 
-                          fontSize: currentWidth > 200 ? '14px' : '12px',
-                          animation: `textFadeIn 1s ease-out ${index * 0.2 + 0.8}s both`,
-                          textShadow: '0 2px 4px rgba(0,0,0,0.5)'
-                        }}
-                      >
-                        {level.label}
-                      </div>
-                      
-                      {/* Percentage */}
-                      <div 
-                        className="text-white font-black drop-shadow-lg"
-                        style={{ 
-                          fontSize: currentWidth > 200 ? '18px' : '16px',
-                          animation: `textFadeIn 1s ease-out ${index * 0.2 + 1}s both`,
-                          textShadow: '0 2px 4px rgba(0,0,0,0.7)'
-                        }}
-                      >
-                        {level.value.toFixed(1)}%
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Animated Shine Effect */}
-                  <div 
-                    className="absolute inset-0 pointer-events-none group-hover:animate-pulse"
-                    style={{
-                      background: 'linear-gradient(45deg, transparent 20%, rgba(255,255,255,0.4) 50%, transparent 80%)',
-                      clipPath: 'inherit',
-                      transform: 'translateX(-100%)',
-                      animation: `shineMove 3s ease-in-out ${index * 0.5 + 2}s infinite`
-                    }}
-                  ></div>
-                  
-                  {/* Floating Particles Effect */}
-                  <div className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-700">
-                    {[...Array(3)].map((_, i) => (
-                      <div
-                        key={i}
-                        className="absolute w-1 h-1 bg-white rounded-full"
-                        style={{
-                          left: `${20 + (i * 30)}%`,
-                          top: `${30 + (i * 20)}%`,
-                          animation: `floatUp 2s ease-out ${i * 0.3}s infinite`
-                        }}
-                      ></div>
-                    ))}
-                  </div>
                 </div>
                 
-                {/* Enhanced Hover Tooltip */}
-                <div className="absolute -top-16 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-all duration-500 pointer-events-none z-30">
-                  <div className="bg-gray-900 text-white text-sm px-4 py-3 rounded-xl shadow-2xl border border-gray-700">
-                    <div className="text-center">
-                      <div className="font-bold text-yellow-300 mb-1">{level.value.toFixed(1)}% of audience</div>
-                      <div className="text-xs text-gray-300">follows {level.label} accounts</div>
-                    </div>
-                    {/* Tooltip Arrow */}
-                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-t-8 border-transparent border-t-gray-900"></div>
-                  </div>
-                </div>
-                
-                {/* Progress Ring Animation */}
-                <div className="absolute -inset-2 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
+                {/* Value Display */}
+                <div className="w-16 text-left">
                   <div 
-                    className="w-full h-full border-2 border-white/50 rounded-lg"
-                    style={{
-                      clipPath: 'inherit',
-                      animation: `ringPulse 2s ease-in-out infinite`
-                    }}
-                  ></div>
+                    className="text-sm font-bold group-hover:scale-110 transition-transform duration-300"
+                    style={{ color: item.color }}
+                  >
+                    {item.value.toFixed(1)}%
+                  </div>
                 </div>
               </div>
-            );
-          })}
+              
+              {/* Enhanced Hover Tooltip */}
+              <div className="absolute left-1/2 bottom-full mb-2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-all duration-500 pointer-events-none z-30">
+                <div className="bg-gray-900 text-white text-xs px-4 py-3 rounded-xl shadow-2xl border border-gray-700 whitespace-nowrap">
+                  <div className="text-center">
+                    <div className="font-bold text-yellow-300 mb-1">{item.value.toFixed(1)}% of audience</div>
+                    <div className="text-gray-300">follows {item.label} accounts</div>
+                  </div>
+                  {/* Tooltip Arrow */}
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
         
-        {/* Enhanced Legend with Animation */}
-        <div className="border-t border-gray-200 pt-4">
-          <div className="grid grid-cols-2 gap-4">
-            {sortedData.map((level, index) => (
+        {/* Enhanced Legend */}
+        <div className="border-t border-gray-200 pt-6 mt-4 mb-12">
+          <div className="grid grid-cols-2 gap-3 pb-8">
+            {barData.map((item, index) => (
               <div 
-                key={index}
+                key={item.id}
                 className="flex items-center justify-between p-3 rounded-xl hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 transition-all duration-300 cursor-pointer group border border-transparent hover:border-gray-200 hover:shadow-md"
                 style={{ 
                   animation: `legendSlideIn 0.6s ease-out ${index * 0.15 + 1.8}s both` 
@@ -474,17 +464,17 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
                   <div 
                     className="w-4 h-4 rounded-md flex-shrink-0 group-hover:scale-125 transition-all duration-300 shadow-lg"
                     style={{ 
-                      backgroundColor: pyramidColors[index] || '#6B7280',
-                      boxShadow: `0 0 20px ${pyramidColors[index]}40`
+                      backgroundColor: item.color,
+                      boxShadow: `0 0 20px ${item.color}40`
                     }}
                   ></div>
                   <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900 transition-colors duration-300">
-                    {level.label}
+                    {item.label}
                   </span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <span className="text-sm font-bold text-gray-900 group-hover:text-black transition-colors duration-300">
-                    {level.value.toFixed(1)}%
+                    {item.value.toFixed(1)}%
                   </span>
                   <div className="w-2 h-2 rounded-full bg-gray-300 group-hover:bg-gray-500 transition-colors duration-300"></div>
                 </div>
@@ -495,70 +485,55 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
         
         {/* Enhanced CSS Animations */}
         <style jsx>{`
-          @keyframes pyramidSlideIn {
+          @keyframes slideInLeft {
             from {
-              transform: translateY(-30px) scale(0.8);
+              transform: translateX(-100px);
               opacity: 0;
             }
             to {
-              transform: translateY(0) scale(1);
+              transform: translateX(0);
               opacity: 1;
             }
           }
           
-          @keyframes pyramidExpand {
+          @keyframes barExpand {
             from {
-              transform: scaleX(0.3) scaleY(0.1);
-              transform-origin: bottom center;
+              width: 0 !important;
             }
             to {
-              transform: scaleX(1) scaleY(1);
-              transform-origin: bottom center;
+              width: ${({ value }) => Math.max(value, 2)}% !important;
             }
           }
           
           @keyframes textFadeIn {
             from {
               opacity: 0;
-              transform: translateY(10px);
+              transform: translateX(10px);
             }
             to {
               opacity: 1;
-              transform: translateY(0);
+              transform: translateX(0);
             }
           }
           
-          @keyframes shineMove {
+          @keyframes shine {
             0% {
-              transform: translateX(-100%) skewX(-15deg);
+              transform: translateX(-100%);
             }
             50% {
-              transform: translateX(0%) skewX(-15deg);
+              transform: translateX(0%);
             }
             100% {
-              transform: translateX(100%) skewX(-15deg);
+              transform: translateX(100%);
             }
           }
           
-          @keyframes floatUp {
-            0% {
-              transform: translateY(0) scale(0);
-              opacity: 1;
-            }
-            100% {
-              transform: translateY(-20px) scale(1);
-              opacity: 0;
-            }
-          }
-          
-          @keyframes ringPulse {
+          @keyframes shimmer {
             0%, 100% {
-              transform: scale(1);
-              opacity: 0.5;
+              background-position-x: -100%;
             }
             50% {
-              transform: scale(1.05);
-              opacity: 0.8;
+              background-position-x: 100%;
             }
           }
           
@@ -655,10 +630,10 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
             <Users className="w-5 h-5 mr-2" />
             Gender Distribution
           </h4>
-          <div className="h-80">
+          <div className="h-96">
             <ResponsivePie
               data={prepareGenderPieData()}
-              margin={{ top: 40, right: 80, bottom: 80, left: 80 }}
+              margin={{ top: 20, right: 60, bottom: 20, left: 60 }}
               innerRadius={0.4}
               padAngle={3}
               cornerRadius={4}
@@ -670,20 +645,18 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
               arcLinkLabelsTextColor="#374151"
               arcLinkLabelsThickness={3}
               arcLinkLabelsColor={{ from: 'color' }}
-              arcLabelsSkipAngle={10}
-              arcLabelsTextColor="#FFFFFF"
+              enableArcLabels={false}
               arcLinkLabel={(d) => `${d.id}: ${d.value.toFixed(1)}%`}
-              arcLabel={(d) => `${d.value.toFixed(1)}%`}
               theme={{
                 text: {
-                  fontSize: 16,
+                  fontSize: 12,
                   fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
                 },
                 tooltip: {
                   container: {
                     background: '#1F2937',
                     color: '#F9FAFB',
-                    fontSize: '16px',
+                    fontSize: '14px',
                     borderRadius: '8px',
                     boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
                     border: 'none'
@@ -738,10 +711,10 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
             <Users className="w-5 h-5 mr-2" />
             Age Distribution
           </h4>
-          <div className="h-80">
+          <div className="h-96">
             <ResponsivePie
               data={prepareAgePieData()}
-              margin={{ top: 40, right: 80, bottom: 80, left: 80 }}
+              margin={{ top: 20, right: 60, bottom: 20, left: 60 }}
               innerRadius={0.4}
               padAngle={2}
               cornerRadius={4}
@@ -753,20 +726,18 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
               arcLinkLabelsTextColor="#374151"
               arcLinkLabelsThickness={3}
               arcLinkLabelsColor={{ from: 'color' }}
-              arcLabelsSkipAngle={10}
-              arcLabelsTextColor="#FFFFFF"
+              enableArcLabels={false}
               arcLinkLabel={(d) => `${d.id}: ${d.value.toFixed(1)}%`}
-              arcLabel={(d) => `${d.value.toFixed(1)}%`}
               theme={{
                 text: {
-                  fontSize: 16,
+                  fontSize: 12,
                   fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
                 },
                 tooltip: {
                   container: {
                     background: '#1F2937',
                     color: '#F9FAFB',
-                    fontSize: '16px',
+                    fontSize: '14px',
                     borderRadius: '8px',
                     boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
                     border: 'none'
@@ -813,163 +784,118 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
         </div>
       </div>
 
-      {/* Gender Breakdown by Age and Audience Quality */}
+      {/* Gender Breakdown by Age (NOW PIE CHART) and Audience Quality */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Gender breakdown by age - Vertical Bar Chart */}
+        {/* Gender breakdown by age - Updated to Pie Chart with Enhanced Styling */}
         <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-          <h4 className="text-lg font-semibold mb-4 flex items-center">
+          <h4 className="text-lg font-semibold mb-4 flex items-center group">
             <Users className="w-5 h-5 mr-2" />
             Gender Breakdown by Age
+            <div className="relative ml-2">
+              <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs cursor-help group-hover:bg-gray-500 transition-colors">
+                ?
+              </div>
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+                <div className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+                  Detailed breakdown showing gender distribution across different age groups
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                </div>
+              </div>
+            </div>
           </h4>
-          <div className="h-80">
-            <ResponsiveBar
-              data={prepareGenderAgeBarData()}
-              keys={['Male', 'Female']}
-              indexBy="ageRange"
-              margin={{ top: 50, right: 130, bottom: 50, left: 80 }}
-              padding={0.02}
-              groupMode="grouped"
-              innerPadding={3}
-              valueScale={{ type: 'linear' }}
-              indexScale={{ type: 'band', round: true }}
-              colors={['#3B82F6', '#EC4899']}
-              defs={[
-                {
-                  id: 'maleGradient',
-                  type: 'linearGradient',
-                  colors: [
-                    { offset: 0, color: '#3B82F6' },
-                    { offset: 100, color: '#1D4ED8' }
-                  ]
-                },
-                {
-                  id: 'femaleGradient',
-                  type: 'linearGradient',
-                  colors: [
-                    { offset: 0, color: '#EC4899' },
-                    { offset: 100, color: '#DB2777' }
-                  ]
-                }
-              ]}
-              fill={[
-                {
-                  match: {
-                    id: 'Male'
-                  },
-                  id: 'maleGradient'
-                },
-                {
-                  match: {
-                    id: 'Female'
-                  },
-                  id: 'femaleGradient'
-                }
-              ]}
-              borderRadius={4}
-              borderWidth={1}
+          <div className="h-96">
+            <ResponsivePie
+              data={prepareGenderAgePieData()}
+              margin={{ top: 20, right: 60, bottom: 20, left: 60 }}
+              innerRadius={0.5}
+              padAngle={1.5}
+              cornerRadius={6}
+              activeOuterRadiusOffset={15}
+              colors={({ data }) => data.color}
+              borderWidth={2}
               borderColor={{ from: 'color', modifiers: [['darker', 0.2]] }}
-              axisTop={null}
-              axisRight={null}
-              axisBottom={{
-                tickSize: 5,
-                tickPadding: 8,
-                tickRotation: 0,
-                legend: 'Age Range',
-                legendPosition: 'middle',
-                legendOffset: 32
-              }}
-              axisLeft={{
-                tickSize: 5,
-                tickPadding: 12,
-                tickRotation: 0,
-                legend: 'Percentage (%)',
-                legendPosition: 'middle',
-                legendOffset: -60,
-                format: value => `${value}%`
-              }}
-              enableLabel={true}
-              label={d => `${(d.value ?? 0).toFixed(1)}%`}
-              labelSkipWidth={8}
-              labelSkipHeight={8}
-              labelTextColor="#ffffff"
-              labelFormat={(value) => `${Number(value).toFixed(1)}%`}
-              legends={[
-                {
-                  dataFrom: 'keys',
-                  anchor: 'bottom-right',
-                  direction: 'column',
-                  justify: false,
-                  translateX: 120,
-                  translateY: 0,
-                  itemsSpacing: 4,
-                  itemWidth: 100,
-                  itemHeight: 20,
-                  itemDirection: 'left-to-right',
-                  itemOpacity: 0.85,
-                  symbolSize: 20,
-                  effects: [
-                    {
-                      on: 'hover',
-                      style: {
-                        itemOpacity: 1
-                      }
-                    }
-                  ]
-                }
-              ]}
+              
+              // Enhanced arc link labels
+              arcLinkLabelsSkipAngle={8}
+              arcLinkLabelsTextColor="#374151"
+              arcLinkLabelsThickness={2}
+              arcLinkLabelsColor={{ from: 'color', modifiers: [['darker', 0.4]] }}
+              arcLinkLabel={(d) => `${d.data.label}: ${d.value.toFixed(1)}%`}
+              
+              // Arc labels (on slices) - REMOVED
+              enableArcLabels={false}
+              
+              // Enhanced animations
               animate={true}
-              motionConfig="gentle"
+              motionConfig={{
+                mass: 1,
+                tension: 120,
+                friction: 14,
+                clamp: false,
+                precision: 0.01,
+                velocity: 0
+              }}
+              
+              // Custom theme
               theme={{
-                background: 'transparent',
                 text: {
-                  fontSize: 14,
-                  fill: '#374151',
+                  fontSize: 11,
                   fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
-                  fontWeight: 700
+                  fontWeight: 600
                 },
-                axis: {
-                  domain: {
-                    line: {
-                      stroke: '#e5e7eb',
-                      strokeWidth: 1
-                    }
-                  },
-                  legend: {
-                    text: {
-                      fontSize: 15,
-                      fill: '#6b7280',
-                      fontWeight: 700
-                    }
-                  },
-                  ticks: {
-                    line: {
-                      stroke: '#e5e7eb',
-                      strokeWidth: 1
-                    },
-                    text: {
-                      fontSize: 13,
-                      fill: '#6b7280',
-                      fontWeight: 700
-                    }
-                  }
-                },
-                grid: {
-                  line: {
-                    stroke: '#f3f4f6',
-                    strokeWidth: 1
+                tooltip: {
+                  container: {
+                    background: 'linear-gradient(135deg, #1F2937 0%, #111827 100%)',
+                    color: '#F9FAFB',
+                    fontSize: '13px',
+                    borderRadius: '12px',
+                    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.1)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    backdropFilter: 'blur(8px)'
                   }
                 }
               }}
-              tooltip={({ id, value, indexValue }) => (
-                <div className="bg-gray-800 text-white p-3 rounded-lg shadow-lg">
-                  <div className="flex items-center space-x-3">
-                    <div className="font-bold text-sm">{indexValue} years - {id}</div>
-                    <div className="text-blue-300 font-bold text-sm">{value.toFixed(1)}%</div>
+              
+              // Enhanced Custom Tooltip
+              tooltip={({ datum }) => (
+                <div className="bg-gradient-to-br from-gray-800 to-gray-900 text-white p-4 rounded-xl shadow-2xl border border-gray-600 backdrop-blur-sm">
+                  <div className="flex items-center space-x-3 mb-2">
+                    <div 
+                      className="w-4 h-4 rounded-full shadow-lg"
+                      style={{ 
+                        backgroundColor: datum.color,
+                        boxShadow: `0 0 10px ${datum.color}50`
+                      }}
+                    ></div>
+                    <div className="font-bold text-sm text-white">{datum.data.label}</div>
+                  </div>
+                  <div className="flex items-center justify-between space-x-4">
+                    <span className="text-gray-300 text-xs">Percentage:</span>
+                    <span className="text-blue-300 font-bold text-sm">{datum.value.toFixed(1)}%</span>
+                  </div>
+                  <div className="mt-2 pt-2 border-t border-gray-600">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2 h-2 rounded-full bg-gradient-to-r from-blue-400 to-purple-500"></div>
+                      <span className="text-xs text-gray-400">
+                        {datum.data.gender === 'MALE' ? '👨' : '👩'} {datum.data.ageRange} years
+                      </span>
+                    </div>
                   </div>
                 </div>
               )}
+              
+              // Interactive features
+              isInteractive={true}
+              onMouseEnter={(datum, event) => {
+                // Add subtle glow effect on hover (handled by CSS)
+              }}
+              
+              // Custom legends (positioned at bottom right) - REMOVED
+              // legends={[...]}
             />
           </div>
+          
+          {/* Custom Legend Below Chart - REMOVED */}
         </div>
 
         {/* Audience Quality - Removed Credibility Score */}
@@ -1308,7 +1234,7 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
           </div>
         </div>
 
-        {/* NEW: Follower Reachability - Updated with Pyramid Chart */}
+        {/* NEW: Follower Reachability - Updated with Horizontal Bar Chart */}
         <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
           <h3 className="text-lg font-semibold mb-4 flex items-center group">
             <Eye className="w-5 h-5 mr-2" />
@@ -1326,9 +1252,9 @@ const AudienceSection: React.FC<AudienceSectionProps> = ({
             </div>
           </h3>
           
-          {/* Compact Pyramid Chart Implementation */}
-          <div className="h-80 w-full overflow-hidden">
-            <PyramidChart />
+          {/* Horizontal Bar Chart Implementation */}
+          <div className="h-96 w-full overflow-hidden pb-8">
+            <HorizontalBarChart />
           </div>
         </div>
       </div>
