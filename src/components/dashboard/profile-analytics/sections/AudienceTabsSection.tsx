@@ -6,7 +6,7 @@ import { Users, Heart, MessageCircle } from 'lucide-react';
 import { Profile } from '@/types/insightiq/profile-analytics';
 import AudienceSection from './AudienceSection';
 import AudienceLikersSection from './AudienceLikersSection';
-import AudienceCommentersSection from './AudienceCommentersSection';
+// import AudienceCommentersSection from './AudienceCommentersSection';
 
 interface ProfileData {
   audience: Profile['audience'];
@@ -28,19 +28,19 @@ const AudienceTabsSection: React.FC<AudienceTabsSectionProps> = ({
   const tabs = [
     {
       id: 'overview',
-      label: 'Overall Audience',
+      label: 'Followers',
       icon: Users
     },
     {
       id: 'likers',
-      label: 'Active Likers',
+      label: 'Non Followers',
       icon: Heart
     },
-    {
-      id: 'commenters',
-      label: 'Commenters',
-      icon: MessageCircle
-    }
+    // {
+    //   id: 'commenters',
+    //   label: 'Commenters',
+    //   icon: MessageCircle
+    // }
   ];
 
   return (
@@ -80,9 +80,9 @@ const AudienceTabsSection: React.FC<AudienceTabsSectionProps> = ({
         {activeTab === 'likers' && (
           <AudienceLikersSection profile={profile} formatNumber={formatNumber} />
         )}
-        {activeTab === 'commenters' && (
+        {/* {activeTab === 'commenters' && (
           <AudienceCommentersSection profile={profile} formatNumber={formatNumber} />
-        )}
+        )} */}
       </div>
     </div>
   );
