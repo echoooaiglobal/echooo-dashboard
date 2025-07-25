@@ -48,6 +48,10 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
   const [influencersSortBy, setInfluencersSortBy] = useState<'engagement' | 'views' | 'followers' | 'posts'>('engagement');
   const [influencersFilterBy, setInfluencersFilterBy] = useState<'all' | 'verified' | 'top-performers'>('all');
   
+  // Pagination states for posts
+  const [currentPage, setCurrentPage] = useState(1);
+  const [postsPerPage, setPostsPerPage] = useState(20);
+  
   const exportContentRef = useRef<HTMLDivElement>(null);
 
   const getProxiedImageUrl = (originalUrl: string): string => {
@@ -213,6 +217,28 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
     });
     
     return filtered;
+  };
+
+  // Pagination logic for posts
+  const getPaginatedPosts = () => {
+    const filteredPosts = getFilteredAndSortedPosts();
+    const startIndex = (currentPage - 1) * postsPerPage;
+    const endIndex = startIndex + postsPerPage;
+    return {
+      posts: filteredPosts.slice(startIndex, endIndex),
+      totalPosts: filteredPosts.length,
+      totalPages: Math.ceil(filteredPosts.length / postsPerPage)
+    };
+  };
+
+  // Reset to first page when filters change
+  const handleFilterChange = (filterType: 'sort' | 'filter', value: string) => {
+    setCurrentPage(1);
+    if (filterType === 'sort') {
+      setPostsSortBy(value as any);
+    } else {
+      setPostsFilterBy(value as any);
+    }
   };
 
   // Filter and sort functions for influencers
@@ -622,8 +648,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
           .sort((a, b) => b.totalEngagement - a.totalEngagement);
 
         const topPosts = allPostsData
-          .sort((a, b) => b.totalEngagement - a.totalEngagement)
-          .slice(0, 20);
+          .sort((a, b) => b.totalEngagement - a.totalEngagement);
 
         const totalPosts = results.length;
         const totalInfluencers = influencerGroups.size;
@@ -711,6 +736,8 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
       </div>
     );
   }
+
+  const { posts: paginatedPosts, totalPosts, totalPages } = getPaginatedPosts();
 
   return (
     <div className="pt-4 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 min-h-screen">
@@ -847,7 +874,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
         {/* Detailed Insights Section */}
         <DetailedInsights analyticsData={analyticsData} />
 
-        {/* Top Performing Posts Section */}
+        {/* Top Performing Posts Section - UPDATED with smaller cards and pagination */}
         <div className="mb-8">
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between mb-6">
@@ -857,7 +884,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                 <div className="flex items-center space-x-2 no-print">
                   <select
                     value={postsFilterBy}
-                    onChange={(e) => setPostsFilterBy(e.target.value as any)}
+                    onChange={(e) => handleFilterChange('filter', e.target.value)}
                     className="text-xs border border-gray-300 rounded-lg px-3 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="all">All Posts</option>
@@ -866,7 +893,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                   </select>
                   <select
                     value={postsSortBy}
-                    onChange={(e) => setPostsSortBy(e.target.value as any)}
+                    onChange={(e) => handleFilterChange('sort', e.target.value)}
                     className="text-xs border border-gray-300 rounded-lg px-3 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="engagement">Sort by Engagement</option>
@@ -874,6 +901,21 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                     <option value="likes">Sort by Likes</option>
                     <option value="comments">Sort by Comments</option>
                     <option value="date">Sort by Date</option>
+                  </select>
+                  
+                  {/* Posts per page selector */}
+                  <select
+                    value={postsPerPage}
+                    onChange={(e) => {
+                      setPostsPerPage(parseInt(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="text-xs border border-gray-300 rounded-lg px-3 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value={12}>Show 12</option>
+                    <option value={20}>Show 20</option>
+                    <option value={30}>Show 30</option>
+                    <option value={50}>Show 50</option>
                   </select>
                 </div>
                 <div className="relative group">
@@ -892,112 +934,167 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
               </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-              {(() => {
-                const filteredAndSortedPosts = getFilteredAndSortedPosts();
-                return filteredAndSortedPosts.length > 0 ? (
-                  filteredAndSortedPosts.map((post, index) => (
-                    <div 
-                      key={post.id} 
-                      className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-all duration-300 group cursor-pointer"
-                      onClick={() => {
-                        if (post.postId) {
-                          window.open(`https://www.instagram.com/p/${post.postId}/`, '_blank');
-                        }
-                      }}
-                    >
-                      {/* Post Thumbnail */}
-                      <div className="relative aspect-square overflow-hidden">
+            {/* UPDATED: Smaller post cards with 6 columns on large screens */}
+            <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+              {paginatedPosts.length > 0 ? (
+                paginatedPosts.map((post, index) => (
+                  <div 
+                    key={post.id} 
+                    className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-all duration-300 group cursor-pointer"
+                    onClick={() => {
+                      if (post.postId) {
+                        window.open(`https://www.instagram.com/p/${post.postId}/`, '_blank');
+                      }
+                    }}
+                  >
+                    {/* Post Thumbnail - UPDATED: Smaller aspect ratio */}
+                    <div className="relative aspect-square overflow-hidden">
+                      <img
+                        src={post.thumbnail}
+                        alt={`${post.username} post`}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = '/dummy-image.jpg';
+                        }}
+                      />
+                      
+                      {/* Instagram indicator - UPDATED: Smaller size */}
+                      <div className="absolute top-1 left-1 w-4 h-4 bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 rounded-full flex items-center justify-center shadow-sm">
+                        <svg className="w-2 h-2 text-white" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.40s-.644-1.44-1.439-1.40z"/>
+                        </svg>
+                      </div>
+                      {/* Rank badge - UPDATED: Smaller size and adjusted position */}
+                      <div className="absolute top-1 right-1 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded-full font-medium text-[10px]">
+                        #{(currentPage - 1) * postsPerPage + index + 1}
+                      </div>
+                    </div>
+                    
+                    {/* Post Stats - UPDATED: More compact layout */}
+                    <div className="p-2">
+                      <div className="flex items-center space-x-1 mb-1.5">
                         <img
-                          src={post.thumbnail}
-                          alt={`${post.username} post`}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          src={post.avatar}
+                          alt={post.username}
+                          className="w-4 h-4 rounded-full object-cover"
                           onError={(e) => {
-                            (e.target as HTMLImageElement).src = '/dummy-image.jpg';
+                            (e.target as HTMLImageElement).src = '/user/profile-placeholder.png';
                           }}
                         />
-                        
-                        {/* Instagram indicator */}
-                        <div className="absolute top-2 left-2 w-6 h-6 bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 rounded-full flex items-center justify-center shadow-md">
-                          <svg className="w-3 h-3 text-white" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.40s-.644-1.44-1.439-1.40z"/>
+                        <span className="text-xs font-medium text-gray-700 truncate">{post.username}</span>
+                        {post.isVerified && (
+                          <svg className="w-2.5 h-2.5 text-blue-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                           </svg>
-                        </div>
-                        {/* Rank badge */}
-                        <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded-full font-medium">
-                          #{index + 1}
-                        </div>
+                        )}
                       </div>
                       
-                      {/* Post Stats */}
-                      <div className="p-3">
-                        <div className="flex items-center space-x-1 mb-2">
-                          <img
-                            src={post.avatar}
-                            alt={post.username}
-                            className="w-5 h-5 rounded-full object-cover"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = '/user/profile-placeholder.png';
-                            }}
-                          />
-                          <span className="text-xs font-medium text-gray-700">{post.username}</span>
-                          {post.isVerified && (
-                            <svg className="w-3 h-3 text-blue-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      {/* Stats grid - UPDATED: More compact with smaller text */}
+                      <div className={`grid gap-0.5 text-[10px] ${post.shares > 0 ? 'grid-cols-2' : 'grid-cols-2'}`}>
+                        <div className="text-center bg-gray-50 rounded px-1 py-0.5">
+                          <div className="flex items-center justify-center space-x-0.5">
+                            <svg className="w-2 h-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                             </svg>
-                          )}
+                            <span className="font-medium text-gray-700">{formatNumber(Math.max(0, post.videoPlayCount || post.views))}</span>
+                          </div>
                         </div>
-                        
-                        {/* Stats grid - Show shares only if > 0 */}
-                        <div className={`grid gap-1 text-xs ${post.shares > 0 ? 'grid-cols-4' : 'grid-cols-3'}`}>
-                          <div className="text-center">
-                            <div className="flex items-center justify-center space-x-1">
-                              <svg className="w-3 h-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                              </svg>
-                              {/* UPDATED: Display videoPlayCount if available, otherwise fall back to views */}
-                              <span className="font-medium text-gray-700">{formatNumber(Math.max(0, post.videoPlayCount || post.views))}</span>
-                            </div>
+                        <div className="text-center bg-gray-50 rounded px-1 py-0.5">
+                          <div className="flex items-center justify-center space-x-0.5">
+                            <svg className="w-2 h-2 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                            </svg>
+                            <span className="font-medium text-gray-700">{formatNumber(post.likes)}</span>
                           </div>
-                          <div className="text-center">
-                            <div className="flex items-center justify-center space-x-1">
-                              <svg className="w-3 h-3 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
-                              </svg>
-                              <span className="font-medium text-gray-700">{formatNumber(post.likes)}</span>
-                            </div>
-                          </div>
-                          <div className="text-center">
-                            <div className="flex items-center justify-center space-x-1">
-                              <svg className="w-3 h-3 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        </div>
+                        {/* Only show additional stats if there's enough space */}
+                        {post.comments > 0 && (
+                          <div className="text-center bg-gray-50 rounded px-1 py-0.5">
+                            <div className="flex items-center justify-center space-x-0.5">
+                              <svg className="w-2 h-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                               </svg>
                               <span className="font-medium text-gray-700">{formatNumber(post.comments)}</span>
                             </div>
                           </div>
-                          {/* Only show shares if post has shares > 0 */}
-                          {post.shares > 0 && (
-                            <div className="text-center">
-                              <div className="flex items-center justify-center space-x-1">
-                                <svg className="w-3 h-3 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
-                                </svg>
-                                <span className="font-medium text-gray-700">{formatNumber(post.shares)}</span>
-                              </div>
+                        )}
+                        {post.shares > 0 && (
+                          <div className="text-center bg-gray-50 rounded px-1 py-0.5">
+                            <div className="flex items-center justify-center space-x-0.5">
+                              <svg className="w-2 h-2 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+                              </svg>
+                              <span className="font-medium text-gray-700">{formatNumber(post.shares)}</span>
                             </div>
-                          )}
-                        </div>
+                          </div>
+                        )}
                       </div>
                     </div>
-                  ))
-                ) : (
-                  <div className="col-span-full text-center py-8">
-                    <p className="text-gray-500">No posts found with current filters</p>
                   </div>
-                );
-              })()}
+                ))
+              ) : (
+                <div className="col-span-full text-center py-8">
+                  <p className="text-gray-500">No posts found with current filters</p>
+                </div>
+              )}
             </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="mt-6 flex items-center justify-between no-print">
+                <div className="text-sm text-gray-700">
+                  Showing {(currentPage - 1) * postsPerPage + 1} to {Math.min(currentPage * postsPerPage, totalPosts)} of {totalPosts} posts
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+                  
+                  <div className="flex items-center space-x-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum;
+                      if (totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (currentPage <= 3) {
+                        pageNum = i + 1;
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
+                      } else {
+                        pageNum = currentPage - 2 + i;
+                      }
+                      
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setCurrentPage(pageNum)}
+                          className={`px-3 py-2 text-sm rounded-lg ${
+                            currentPage === pageNum
+                              ? 'bg-blue-500 text-white'
+                              : 'border border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  
+                  <button
+                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
