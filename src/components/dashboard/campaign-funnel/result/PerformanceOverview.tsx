@@ -398,14 +398,14 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ analyticsData
     }
   ];
 
-  // UPDATED: Third row with new CPV/CPE calculations based on sum of collaboration prices
+  // UPDATED: Third row with new CPV/CPE calculations based on sum of collaboration prices - Remove $ symbol
   const thirdRowData = [
     {
       title: "Total CPV",
-      value: `$${collaborationMetrics.newTotalCPV.toFixed(4)}`,
+      value: `${collaborationMetrics.newTotalCPV.toFixed(4)}`,
       change: "+12.3%",
       changeType: "positive" as const,
-      tooltip: `Cost Per View calculated as: Sum of all Collaboration Prices (${collaborationMetrics.totalCollaborationPrice > 0 ? `$${collaborationMetrics.totalCollaborationPrice.toFixed(2)}` : '$0'}) ÷ Total Views (${formatNumber(analyticsData.totalViews)}). ${collaborationMetrics.postsWithCollaborationPrice > 0 ? `Based on ${collaborationMetrics.postsWithCollaborationPrice} posts with collaboration prices.` : 'No collaboration prices entered yet.'}`,
+      tooltip: `Cost Per View calculated as: Sum of all Collaboration Prices (${collaborationMetrics.totalCollaborationPrice > 0 ? `${collaborationMetrics.totalCollaborationPrice.toFixed(2)}` : '0'}) ÷ Total Views (${formatNumber(analyticsData.totalViews)}). ${collaborationMetrics.postsWithCollaborationPrice > 0 ? `Based on ${collaborationMetrics.postsWithCollaborationPrice} posts with collaboration prices.` : 'No collaboration prices entered yet.'}`,
       icon: (
         <div className="w-16 h-16 bg-gradient-to-br from-indigo-400 to-blue-600 rounded-full flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform duration-300">
           <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -416,10 +416,10 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ analyticsData
     },
     {
       title: "Total CPE",
-      value: `$${collaborationMetrics.newTotalCPE.toFixed(4)}`,
+      value: `${collaborationMetrics.newTotalCPE.toFixed(4)}`,
       change: "+8.7%",
       changeType: "positive" as const,
-      tooltip: `Cost Per Engagement calculated as: Sum of all Collaboration Prices (${collaborationMetrics.totalCollaborationPrice > 0 ? `$${collaborationMetrics.totalCollaborationPrice.toFixed(2)}` : '$0'}) ÷ Total Engagement (${formatNumber(analyticsData.totalLikes + analyticsData.totalComments + analyticsData.totalShares)}). ${collaborationMetrics.postsWithCollaborationPrice > 0 ? `Based on ${collaborationMetrics.postsWithCollaborationPrice} posts with collaboration prices.` : 'No collaboration prices entered yet.'}`,
+      tooltip: `Cost Per Engagement calculated as: Sum of all Collaboration Prices (${collaborationMetrics.totalCollaborationPrice > 0 ? `${collaborationMetrics.totalCollaborationPrice.toFixed(2)}` : '0'}) ÷ Total Engagement (${formatNumber(analyticsData.totalLikes + analyticsData.totalComments + analyticsData.totalShares)}). ${collaborationMetrics.postsWithCollaborationPrice > 0 ? `Based on ${collaborationMetrics.postsWithCollaborationPrice} posts with collaboration prices.` : 'No collaboration prices entered yet.'}`,
       icon: (
         <div className="w-16 h-16 bg-gradient-to-br from-emerald-400 to-teal-600 rounded-full flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform duration-300">
           <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -430,10 +430,10 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ analyticsData
     },
     {
       title: "Views to Followers Ratio",
-      value: `${analyticsData.viewsToFollowersRatio.toFixed(1)}%`,
+      value: `${(analyticsData.viewsToFollowersRatio / 100).toFixed(1)}x`,
       change: analyticsData.viewsToFollowersRatio > 50 ? "+25.6%" : "-10.2%",
       changeType: analyticsData.viewsToFollowersRatio > 50 ? "positive" : "negative" as const,
-      tooltip: "Ratio of total views to total followers (Views ÷ Followers × 100). Shows how well content resonates beyond the immediate follower base. Higher ratios indicate viral potential. Now based on video_play_count for more accurate video performance measurement.",
+      tooltip: "Ratio of total views to total followers (Views ÷ Followers). Shows how well content resonates beyond the immediate follower base. Values above 1.0x indicate content is reaching beyond the follower count, suggesting good reach potential. Now based on video_play_count for more accurate video performance measurement.",
       icon: (
         <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-orange-600 rounded-full flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform duration-300">
           <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -503,17 +503,9 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ analyticsData
 
   return (
     <div>
+      {/* UPDATED: Removed the "Excluding posts with 0 likes" text and visual indicator */}
       <div className="flex items-center space-x-2 mb-6 no-print">
         <h2 className="text-xl font-bold text-gray-800">Performance Overview</h2>
-        {/* Visual indicator when exclusions are active */}
-        {exclusionStatus.hasExclusions && (
-          <div className="flex items-center text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full">
-            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
-            Excluding posts with 0 likes
-          </div>
-        )}
       </div>
 
       {/* First Row - Basic Insights */}
