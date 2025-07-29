@@ -197,6 +197,37 @@ export async function POST(request: Request) {
         subscriber_count: item.subscriber_count,
         url: item.url,
         filter_match: item.filter_match,
+
+              // ADD THESE NEW FIELDS:
+        creator_age: item.creator_age || item.age || null,
+        audience_locations: item.audience_locations || 
+                          item.filter_match?.audience_locations || 
+                          item.demographic_data?.audience_locations || 
+                          [],
+        audience_age_groups: item.audience_age_groups || 
+                            item.filter_match?.audience_age || 
+                            item.demographic_data?.audience_age || 
+                            [],
+        audience_demographics: {
+          age_distribution: item.audience_age_distribution || 
+                          item.filter_match?.audience_age || 
+                          [],
+          location_distribution: item.audience_location_distribution || 
+                                item.filter_match?.audience_locations || 
+                                [],
+          gender_distribution: item.audience_gender_distribution || 
+                              item.filter_match?.audience_gender || 
+                              []
+        },
+        
+        // Enhanced reel views handling
+        instagram_options: {
+          ...item.instagram_options,
+          reel_views: item.instagram_options?.reel_views || 
+                    item.filter_match?.instagram_options?.reel_views ||
+                    item.average_reel_views ||
+                    null
+        },
         
         work_platform: {
           id: item.work_platform?.id,

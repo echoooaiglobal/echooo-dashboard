@@ -356,6 +356,8 @@ const DiscoveredInfluencers: React.FC<DiscoveredInfluencersProps> = ({
 
   // Handle add to list function
   const handleAddToList = async (influencer: Influencer) => {
+
+
     if (!campaignData || !campaignData.campaign_lists || !campaignData.campaign_lists.length) {
       console.error('No campaign list found');
       return;

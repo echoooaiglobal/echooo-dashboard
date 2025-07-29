@@ -5,9 +5,91 @@ import { ENDPOINTS } from '@/services/api/endpoints';
 import { DiscoverInfluencer } from '@/lib/types';
 import { Influencer } from '@/types/insights-iq';
 // Define the campaign list ID type
+// Define the campaign list ID type
 export type CampaignListId = string;
 
-// Define the request body for adding an influencer to a list
+// Contact details interface
+export interface ContactDetail {
+  type: string;
+  value: string;
+}
+
+// Creator location interface
+export interface CreatorLocation {
+  city: string;
+  state?: string | null;
+  country: string;
+}
+
+// Work platform interface
+export interface WorkPlatform {
+  id: string;
+  name: string;
+  logo_url: string;
+}
+
+// Filter match interface - comprehensive definition
+export interface FilterMatch {
+  brand_sponsors?: any;
+  creator_age?: any;
+  creator_brand_affinities?: any;
+  follower_growth?: any;
+  subscriber_growth?: any;
+  creator_gender: string;
+  creator_interests?: any;
+  creator_language?: any;
+  creator_locations: string[];
+  creator_lookalikes?: any;
+  content_count?: any;
+  instagram_options?: {
+    reel_views?: any;
+  };
+  audience_age?: any;
+  audience_gender?: any;
+  audience_brand_affinities?: any;
+  audience_interests?: any;
+  audience_language?: any;
+  audience_locations?: any;
+  audience_lookalikes?: any;
+  topic_relevance?: any;
+  views_growth?: any;
+  audience_ethnicity?: any;
+  audience_credibility_score?: any;
+  share_count?: any;
+  save_count?: any;
+}
+
+// Complete influencer interface matching your JSON structure
+export interface CompleteInfluencer {
+  id: string;
+  username: string;
+  name: string;
+  profileImage: string;
+  followers: number;
+  engagementRate: number;
+  isVerified: boolean;
+  age_group?: string | null;
+  average_likes: number;
+  average_views?: number | null;
+  contact_details: ContactDetail[];
+  content_count?: number | null;
+  creator_location: CreatorLocation;
+  external_id: string;
+  gender: string;
+  introduction: string;
+  language: string;
+  livestream_metrics?: any;
+  platform_account_type: string;
+  subscriber_count?: number | null;
+  url: string;
+  filter_match: FilterMatch;
+  work_platform: WorkPlatform;
+}
+
+// Enhanced Influencer interface (alias for backward compatibility)
+export interface EnhancedInfluencer extends CompleteInfluencer {}
+
+// Updated AddToListRequest to support whole object storage
 export interface AddToListRequest {
   list_id: CampaignListId;
   platform_id: string;
@@ -19,11 +101,12 @@ export interface AddToListRequest {
     followers: string;
     isVerified?: boolean;
     account_url?: string;
-    additional_metrics?: Record<string, string | number | boolean | null>;
+    // Store the complete influencer object
+    additional_metrics?: CompleteInfluencer | Record<string, any>;
   };
 }
 
-// Define the response from the add to list API
+// Enhanced campaign list member interface
 export interface CampaignListMember {
   success: boolean;
   message?: string;
@@ -72,31 +155,10 @@ export interface CampaignListMember {
     subscribers_count?: number | null;
     likes_count?: number | null;
     account_url?: string;
-    additional_metrics?: {
-      id?: string;
-      url?: string;
-      name?: string;
-      gender?: string;
-      language?: string;
-      username?: string;
-      age_group?: string;
-      followers?: string;
-      isVerified?: boolean;
-      engagements?: string | number;
-      external_id?: string;
-      introduction?: string;
-      profileImage?: string;
-      average_likes?: number;
-      average_views?: number | null;
-      content_count?: number | null;
-      engagementRate?: number;
-      subscriber_count?: number | null;
-      livestream_metrics?: any;
-      platform_account_type?: string;
-    };
+    // This now contains the complete influencer object
+    additional_metrics?: CompleteInfluencer | Record<string, any>;
   };
 }
-
 
 export interface PaginationInfo {
   page: number;
@@ -114,19 +176,33 @@ export interface CampaignListMembersResponse {
   message?: string;
 }
 
+/**
+ * Type guard to check if additional_metrics contains a complete influencer object
+ */
+export function isCompleteInfluencer(obj: any): obj is CompleteInfluencer {
+  return obj && 
+         typeof obj === 'object' &&
+         typeof obj.id === 'string' &&
+         typeof obj.username === 'string' &&
+         typeof obj.name === 'string' &&
+         typeof obj.followers === 'number' &&
+         typeof obj.creator_location === 'object' &&
+         typeof obj.filter_match === 'object' &&
+         typeof obj.work_platform === 'object';
+}
 
 /**
- * Add an influencer to a campaign list
- * @param listId The campaign list ID
- * @param influencer The influencer to add
- * @returns Response indicating success/failure
+ * Updated addInfluencerToList function to store whole object
  */
 export async function addInfluencerToList(
   listId: CampaignListId,
-  influencer: Influencer,
+  influencer: Influencer | CompleteInfluencer,
   platformId: string,
 ): Promise<CampaignListMember> {
   try {
+    console.log('🚀 Adding influencer with whole object storage');
+    console.log('📊 Influencer data:', influencer);
+
     // Transform the influencer data to match the expected API format
     const requestData: AddToListRequest = {
       list_id: listId,
@@ -136,21 +212,15 @@ export async function addInfluencerToList(
         username: influencer.username || '',
         name: influencer.name || influencer.username || '',
         profileImage: influencer.profileImage || '',
-        followers: influencer.followers || '0',
+        followers: String(influencer.followers || '0'),
         isVerified: influencer.isVerified || false,
         account_url: influencer.url || '',
-        additional_metrics: Object.fromEntries(
-          Object.entries(influencer).filter(
-            ([, value]) =>
-              typeof value === 'string' ||
-              typeof value === 'number' ||
-              typeof value === 'boolean' ||
-              value === null
-          )
-        )
+        // Store the ENTIRE influencer object
+        additional_metrics: influencer
       },
-      
     };
+
+    console.log('📤 Sending complete influencer object to API');
 
     // Call the API using the unified API client
     const response = await apiClient.post<CampaignListMember>(
@@ -160,12 +230,14 @@ export async function addInfluencerToList(
 
     // Handle errors
     if (response.error) {
-      console.error('Error adding influencer to list:', response.error);
+      console.error('❌ Error adding influencer to list:', response.error);
       return { 
         success: false, 
         message: response.error.message 
       };
     }
+
+    console.log('✅ Successfully added influencer with complete object data');
 
     // Return the success response
     return {
@@ -173,7 +245,7 @@ export async function addInfluencerToList(
       ...response.data
     };
   } catch (error) {
-    console.error('Unexpected error adding influencer to list:', error);
+    console.error('💥 Unexpected error adding influencer to list:', error);
     return {
       success: false,
       message: error instanceof Error ? error.message : 'An unknown error occurred'
