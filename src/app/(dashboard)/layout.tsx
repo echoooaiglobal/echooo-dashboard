@@ -1,4 +1,5 @@
-// src/app/(dashboard)/layout.tsx - CLEAN VERSION
+
+// src/app/(dashboard)/layout.tsx - FIXED WITH PROPER MARGINS
 'use client';
 
 import { ReactNode, useEffect, useState } from 'react';
@@ -7,6 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import SessionExpiredModal from '@/components/auth/SessionExpiredModal';
 import ClientOnly from '@/components/ClientOnly';
+import Sidebar from '@/components/dashboard/Sidebar';
 
 export default function DashboardLayout({
   children,
@@ -31,6 +33,7 @@ export default function DashboardLayout({
   const router = useRouter();
   const [retryCount, setRetryCount] = useState(0);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
   const maxRetries = 3;
 
   useEffect(() => {
@@ -103,6 +106,8 @@ export default function DashboardLayout({
         influencer={influencer}
         getUserType={getUserType}
         getPrimaryRole={getPrimaryRole}
+        isSidebarCollapsed={isSidebarCollapsed}
+        setIsSidebarCollapsed={setIsSidebarCollapsed}
       />
     </ClientOnly>
   );
@@ -114,7 +119,9 @@ function DashboardContent({
   company, 
   influencer, 
   getUserType, 
-  getPrimaryRole 
+  getPrimaryRole,
+  isSidebarCollapsed,
+  setIsSidebarCollapsed
 }: {
   user: any;
   platform: ReactNode;
@@ -122,6 +129,8 @@ function DashboardContent({
   influencer: ReactNode;
   getUserType: () => any;
   getPrimaryRole: () => any;
+  isSidebarCollapsed: boolean;
+  setIsSidebarCollapsed: (collapsed: boolean) => void;
 }) {
   const userType = getUserType();
   
@@ -139,9 +148,27 @@ function DashboardContent({
   
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-blue-150 to-purple-100 overflow-x-hidden">
-      <div className="w-full max-w-[100vw] overflow-hidden">
-        <div className="w-[95%] mx-auto py-3 overflow-hidden">
-          {content}
+      {/* SIDEBAR */}
+      <Sidebar 
+        isCollapsed={isSidebarCollapsed} 
+        setIsCollapsed={setIsSidebarCollapsed} 
+      />
+      
+      {/* MAIN CONTENT AREA - FIXED: Proper margins and width constraints */}
+      <div 
+        className={`transition-all duration-200 overflow-x-hidden ${
+          isSidebarCollapsed ? 'ml-0' : 'ml-64'
+        }`}
+      >
+        {/* FIXED: Add proper margins when sidebar is open */}
+        <div className={`w-full py-3 transition-all duration-200 ${
+          isSidebarCollapsed 
+            ? 'px-3' // When collapsed: small margins on both sides
+            : 'px-6 mr-6' // When open: larger left padding, right margin for breathing room
+        }`}>
+          <div className="w-full max-w-none overflow-hidden">
+            {content}
+          </div>
         </div>
       </div>
     </div>

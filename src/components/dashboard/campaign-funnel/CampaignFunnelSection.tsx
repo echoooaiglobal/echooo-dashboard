@@ -8,7 +8,7 @@ import OutreachTab from '@/components/dashboard/campaign-funnel/outreach/Outreac
 import ManagementTab from '@/components/dashboard/campaign-funnel/management/ManagementTab';
 import ResultTab from '@/components/dashboard/campaign-funnel/result/ResultTab';
 import PaymentsTab from '@/components/dashboard/campaign-funnel/payments/PaymentsTab';
-import { Campaign } from '@/services/campaign/campaign.service';
+import { Campaign } from '@/types/campaign';
 
 // Define the available tab options
 type FunnelTab = 'discover' | 'outreach' | 'management' | 'result' | 'payments';
@@ -53,7 +53,7 @@ const CampaignFunnelSection: React.FC<CampaignFunnelSectionProps> = ({
           />
         );
       case 'outreach':
-        return <OutreachTab/>;
+        return <OutreachTab />;
       case 'management':
         return <ManagementTab/>;
       case 'result':

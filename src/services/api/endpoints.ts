@@ -61,6 +61,8 @@ export const ENDPOINTS = {
     DETAIL: (id: string) => `/campaign-influencers/${id}`,
     DELETE: (id: string) => `/campaign-influencers/${id}`,
     CREATE: '/campaign-influencers',
+    MARK_ONBOARDED: '/campaign-influencers/mark-onboarded',
+    REMOVE_ONBOARDED: '/campaign-influencers/remove-onboarded',
     // BASE: '/campaign-influencers',
     // BY_ID: (id: string) => `/campaign-influencers/${id}`,
     // CONTACT_ATTEMPTS: (influencerId: string) => `/campaign-influencers/${influencerId}/contact-attempts`

@@ -1,5 +1,5 @@
 // src/utils/role-utils.ts - Role checking utilities with permission infrastructure
-import { User, Role, UserType, DetailedRole, RoleCheckResult, PlatformRole, CompanyRole, InfluencerRole } from '@/types/auth';
+import { User, Role, RoleCheckResult, DetailedRole, PlatformRole, CompanyRole, InfluencerRole } from '@/types/auth';
 
 /**
  * Get the user's primary detailed role
@@ -10,9 +10,9 @@ export const getPrimaryRole = (roles: Role[]): DetailedRole | null => {
 };
 
 /**
- * Get the user type from detailed role
+ * Get the user type from updated detailed role
  */
-export const getUserTypeFromRole = (detailedRole: DetailedRole): UserType => {
+export const getUserTypeFromRole = (detailedRole: DetailedRole): 'platform' | 'company' | 'influencer' => {
   if (detailedRole.startsWith('platform_')) return 'platform';
   if (detailedRole.startsWith('b2c_')) return 'company';
   if (detailedRole.startsWith('influencer')) return 'influencer';
@@ -120,14 +120,18 @@ export const getNavigationItemsForRole = (role: DetailedRole) => {
   ];
 
   switch (role) {
+    // Platform Roles
+    case 'platform_super_admin':
     case 'platform_admin':
       return [
         ...baseItems,
         { name: 'Users', href: '/users', icon: 'Users' },
         { name: 'Companies', href: '/companies', icon: 'Briefcase' },
         { name: 'Campaigns', href: '/campaigns', icon: 'Award' },
+        { name: 'Agents', href: '/agents', icon: 'Bot' },
         { name: 'Analytics', href: '/analytics', icon: 'BarChart2' },
         { name: 'Reports', href: '/reports', icon: 'FileText' },
+        { name: 'System', href: '/system', icon: 'Server' },
         { name: 'Settings', href: '/settings', icon: 'Settings' },
       ];
       
@@ -135,8 +139,11 @@ export const getNavigationItemsForRole = (role: DetailedRole) => {
       return [
         ...baseItems,
         { name: 'Assigned Lists', href: '/assigned-lists', icon: 'List' },
-        { name: 'Messages', href: '/messages', icon: 'MessageSquare' },
-        { name: 'Reports', href: '/reports', icon: 'FileText' },
+        { name: 'Outreach', href: '/outreach', icon: 'Send' },
+        { name: 'Contacts', href: '/contacts', icon: 'Users' },
+        { name: 'Automation', href: '/automation', icon: 'Bot' },
+        { name: 'Performance', href: '/performance', icon: 'TrendingUp' },
+        { name: 'Settings', href: '/settings', icon: 'Settings' },
       ];
       
     case 'platform_manager':
@@ -144,16 +151,69 @@ export const getNavigationItemsForRole = (role: DetailedRole) => {
         ...baseItems,
         { name: 'Teams', href: '/teams', icon: 'Users' },
         { name: 'Campaigns', href: '/campaigns', icon: 'Award' },
+        { name: 'Agents', href: '/agents', icon: 'Bot' },
         { name: 'Analytics', href: '/analytics', icon: 'BarChart2' },
         { name: 'Reports', href: '/reports', icon: 'FileText' },
+        { name: 'Settings', href: '/settings', icon: 'Settings' },
       ];
       
+    case 'platform_operations_manager':
+      return [
+        ...baseItems,
+        { name: 'Operations', href: '/operations', icon: 'Activity' },
+        { name: 'Agents', href: '/agents', icon: 'Bot' },
+        { name: 'Automation', href: '/automation', icon: 'Settings' },
+        { name: 'Performance', href: '/performance', icon: 'TrendingUp' },
+        { name: 'Reports', href: '/reports', icon: 'FileText' },
+      ];
+
+    // Company Roles
     case 'b2c_company_owner':
+    case 'b2c_company_admin':
       return [
         ...baseItems,
         { name: 'Discover', href: '/discover', icon: 'Compass' },
         { name: 'Campaigns', href: '/campaigns', icon: 'Award' },
         { name: 'Influencers', href: '/influencers', icon: 'Users' },
+        { name: 'Analytics', href: '/analytics', icon: 'BarChart2' },
+        { name: 'Team', href: '/team', icon: 'Users' },
+        { name: 'Settings', href: '/settings', icon: 'Settings' },
+      ];
+      
+    case 'b2c_campaign_manager':
+    case 'b2c_marketing_director':
+      return [
+        ...baseItems,
+        { name: 'Discover', href: '/discover', icon: 'Compass' },
+        { name: 'Campaigns', href: '/campaigns', icon: 'Award' },
+        { name: 'Influencers', href: '/influencers', icon: 'Users' },
+        { name: 'Analytics', href: '/analytics', icon: 'BarChart2' },
+        { name: 'Settings', href: '/settings', icon: 'Settings' },
+      ];
+      
+    case 'b2c_viewer':
+      return [
+        ...baseItems,
+        { name: 'Campaigns', href: '/campaigns', icon: 'Award' },
+        { name: 'Analytics', href: '/analytics', icon: 'BarChart2' },
+      ];
+
+    // Influencer Roles
+    case 'influencer':
+      return [
+        ...baseItems,
+        { name: 'Campaigns', href: '/campaigns', icon: 'Award' },
+        { name: 'Profile', href: '/profile', icon: 'User' },
+        { name: 'Analytics', href: '/analytics', icon: 'BarChart2' },
+        { name: 'Payments', href: '/payments', icon: 'DollarSign' },
+        { name: 'Settings', href: '/settings', icon: 'Settings' },
+      ];
+      
+    case 'influencer_manager':
+      return [
+        ...baseItems,
+        { name: 'Influencers', href: '/influencers', icon: 'Users' },
+        { name: 'Campaigns', href: '/campaigns', icon: 'Award' },
         { name: 'Analytics', href: '/analytics', icon: 'BarChart2' },
         { name: 'Settings', href: '/settings', icon: 'Settings' },
       ];

@@ -10,6 +10,7 @@ import { User, Settings, LogOut, Bell, Menu, X } from 'react-feather';
 import CampaignsDropdown from './CampaignsDropdown';
 import { UserAvatar } from '@/components/ui/SafeImage'; // ADDED: Import SafeImage component
 import { DetailedRole } from '@/types/auth';
+import { usePermissions } from '@/hooks/usePermissions';
 
 export default function EnhancedNavbar() {
   const { isAuthenticated, user, logout, getPrimaryRole, getUserType, isLoading } = useAuth();
@@ -129,21 +130,51 @@ export default function EnhancedNavbar() {
       { name: 'Dashboard', href: '/dashboard' },
     ];
 
-    // Add role-specific navigation items
-    switch (primaryRole) {
+    // Add role-specific navigation items based on your updated backend roles
+    switch (primaryRole as DetailedRole) {
+      case 'platform_super_admin':
       case 'platform_admin':
-      case 'platform_manager':
         return [
           ...baseItems,
-          { name: 'Companies', href: '/platform/companies' },
-          { name: 'Influencers', href: '/platform/influencers' },
-          { name: 'Campaigns', href: '/platform/campaigns' },
-          { name: 'Analytics', href: '/platform/analytics' },
+          { name: 'Users', href: '/users' },
+          { name: 'Companies', href: '/companies' },
+          { name: 'Agents', href: '/agents' },
+          { name: 'Campaigns', href: '/campaigns' },
+          { name: 'Analytics', href: '/analytics' },
+          { name: 'System', href: '/system' },
         ];
       
-      case 'company_admin':
-      case 'company_manager':
-      case 'company_marketer':
+      case 'platform_agent':
+        return [
+          ...baseItems,
+          { name: 'Assigned Lists', href: '/assigned-lists' },
+          { name: 'Outreach', href: '/outreach' },
+          { name: 'Contacts', href: '/contacts' },
+          { name: 'Performance', href: '/performance' },
+        ];
+      
+      case 'platform_operations_manager':
+        return [
+          ...baseItems,
+          { name: 'Operations', href: '/operations' },
+          { name: 'Agents', href: '/agents' },
+          { name: 'Automation', href: '/automation' },
+          { name: 'Performance', href: '/performance' },
+        ];
+      
+      case 'b2c_company_owner':
+      case 'b2c_company_admin':
+      case 'b2c_marketing_director':
+        return [
+          ...baseItems,
+          { name: 'Discover', href: '/discover' },
+          { name: 'Campaigns', href: '/campaigns' },
+          { name: 'Influencers', href: '/influencers' },
+          { name: 'Analytics', href: '/analytics' },
+        ];
+      
+      case 'b2c_campaign_manager':
+      case 'b2c_campaign_executive':
         return [
           ...baseItems,
           { name: 'Campaigns', href: '/campaigns' },
@@ -155,14 +186,35 @@ export default function EnhancedNavbar() {
       case 'influencer_manager':
         return [
           ...baseItems,
-          { name: 'Campaigns', href: '/influencer/campaigns' },
-          { name: 'Applications', href: '/influencer/applications' },
-          { name: 'Earnings', href: '/influencer/earnings' },
+          { name: 'Campaigns', href: '/campaigns' },
+          { name: 'Profile', href: '/profile' },
+          { name: 'Analytics', href: '/analytics' },
+          { name: 'Payments', href: '/payments' },
         ];
       
       default:
         return baseItems;
     }
+  };
+
+  const getSettingsLink = () => {
+    const { canAccessSettings } = usePermissions();
+    
+    // Only show settings link if user has permission to update their profile
+    if (!canAccessSettings()) {
+      return null;
+    }
+    
+    return (
+      <Link
+        href="/settings"
+        onClick={() => setIsProfileMenuOpen(false)}
+        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+      >
+        <Settings className="mr-3 h-5 w-5 text-gray-400" />
+        Settings
+      </Link>
+    );
   };
 
   const getRoleColor = (role: DetailedRole) => {
@@ -186,14 +238,22 @@ export default function EnhancedNavbar() {
           ...baseNotifications
         ];
       
-      case 'company_marketer':
+      case 'platform_agent':
+        return [
+          { title: 'New assignment received', time: '30 minutes ago', read: false, type: 'assignment' },
+          { title: 'Outreach automation completed', time: '2 hours ago', read: false, type: 'automation' },
+          { title: 'Weekly performance report ready', time: '1 day ago', read: true, type: 'performance' },
+          ...baseNotifications
+        ];
+      
+      case 'b2c_campaign_manager':
         return [
           { title: 'New list assignment received', time: '2 hours ago', read: false, type: 'assignment' },
           { title: 'Influencer responded to outreach', time: '4 hours ago', read: false, type: 'response' },
           ...baseNotifications
         ];
       
-      case 'company_admin':
+      case 'b2c_company_admin':
         return [
           { title: 'Campaign performance update', time: '1 hour ago', read: false, type: 'campaign' },
           { title: 'New influencer applications', time: '3 hours ago', read: false, type: 'application' },
@@ -486,13 +546,7 @@ export default function EnhancedNavbar() {
                 >
                   Your Profile
                 </Link>
-                <Link
-                  href="/settings"
-                  className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Settings
-                </Link>
+                {getSettingsLink()}
                 <button
                   onClick={() => {
                     handleLogout();

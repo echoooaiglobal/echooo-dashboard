@@ -1,40 +1,73 @@
 // src/components/dashboard/campaign-funnel/outreach/OutreachTab.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { OutreachProvider, useOutreach } from '@/context/OutreachContext';
+import { useCampaigns } from '@/context/CampaignContext';
 import MessageSent from './MessageSent';
 import ReadyToOnboard from './ReadyToOnboard';
 import OnBoarded from './OnBoarded';
 import SelectedManually from './SelectedManually';
 
-const OutreachTab: React.FC = () => {
+// Inner component that uses the context
+const OutreachContent: React.FC = () => {
   const [showManualSelection, setShowManualSelection] = useState(false);
+  const { fetchInfluencers, readyToOnboardInfluencers, currentCampaign } = useOutreach();
+  const { currentCampaign: campaignFromContext } = useCampaigns();
+
+  // Fetch data when campaign changes
+  useEffect(() => {
+    console.log('🔍 OutreachTab: Campaign effect triggered', {
+      hasCanpaign: !!campaignFromContext,
+      campaignId: campaignFromContext?.id,
+      campaignName: campaignFromContext?.name,
+      campaignLists: campaignFromContext?.campaign_lists?.length
+    });
+    
+    if (campaignFromContext) {
+      console.log('🔄 OutreachTab: Campaign changed, fetching influencers:', campaignFromContext.id);
+      fetchInfluencers(campaignFromContext);
+    } else {
+      console.log('⚠️ OutreachTab: No campaign data available');
+    }
+  }, [campaignFromContext, fetchInfluencers]);
 
   const handleSelectManually = () => {
-    console.log('Opening manual selection view'); // Debug log
+    console.log('Opening manual selection view');
     setShowManualSelection(true);
   };
 
   const handleBackToMain = () => {
-    console.log('Returning to main view'); // Debug log
+    console.log('Returning to main view');
+    setShowManualSelection(false);
+  };
+
+  // Auto-close manual selection when all influencers are onboarded
+  const handleAllOnboarded = () => {
+    console.log('All influencers onboarded, closing manual selection');
     setShowManualSelection(false);
   };
 
   // Show manual selection view
   if (showManualSelection) {
-    return <SelectedManually onBack={handleBackToMain} />;
+    return (
+      <SelectedManually 
+        onBack={handleBackToMain}
+        onAllOnboarded={handleAllOnboarded}
+        campaignData={campaignFromContext}
+      />
+    );
   }
 
   // Show main outreach view
   return (
     <div className="p-6">
-      <h2 className="text-2xl font-bold text-gray-700 mb-6">Outreach</h2>
       
       {/* Cards Section with Overlay Buttons */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Message Sent Card */}
         <div className="relative">
-          <MessageSent />
+          <MessageSent campaignData={campaignFromContext} />
         </div>
 
         {/* Ready to Onboard Card with Overlay Buttons */}
@@ -45,11 +78,23 @@ const OutreachTab: React.FC = () => {
             <div className="flex space-x-3">
               <button 
                 onClick={handleSelectManually}
-                className="px-6 py-3 bg-white border-2 border-red-400 text-red-500 rounded-full hover:bg-red-50 hover:border-red-500 transition-all duration-300 font-medium text-sm shadow-lg hover:shadow-xl transform hover:scale-105"
+                disabled={readyToOnboardInfluencers.length === 0}
+                className={`px-6 py-3 border-2 rounded-full transition-all duration-300 font-medium text-sm shadow-lg hover:shadow-xl transform hover:scale-105 ${
+                  readyToOnboardInfluencers.length > 0
+                    ? 'bg-white border-red-400 text-red-500 hover:bg-red-50 hover:border-red-500'
+                    : 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
+                }`}
               >
                 Select Manually
               </button>
-              <button className="px-6 py-3 bg-purple-500 text-white rounded-full hover:bg-purple-600 transition-all duration-300 font-medium text-sm shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center space-x-2">
+              <button 
+                disabled={readyToOnboardInfluencers.length === 0}
+                className={`px-6 py-3 rounded-full transition-all duration-300 font-medium text-sm shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center space-x-2 ${
+                  readyToOnboardInfluencers.length > 0
+                    ? 'bg-purple-500 text-white hover:bg-purple-600'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
+              >
                 <span>✨</span>
                 <span>Select with AI</span>
               </button>
@@ -69,6 +114,15 @@ const OutreachTab: React.FC = () => {
         </div>
       </div>
     </div>
+  );
+};
+
+// Main component with provider
+const OutreachTab: React.FC = () => {
+  return (
+    <OutreachProvider>
+      <OutreachContent />
+    </OutreachProvider>
   );
 };
 

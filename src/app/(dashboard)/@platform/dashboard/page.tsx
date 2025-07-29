@@ -1,39 +1,44 @@
-// src/app/(dashboard)/@platform/dashboard/page.tsx - Enhanced with role-based routing
+// src/app/(dashboard)/@platform/dashboard/page.tsx
 'use client';
 
 import { useAuth } from '@/context/AuthContext';
-import { PlatformDashboard } from '@/components/dashboard';
+import { withRoleAccess } from '@/components/auth/withRoleAccess';
 import PlatformAgentDashboard from '@/components/dashboard/platform/PlatformAgentDashboard';
+import PlatformAdminDashboard from '@/components/dashboard/platform/PlatformDashboard';
+// import PlatformManagerDashboard from '@/components/dashboard/platform/PlatformManagerDashboard';
+
+// Create role-specific protected components
+const AgentDashboard = withRoleAccess(PlatformAgentDashboard, {
+  allowedRoles: ['platform_agent'],
+  requiredPermissions: [{ resource: 'assigned_influencer', action: 'read' }]
+});
+
+const AdminDashboard = withRoleAccess(PlatformAdminDashboard, {
+  allowedRoles: ['platform_super_admin', 'platform_admin'],
+  requiredPermissions: [{ resource: 'user', action: 'read' }]
+});
+
+// const ManagerDashboard = withRoleAccess(PlatformManagerDashboard, {
+//   allowedRoles: ['platform_manager', 'platform_operations_manager'],
+//   requiredPermissions: [{ resource: 'system', action: 'monitor' }]
+// });
 
 export default function PlatformDashboardPage() {
-  const { user, getPrimaryRole } = useAuth();
+  const { getPrimaryRole } = useAuth();
   const primaryRole = getPrimaryRole();
   
-  // Route to appropriate dashboard based on specific platform role
+  // Simple role-based routing (only for dashboard level)
   switch (primaryRole) {
     case 'platform_agent':
-      return <PlatformAgentDashboard />;
-      
+      return <AgentDashboard />;
+    case 'platform_super_admin':
+      return <AdminDashboard />;
     case 'platform_admin':
+      return <AdminDashboard />;
     case 'platform_manager':
-    case 'platform_user':
-    case 'platform_accountant':
-    case 'platform_developer':
-    case 'platform_customer_support':
-    case 'platform_content_moderator':
+    case 'platform_operations_manager':
+      // return <ManagerDashboard />;
     default:
-      return (
-        <div>
-          <h1 className="text-2xl font-bold mb-6">
-            {primaryRole === 'platform_admin' ? 'Platform Admin Dashboard' : 
-             primaryRole === 'platform_manager' ? 'Platform Manager Dashboard' :
-             'Platform Dashboard'}
-          </h1>
-          <p>Welcome, {user?.full_name}</p>
-          
-          {/* Your actual platform dashboard component */}
-          <PlatformDashboard />
-        </div>
-      );
+      return <div>Unauthorized Access</div>;
   }
 }

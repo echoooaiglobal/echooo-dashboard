@@ -1,4 +1,5 @@
 // src/types/auth.ts - Enhanced with detailed role system
+
 export interface LoginCredentials {
   username: string;
   password: string;
@@ -10,23 +11,31 @@ export type UserType = 'platform' | 'company' | 'influencer';
 
 // Detailed role types for granular permissions
 export type PlatformRole = 
+  | 'platform_super_admin'
   | 'platform_admin'
-  | 'platform_user'
   | 'platform_manager'
-  | 'platform_accountant'
   | 'platform_developer'
   | 'platform_customer_support'
+  | 'platform_account_manager'
+  | 'platform_financial_manager'
   | 'platform_content_moderator'
+  | 'platform_data_analyst'
+  | 'platform_operations_manager'
   | 'platform_agent';
 
 export type CompanyRole = 
   | 'b2c_company_owner'
   | 'b2c_company_admin'
-  | 'company_user'
-  | 'company_manager'
-  | 'company_accountant'
-  | 'company_marketer'
-  | 'company_content_creator';
+  | 'b2c_marketing_director'
+  | 'b2c_campaign_manager'
+  | 'b2c_campaign_executive'
+  | 'b2c_social_media_manager'
+  | 'b2c_content_creator'
+  | 'b2c_brand_manager'
+  | 'b2c_performance_analyst'
+  | 'b2c_finance_manager'
+  | 'b2c_account_coordinator'
+  | 'b2c_viewer';
 
 export type InfluencerRole = 
   | 'influencer'
@@ -46,6 +55,12 @@ export interface Role {
   name: DetailedRole;
   description: string;
   permissions?: Permission[]; // Optional for future use
+}
+
+export interface PermissionCheck {
+  resource: string;
+  action: string;
+  context?: Record<string, any>;
 }
 
 export interface User {
