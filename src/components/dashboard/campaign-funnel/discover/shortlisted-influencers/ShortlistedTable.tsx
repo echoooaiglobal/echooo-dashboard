@@ -47,6 +47,7 @@ const ShortlistedTable: React.FC<ShortlistedTableProps> = ({
     key: string | null;
     direction: 'asc' | 'desc' | null;
   }>({ key: null, direction: null });
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
   // Ensure shortlistedMembers has proper structure
   const members = shortlistedMembers?.members || [];
@@ -57,6 +58,149 @@ const ShortlistedTable: React.FC<ShortlistedTableProps> = ({
     total_pages: 1,
     has_next: false,
     has_previous: false
+  };
+
+  // Helper function to safely access additional metrics - FIXED
+  const getAdditionalMetric = (member: CampaignListMember, key: string, defaultValue: any = null) => {
+    const additionalMetrics = member?.social_account?.additional_metrics;
+    if (!additionalMetrics || typeof additionalMetrics !== 'object') {
+      return defaultValue;
+    }
+    
+    // Type assertion to allow indexing
+    const metricsObj = additionalMetrics as Record<string, any>;
+    return metricsObj[key] ?? defaultValue;
+  };
+
+  // Helper function to parse JSON strings safely
+  const parseJSONSafely = (jsonString: any, defaultValue: any = null) => {
+    if (!jsonString) return defaultValue;
+    if (typeof jsonString === 'object') return jsonString;
+    if (typeof jsonString === 'string') {
+      try {
+        return JSON.parse(jsonString);
+      } catch {
+        return defaultValue;
+      }
+    }
+    return defaultValue;
+  };
+
+  // Helper function to get reel views from member data
+  const getReelViews = (member: CampaignListMember) => {
+    // Check multiple possible locations for reel views data
+    const instagramOptions = getAdditionalMetric(member, 'instagram_options');
+    if (instagramOptions?.reel_views) {
+      // If it's a range object with min/max
+      if (typeof instagramOptions.reel_views === 'object' && 
+          instagramOptions.reel_views.min !== undefined) {
+        const avg = (instagramOptions.reel_views.min + instagramOptions.reel_views.max) / 2;
+        return avg;
+      }
+      // If it's a direct number
+      if (typeof instagramOptions.reel_views === 'number') {
+        return instagramOptions.reel_views;
+      }
+    }
+    
+    // Check if it's stored in filter_match
+    const filterMatch = getAdditionalMetric(member, 'filter_match');
+    if (filterMatch?.instagram_options?.reel_views) {
+      const reelViews = filterMatch.instagram_options.reel_views;
+      if (typeof reelViews === 'number') {
+        return reelViews;
+      }
+    }
+    
+    // Check for direct fields
+    const averageReelViews = getAdditionalMetric(member, 'average_reel_views');
+    if (averageReelViews !== null && averageReelViews !== undefined) {
+      return averageReelViews;
+    }
+    
+    const reelViews = getAdditionalMetric(member, 'reel_views');
+    if (reelViews !== null && reelViews !== undefined) {
+      return reelViews;
+    }
+    
+    return null;
+  };
+
+  // Helper function to format location
+  const formatLocation = (member: CampaignListMember) => {
+    const locationData = getAdditionalMetric(member, 'creator_location');
+    const parsed = parseJSONSafely(locationData, null);
+    
+    if (parsed && parsed.city && parsed.country) {
+      return `${parsed.city}, ${parsed.country}`;
+    }
+    
+    const city = getAdditionalMetric(member, 'creator_city');
+    const country = getAdditionalMetric(member, 'creator_country');
+    
+    if (city && country) {
+      return `${city}, ${country}`;
+    }
+    
+    return 'N/A';
+  };
+
+  // Helper function to get contact details
+  const getContactDetails = (member: CampaignListMember) => {
+    const contactsData = getAdditionalMetric(member, 'contact_details');
+    const parsed = parseJSONSafely(contactsData, []);
+    
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      return parsed;
+    }
+    
+    // Check for individual contact fields
+    const primaryType = getAdditionalMetric(member, 'primary_contact_type');
+    const primaryValue = getAdditionalMetric(member, 'primary_contact_value');
+    
+    if (primaryType && primaryValue) {
+      return [{ type: primaryType, value: primaryValue }];
+    }
+    
+    return [];
+  };
+
+  // Helper function to get work platform info
+  const getWorkPlatform = (member: CampaignListMember) => {
+    const platformData = getAdditionalMetric(member, 'work_platform');
+    const parsed = parseJSONSafely(platformData, null);
+    
+    if (parsed && parsed.name) {
+      return parsed;
+    }
+    
+    // Fall back to individual platform fields
+    const platformName = getAdditionalMetric(member, 'platform_name') || member.platform?.name;
+    const platformLogo = getAdditionalMetric(member, 'platform_logo');
+    const platformId = getAdditionalMetric(member, 'platform_id') || member.platform?.id;
+    
+    if (platformName) {
+      return {
+        name: platformName,
+        logo_url: platformLogo,
+        id: platformId
+      };
+    }
+    
+    return member.platform || null;
+  };
+
+  // Toggle row expansion
+  const toggleRowExpansion = (memberId: string) => {
+    setExpandedRows(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(memberId)) {
+        newSet.delete(memberId);
+      } else {
+        newSet.add(memberId);
+      }
+      return newSet;
+    });
   };
 
   // Truncate name function
@@ -105,42 +249,42 @@ const ShortlistedTable: React.FC<ShortlistedTableProps> = ({
 
   // Handle clicking on name to open account URL
   const handleNameClick = (member: CampaignListMember) => {
-    const accountUrl = member.social_account?.account_url || member.social_account?.additional_metrics?.url;
+    const accountUrl = member.social_account?.account_url || getAdditionalMetric(member, 'url');
     if (accountUrl) {
       window.open(accountUrl, '_blank', 'noopener,noreferrer');
     }
   };
 
-  // Define all available columns
+  // Define all available columns with enhanced data access
   const allColumns: ColumnDefinition[] = [
     {
       key: 'name',
       label: 'Name',
       width: 'w-32',
       defaultVisible: true,
-      getValue: (member) => member.social_account?.full_name || '',
+      getValue: (member) => member.social_account?.full_name || getAdditionalMetric(member, 'name') || '',
       render: (value, member) => (
         <div className="flex items-center min-w-0">
-          <div className="flex-shrink-0 h-8 w-8 relative">
+          <div className="flex-shrink-0 h-12 w-12 relative">
             <img
-              className="rounded-full object-cover h-8 w-8"
-              src={member.social_account?.profile_pic_url || `https://i.pravatar.cc/150?u=${member.social_account?.id}`}
+              className="rounded-full object-cover h-12 w-12 border-2 border-gray-200 shadow-sm"
+              src={member.social_account?.profile_pic_url || getAdditionalMetric(member, 'profileImage') || `https://i.pravatar.cc/150?u=${member.social_account?.id}`}
               alt={member.social_account?.full_name}
               onError={(e) => {
                 (e.target as HTMLImageElement).src = `https://i.pravatar.cc/150?u=${member.social_account?.id}`;
               }}
             /> 
           </div>
-          <div className="ml-2 min-w-0 flex-1">
+          <div className="ml-4 min-w-0 flex-1">
             <div className="text-sm font-medium text-gray-900 flex items-center min-w-0">
               <span 
-                className="truncate cursor-pointer"
+                className="truncate cursor-pointer hover:text-purple-600 transition-colors"
                 title={member.social_account?.full_name || ''}
                 onClick={() => handleNameClick(member)}
               >
-                {truncateName(member.social_account?.full_name || '', 20)}
+                {truncateName(member.social_account?.full_name || getAdditionalMetric(member, 'name') || '', 20)}
               </span>
-              {member.social_account?.is_verified && (
+              {(member.social_account?.is_verified || getAdditionalMetric(member, 'isVerified')) && (
                 <span className="ml-1 flex-shrink-0 text-blue-500" title="Verified">
                   <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm-1.177-7.86l-2.765-2.767L7 12.431l3.823 3.823 7.177-7.177-1.06-1.06-7.117 7.122z"/>
@@ -149,11 +293,20 @@ const ShortlistedTable: React.FC<ShortlistedTableProps> = ({
               )}
             </div>
             <div 
-              className="text-xs text-gray-500 truncate cursor-pointer"
-              title={`@${member.social_account?.account_handle || ''}`}
+              className="text-xs text-gray-500 flex items-center gap-2 mt-1"
               onClick={() => handleNameClick(member)}
             >
-              @{truncateName(member.social_account?.account_handle || '', 20)}
+              <span className="truncate cursor-pointer hover:text-gray-700 transition-colors">
+                @{truncateName(member.social_account?.account_handle || getAdditionalMetric(member, 'username') || '', 20)}
+              </span>
+              {getWorkPlatform(member)?.logo_url && (
+                <img
+                  src={getWorkPlatform(member).logo_url}
+                  alt={getWorkPlatform(member).name}
+                  className="w-4 h-4 rounded flex-shrink-0"
+                  title={getWorkPlatform(member).name}
+                />
+              )}
             </div>
           </div>
         </div>
@@ -164,7 +317,7 @@ const ShortlistedTable: React.FC<ShortlistedTableProps> = ({
       label: 'Followers',
       width: 'w-20',
       defaultVisible: true,
-      getValue: (member) => member.social_account?.followers_count || 0,
+      getValue: (member) => member.social_account?.followers_count || getAdditionalMetric(member, 'followers') || 0,
       render: (value) => formatNumber(value) || 'N/A'
     },
     {
@@ -172,7 +325,7 @@ const ShortlistedTable: React.FC<ShortlistedTableProps> = ({
       label: 'Eng Rate',
       width: 'w-20',
       defaultVisible: true,
-      getValue: (member) => member.social_account?.additional_metrics?.engagementRate,
+      getValue: (member) => getAdditionalMetric(member, 'engagementRate') || getAdditionalMetric(member, 'engagement_rate'),
       render: (value) => {
         if (typeof value === 'number') {
           return `${(value * 100).toFixed(2)}%`;
@@ -185,19 +338,30 @@ const ShortlistedTable: React.FC<ShortlistedTableProps> = ({
       label: 'Avg Likes',
       width: 'w-20',
       defaultVisible: true,
-      getValue: (member) => member.social_account?.additional_metrics?.average_likes,
+      getValue: (member) => getAdditionalMetric(member, 'average_likes'),
       render: (value) => typeof value === 'number' ? formatNumber(value) : 'N/A'
     },
+    // NEW: Reel Views Column
     {
-      key: 'platform',
-      label: 'Platform',
-      width: 'w-16',
+      key: 'reel_views',
+      label: 'Reel Views',
+      width: 'w-20',
       defaultVisible: true,
-      getValue: (member) => member.platform?.name || '',
-      render: (value, member) => (
-        <div className="w-6 h-6 flex items-center justify-center rounded-md mx-auto">
-          {getPlatformIcon(member.platform?.name || '')}
-        </div>
+      getValue: (member) => getReelViews(member),
+      render: (value) => typeof value === 'number' ? formatNumber(value) : 'N/A'
+    },
+
+    // Enhanced columns from the additional metrics
+    {
+      key: 'location',
+      label: 'Location',
+      width: 'w-24',
+      defaultVisible: false,
+      getValue: (member) => formatLocation(member),
+      render: (value) => (
+        <span className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded-full">
+          {value}
+        </span>
       )
     },
     {
@@ -205,23 +369,34 @@ const ShortlistedTable: React.FC<ShortlistedTableProps> = ({
       label: 'Gender',
       width: 'w-16',
       defaultVisible: false,
-      getValue: (member) => member.social_account?.additional_metrics?.gender || member.social_account?.gender,
-      render: (value) => value ? String(value).charAt(0).toUpperCase() + String(value).slice(1) : 'N/A'
+      getValue: (member) => getAdditionalMetric(member, 'gender'),
+      render: (value) => {
+        if (!value) return 'N/A';
+        const displayValue = String(value).charAt(0).toUpperCase() + String(value).slice(1).toLowerCase();
+        const colorClass = value?.toLowerCase() === 'female' ? 'bg-pink-100 text-pink-800' : 
+                          value?.toLowerCase() === 'male' ? 'bg-blue-100 text-blue-800' : 
+                          'bg-gray-100 text-gray-800';
+        return (
+          <span className={`text-xs px-2 py-1 rounded-full ${colorClass}`}>
+            {displayValue}
+          </span>
+        );
+      }
     },
     {
       key: 'language',
       label: 'Language',
       width: 'w-20',
       defaultVisible: false,
-      getValue: (member) => member.social_account?.additional_metrics?.language || member.social_account?.language,
-      render: (value) => value || 'N/A'
+      getValue: (member) => getAdditionalMetric(member, 'language'),
+      render: (value) => value ? String(value).toUpperCase() : 'N/A'
     },
     {
       key: 'age_group',
       label: 'Age Group',
       width: 'w-20',
       defaultVisible: false,
-      getValue: (member) => member.social_account?.additional_metrics?.age_group || member.social_account?.age_group,
+      getValue: (member) => getAdditionalMetric(member, 'age_group'),
       render: (value) => value || 'N/A'
     },
     {
@@ -229,7 +404,7 @@ const ShortlistedTable: React.FC<ShortlistedTableProps> = ({
       label: 'Avg Views',
       width: 'w-20',
       defaultVisible: false,
-      getValue: (member) => member.social_account?.additional_metrics?.average_views,
+      getValue: (member) => getAdditionalMetric(member, 'average_views'),
       render: (value) => typeof value === 'number' ? formatNumber(value) : 'N/A'
     },
     {
@@ -237,7 +412,7 @@ const ShortlistedTable: React.FC<ShortlistedTableProps> = ({
       label: 'Content Count',
       width: 'w-20',
       defaultVisible: false,
-      getValue: (member) => member.social_account?.additional_metrics?.content_count || member.social_account?.media_count,
+      getValue: (member) => getAdditionalMetric(member, 'content_count') || member.social_account?.media_count,
       render: (value) => typeof value === 'number' ? formatNumber(value) : 'N/A'
     },
     {
@@ -245,9 +420,28 @@ const ShortlistedTable: React.FC<ShortlistedTableProps> = ({
       label: 'Subscribers',
       width: 'w-20',
       defaultVisible: false,
-      getValue: (member) => member.social_account?.subscribers_count || member.social_account?.additional_metrics?.subscriber_count,
+      getValue: (member) => member.social_account?.subscribers_count || getAdditionalMetric(member, 'subscriber_count'),
       render: (value) => typeof value === 'number' ? formatNumber(value) : 'N/A'
     },
+    {
+      key: 'platform_account_type',
+      label: 'Account Type',
+      width: 'w-24',
+      defaultVisible: false,
+      getValue: (member) => getAdditionalMetric(member, 'platform_account_type'),
+      render: (value) => {
+        if (!value) return 'N/A';
+        const displayValue = String(value).replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+        const colorClass = value === 'BUSINESS' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800';
+        return (
+          <span className={`text-xs px-2 py-1 rounded-full ${colorClass}`}>
+            {displayValue}
+          </span>
+        );
+      }
+    },
+
+    // Keep existing columns for backward compatibility
     {
       key: 'media_count',
       label: 'Media Count',
@@ -265,22 +459,18 @@ const ShortlistedTable: React.FC<ShortlistedTableProps> = ({
       render: (value) => typeof value === 'number' ? formatNumber(value) : 'N/A'
     },
     {
-      key: 'platform_account_type',
-      label: 'Account Type',
-      width: 'w-24',
-      defaultVisible: false,
-      getValue: (member) => member.social_account?.additional_metrics?.platform_account_type || member.social_account?.account_type,
-      render: (value) => value ? String(value).replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'N/A'
-    },
-    {
       key: 'livestream_metrics',
       label: 'Livestream',
       width: 'w-20',
       defaultVisible: false,
-      getValue: (member) => member.social_account?.additional_metrics?.livestream_metrics,
+      getValue: (member) => getAdditionalMetric(member, 'livestream_metrics'),
       render: (value) => {
         if (value && typeof value === 'object') {
-          return 'Available';
+          return (
+            <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+              Available
+            </span>
+          );
         }
         return 'N/A';
       }
@@ -315,8 +505,8 @@ const ShortlistedTable: React.FC<ShortlistedTableProps> = ({
   // Filter shortlisted members based on search text
   const filteredMembers = searchText
     ? members.filter(member => {
-        const fullName = member.social_account?.full_name || '';
-        const accountHandle = member.social_account?.account_handle || '';
+        const fullName = member.social_account?.full_name || getAdditionalMetric(member, 'name') || '';
+        const accountHandle = member.social_account?.account_handle || getAdditionalMetric(member, 'username') || '';
         return fullName.toLowerCase().includes(searchText.toLowerCase()) ||
                accountHandle.toLowerCase().includes(searchText.toLowerCase());
       })
@@ -601,6 +791,7 @@ const ShortlistedTable: React.FC<ShortlistedTableProps> = ({
                     className="h-4 w-4 text-purple-600 border-gray-300 rounded"
                   />
                 </th>
+                {/* Expand/Collapse column - REMOVED */}
                 {visibleColumnsData.map((column) => (
                   <th 
                     key={column.key} 
@@ -762,53 +953,58 @@ const ShortlistedTable: React.FC<ShortlistedTableProps> = ({
                   </td>
                 </tr>
               ) : (
-                sortedMembers.map((member) => (
-                  <tr key={member.id} className="hover:bg-gray-50">
-                    <td className="px-2 py-4 whitespace-nowrap">
-                      <input 
-                        type="checkbox"
-                        checked={selectedInfluencers.includes(member.id ?? '')}
-                        onChange={() => toggleRowSelection(member.id ?? '')}
-                        className="h-4 w-4 text-purple-600 border-gray-300 rounded"
-                      />
-                    </td>
-                    {visibleColumnsData.map((column) => (
-                      <td key={column.key} className={`px-2 py-4 whitespace-nowrap text-sm text-gray-500 ${column.width}`}>
-                        <span className="truncate block">
-                          {column.render ? column.render(column.getValue(member), member) : column.getValue(member) || 'N/A'}
-                        </span>
-                      </td>
-                    ))}
-                    <td className="px-2 py-4 whitespace-nowrap text-center w-20">
-                      <div className="flex items-center justify-center space-x-2">
-                        <button
-                          onClick={() => handleRemoveInfluencer(member)}
-                          disabled={removingInfluencers.includes(member.id ?? '')}
-                          className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 transition-all duration-200 group disabled:opacity-50"
-                          title="Remove from list"
-                        >
-                          {removingInfluencers.includes(member.id ?? '') ? (
-                            <div className="animate-spin w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full" />
-                          ) : (
-                            <svg 
-                              className="w-4 h-4 group-hover:scale-110 transition-transform duration-200" 
-                              fill="none" 
-                              stroke="currentColor" 
-                              viewBox="0 0 24 24"
+                sortedMembers.map((member) => {
+                  return (
+                    <React.Fragment key={member.id}>
+                      <tr className="hover:bg-gray-50">
+                        <td className="px-2 py-4 whitespace-nowrap">
+                          <input 
+                            type="checkbox"
+                            checked={selectedInfluencers.includes(member.id ?? '')}
+                            onChange={() => toggleRowSelection(member.id ?? '')}
+                            className="h-4 w-4 text-purple-600 border-gray-300 rounded"
+                          />
+                        </td>
+                        {/* Expand/Collapse button - REMOVED */}
+                        {visibleColumnsData.map((column) => (
+                          <td key={column.key} className={`px-2 py-4 whitespace-nowrap text-sm text-gray-500 ${column.width}`}>
+                            <span className="truncate block">
+                              {column.render ? column.render(column.getValue(member), member) : column.getValue(member) || 'N/A'}
+                            </span>
+                          </td>
+                        ))}
+                        <td className="px-2 py-4 whitespace-nowrap text-center w-20">
+                          <div className="flex items-center justify-center space-x-2">
+                            <button
+                              onClick={() => handleRemoveInfluencer(member)}
+                              disabled={removingInfluencers.includes(member.id ?? '')}
+                              className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 transition-all duration-200 group disabled:opacity-50"
+                              title="Remove from list"
                             >
-                              <path 
-                                strokeLinecap="round" 
-                                strokeLinejoin="round" 
-                                strokeWidth={2} 
-                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" 
-                              />
-                            </svg>
-                          )}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                              {removingInfluencers.includes(member.id ?? '') ? (
+                                <div className="animate-spin w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full" />
+                              ) : (
+                                <svg 
+                                  className="w-4 h-4 group-hover:scale-110 transition-transform duration-200" 
+                                  fill="none" 
+                                  stroke="currentColor" 
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path 
+                                    strokeLinecap="round" 
+                                    strokeLinejoin="round" 
+                                    strokeWidth={2} 
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" 
+                                  />
+                                </svg>
+                              )}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    </React.Fragment>
+                  );
+                })
               )}
             </tbody>
           </table>
