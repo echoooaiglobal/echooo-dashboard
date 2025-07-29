@@ -60,9 +60,16 @@ const ShortlistedTable: React.FC<ShortlistedTableProps> = ({
     has_previous: false
   };
 
-  // Helper function to safely access additional metrics
+  // Helper function to safely access additional metrics - FIXED
   const getAdditionalMetric = (member: CampaignListMember, key: string, defaultValue: any = null) => {
-    return member?.social_account?.additional_metrics?.[key] ?? defaultValue;
+    const additionalMetrics = member?.social_account?.additional_metrics;
+    if (!additionalMetrics || typeof additionalMetrics !== 'object') {
+      return defaultValue;
+    }
+    
+    // Type assertion to allow indexing
+    const metricsObj = additionalMetrics as Record<string, any>;
+    return metricsObj[key] ?? defaultValue;
   };
 
   // Helper function to parse JSON strings safely

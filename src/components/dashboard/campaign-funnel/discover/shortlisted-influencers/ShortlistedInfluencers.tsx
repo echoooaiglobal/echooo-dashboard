@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { Search } from 'react-feather';
-import { Campaign } from '@/services/campaign/campaign.service';
+import { Campaign } from '@/types/campaign';
 import { CampaignListMember, CampaignListMembersResponse, removeInfluencerFromList } from '@/services/campaign/campaign-list.service';
 import { ASSIGNMENT_STATUS } from '@/services/list-assignments/list-assignment.server';
 import OutreachMessageForm from './OutreachMessageForm';
