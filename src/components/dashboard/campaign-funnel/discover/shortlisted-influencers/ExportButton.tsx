@@ -11,13 +11,15 @@ interface SimpleExportButtonProps {
   campaignName?: string;
   selectedMembers?: CampaignListMember[];
   className?: string;
+  visibleColumns?: string[]; // Add this new prop
 }
 
 const ExportButton: React.FC<SimpleExportButtonProps> = ({ 
   members, 
   campaignName, 
   selectedMembers,
-  className = '' 
+  className = '',
+  visibleColumns // Add this new prop
 }) => {
   const [isExporting, setIsExporting] = useState(false);
 
@@ -37,10 +39,11 @@ const ExportButton: React.FC<SimpleExportButtonProps> = ({
     setIsExporting(true);
 
     try {
-      await exportInfluencers(membersToExport, campaignName);
+      // Pass visible columns to the export function
+      await exportInfluencers(membersToExport, campaignName, visibleColumns);
       
-      // Show success message
-      alert(`✅ Excel file exported successfully!`);
+      // Success - no popup alert, just console log
+      console.log('✅ Excel file exported successfully!');
       
     } catch (error) {
       console.error('Export failed:', error);

@@ -1,7 +1,7 @@
 // src/components/dashboard/campaign-funnel/discover/shortlisted-influencers/ShortlistedInfluencers.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Search } from 'react-feather';
 import { Campaign } from '@/types/campaign';
 import { CampaignListMember, CampaignListMembersResponse, removeInfluencerFromList } from '@/services/campaign/campaign-list.service';
@@ -43,6 +43,7 @@ const ShortlistedInfluencers: React.FC<ShortlistedInfluencersProps> = ({
   const [selectedInfluencers, setSelectedInfluencers] = useState<string[]>([]);
   const [removingInfluencers, setRemovingInfluencers] = useState<string[]>([]);
   const [isOutreachFormOpen, setIsOutreachFormOpen] = useState(false);
+  const [visibleColumns, setVisibleColumns] = useState<string[]>([]); // NEW: Track visible columns
   
   // API Integration States
   const [messageTemplates, setMessageTemplates] = useState<MessageTemplate[]>([]);
@@ -52,6 +53,12 @@ const ShortlistedInfluencers: React.FC<ShortlistedInfluencersProps> = ({
   
   // Ensure shortlistedMembers has proper structure
   const members = shortlistedMembers?.members || [];
+
+  // NEW: Handle visible columns change from table (memoized to prevent infinite loops)
+  const handleVisibleColumnsChange = useCallback((columns: string[]) => {
+    setVisibleColumns(columns);
+    console.log('📊 Visible columns updated for export:', columns);
+  }, []);
 
   /**
    * Check if a message template exists for the current campaign
@@ -721,11 +728,12 @@ const ShortlistedInfluencers: React.FC<ShortlistedInfluencersProps> = ({
             </button>
           )}
           
-          {/* Export Button - Added before Start Outreach */}
+          {/* UPDATED: Export Button with visible columns support */}
           <ExportButton 
             members={members}
             campaignName={campaignData?.name}
             selectedMembers={selectedInfluencers.length > 0 ? members.filter(member => selectedInfluencers.includes(member.id ?? '')) : undefined}
+            visibleColumns={visibleColumns} // NEW: Pass visible columns to export
           />
           
           {/* Enhanced Outreach Button with all status variants */}
@@ -760,7 +768,7 @@ const ShortlistedInfluencers: React.FC<ShortlistedInfluencersProps> = ({
       
       {/* Main Content Area */}
       <div className="flex space-x-6" style={{ minHeight: '750px' }}>
-        {/* Influencers Table Component */}
+        {/* UPDATED: Influencers Table Component with visible columns callback */}
         <ShortlistedTable
           shortlistedMembers={shortlistedMembers}
           isLoading={isLoading}
@@ -772,6 +780,7 @@ const ShortlistedInfluencers: React.FC<ShortlistedInfluencersProps> = ({
           onPageSizeChange={onPageSizeChange}
           onSelectionChange={setSelectedInfluencers}
           onRemovingChange={setRemovingInfluencers}
+          onVisibleColumnsChange={handleVisibleColumnsChange} // NEW: Handle visible columns change
         />
         
         {/* Analytics Component - Simplified without export button */}

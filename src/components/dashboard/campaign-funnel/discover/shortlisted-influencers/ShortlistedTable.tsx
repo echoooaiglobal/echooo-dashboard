@@ -16,6 +16,7 @@ interface ShortlistedTableProps {
   onPageSizeChange?: (pageSize: number) => void;
   onSelectionChange: (selected: string[]) => void;
   onRemovingChange: (removing: string[]) => void;
+  onVisibleColumnsChange?: (visibleColumns: string[]) => void; // NEW: For export functionality
 }
 
 // Define all available columns with their properties
@@ -38,7 +39,8 @@ const ShortlistedTable: React.FC<ShortlistedTableProps> = ({
   onPageChange,
   onPageSizeChange,
   onSelectionChange,
-  onRemovingChange
+  onRemovingChange,
+  onVisibleColumnsChange // NEW: Callback for visible columns
 }) => {
   const [showPageSizeDropdown, setShowPageSizeDropdown] = useState(false);
   const [showColumnDropdown, setShowColumnDropdown] = useState(false);
@@ -502,6 +504,14 @@ const ShortlistedTable: React.FC<ShortlistedTableProps> = ({
     }
   }, [members]);
 
+  // NEW: Notify parent component when visible columns change (memoized deps)
+  useEffect(() => {
+    if (onVisibleColumnsChange && visibleColumns.size > 0) {
+      const visibleColumnKeys = Array.from(visibleColumns);
+      onVisibleColumnsChange(visibleColumnKeys);
+    }
+  }, [visibleColumns]); // Remove onVisibleColumnsChange from deps to prevent infinite loop
+
   // Filter shortlisted members based on search text
   const filteredMembers = searchText
     ? members.filter(member => {
@@ -608,7 +618,7 @@ const ShortlistedTable: React.FC<ShortlistedTableProps> = ({
     onSelectionChange(newSelected);
   };
 
-  // Toggle column visibility
+  // UPDATED: Toggle column visibility with immediate parent notification
   const toggleColumnVisibility = (columnKey: string) => {
     const newVisible = new Set(visibleColumns);
     if (newVisible.has(columnKey)) {
@@ -617,6 +627,12 @@ const ShortlistedTable: React.FC<ShortlistedTableProps> = ({
       newVisible.add(columnKey);
     }
     setVisibleColumns(newVisible);
+    
+    // Notify parent component immediately (only if callback exists)
+    if (onVisibleColumnsChange) {
+      const visibleColumnKeys = Array.from(newVisible);
+      onVisibleColumnsChange(visibleColumnKeys);
+    }
   };
 
   // Toggle all selection
@@ -791,7 +807,6 @@ const ShortlistedTable: React.FC<ShortlistedTableProps> = ({
                     className="h-4 w-4 text-purple-600 border-gray-300 rounded"
                   />
                 </th>
-                {/* Expand/Collapse column - REMOVED */}
                 {visibleColumnsData.map((column) => (
                   <th 
                     key={column.key} 
@@ -905,6 +920,12 @@ const ShortlistedTable: React.FC<ShortlistedTableProps> = ({
                                     }
                                   });
                                   setVisibleColumns(columnsWithData);
+                                  
+                                  // Notify parent immediately (only if callback exists)
+                                  if (onVisibleColumnsChange) {
+                                    const visibleColumnKeys = Array.from(columnsWithData);
+                                    onVisibleColumnsChange(visibleColumnKeys);
+                                  }
                                 }}
                                 className="text-xs text-purple-600 hover:text-purple-700 font-medium transition-colors"
                               >
@@ -920,6 +941,12 @@ const ShortlistedTable: React.FC<ShortlistedTableProps> = ({
                                     }
                                   });
                                   setVisibleColumns(defaultColumns);
+                                  
+                                  // Notify parent immediately (only if callback exists)
+                                  if (onVisibleColumnsChange) {
+                                    const visibleColumnKeys = Array.from(defaultColumns);
+                                    onVisibleColumnsChange(visibleColumnKeys);
+                                  }
                                 }}
                                 className="text-xs text-gray-600 hover:text-gray-700 font-medium transition-colors"
                               >
@@ -965,7 +992,6 @@ const ShortlistedTable: React.FC<ShortlistedTableProps> = ({
                             className="h-4 w-4 text-purple-600 border-gray-300 rounded"
                           />
                         </td>
-                        {/* Expand/Collapse button - REMOVED */}
                         {visibleColumnsData.map((column) => (
                           <td key={column.key} className={`px-2 py-4 whitespace-nowrap text-sm text-gray-500 ${column.width}`}>
                             <span className="truncate block">
