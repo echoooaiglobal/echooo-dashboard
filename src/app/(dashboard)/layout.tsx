@@ -1,9 +1,8 @@
-
-// src/app/(dashboard)/layout.tsx - FIXED WITH PROPER MARGINS
+// src/app/(dashboard)/layout.tsx - WORKING VERSION WITH SETTINGS SUPPORT
 'use client';
 
 import { ReactNode, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import SessionExpiredModal from '@/components/auth/SessionExpiredModal';
@@ -31,6 +30,7 @@ export default function DashboardLayout({
     getPrimaryRole
   } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [retryCount, setRetryCount] = useState(0);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
@@ -97,10 +97,14 @@ export default function DashboardLayout({
     );
   }
 
+  // Check if current route is settings - if so, use unified settings structure
+  const isSettingsRoute = pathname?.startsWith('/settings');
+
   return (
     <ClientOnly fallback={<LoadingSpinner message="Loading dashboard..." />}>
       <DashboardContent 
         user={user}
+        children={children}
         platform={platform}
         company={company}
         influencer={influencer}
@@ -108,6 +112,7 @@ export default function DashboardLayout({
         getPrimaryRole={getPrimaryRole}
         isSidebarCollapsed={isSidebarCollapsed}
         setIsSidebarCollapsed={setIsSidebarCollapsed}
+        isSettingsRoute={isSettingsRoute}
       />
     </ClientOnly>
   );
@@ -115,15 +120,18 @@ export default function DashboardLayout({
 
 function DashboardContent({ 
   user, 
+  children,
   platform, 
   company, 
   influencer, 
   getUserType, 
   getPrimaryRole,
   isSidebarCollapsed,
-  setIsSidebarCollapsed
+  setIsSidebarCollapsed,
+  isSettingsRoute
 }: {
   user: any;
+  children: ReactNode;
   platform: ReactNode;
   company: ReactNode;
   influencer: ReactNode;
@@ -131,19 +139,26 @@ function DashboardContent({
   getPrimaryRole: () => any;
   isSidebarCollapsed: boolean;
   setIsSidebarCollapsed: (collapsed: boolean) => void;
+  isSettingsRoute: boolean;
 }) {
   const userType = getUserType();
   
   let content;
   
-  if (userType === 'platform') {
-    content = platform;
-  } else if (userType === 'company') {
-    content = company;
-  } else if (userType === 'influencer') {
-    content = influencer;
+  // FIXED: For settings routes, use children (unified settings)
+  if (isSettingsRoute) {
+    content = children;
   } else {
-    content = <SessionExpiredModal />;
+    // For non-settings routes, use parallel routes based on user type
+    if (userType === 'platform') {
+      content = platform;
+    } else if (userType === 'company') {
+      content = company;
+    } else if (userType === 'influencer') {
+      content = influencer;
+    } else {
+      content = <SessionExpiredModal />;
+    }
   }
   
   return (
