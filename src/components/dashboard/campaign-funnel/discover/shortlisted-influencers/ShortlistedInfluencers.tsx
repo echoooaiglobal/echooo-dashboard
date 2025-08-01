@@ -215,7 +215,7 @@ const ShortlistedInfluencers: React.FC<ShortlistedInfluencersProps> = ({
     }
 
     const bulkAssignmentData: BulkAssignmentRequest = {
-      campaign_list_id: campaignData.id,
+      campaign_list_id: campaignData.campaign_lists[0].id,
       strategy: "round_robin",
       preferred_agent_ids: null,
       max_influencers_per_agent: 20,

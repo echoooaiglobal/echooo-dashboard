@@ -1,12 +1,12 @@
-// src/app/(dashboard)/@platform/settings/profile/page.tsx
+// src/app/(dashboard)/@influencer/settings/profile/page.tsx
 'use client';
 
 import ProfileSettings from '@/components/dashboard/settings/ProfileSettings';
 
-export default function PlatformProfileSettingsPage() {
+export default function InfluencerProfileSettingsPage() {
   return (
     <ProfileSettings 
-      userType="platform" 
+      userType="influencer" 
       showCompanyFields={false} 
     />
   );

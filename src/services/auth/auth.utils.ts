@@ -1,4 +1,3 @@
-
 // src/services/auth/auth.utils.ts
 import { User, Role, Company, DetailedRole } from '@/types/auth';
 
@@ -67,6 +66,98 @@ export const storeAuthData = (
   if (roles && roles.length > 0) {
     safeLocalStorage.setItem('primaryRole', roles[0].name);
     safeLocalStorage.setItem('userType', getUserTypeFromRole(roles[0].name));
+  }
+};
+
+/**
+ * Update user data in localStorage while preserving other auth data
+ * This function specifically handles profile updates
+ * @param updatedUser - The updated user data from API response  
+ */
+export const updateStoredUser = (updatedUser: User): void => {
+  try {
+    if (typeof window === 'undefined') {
+      console.warn('updateStoredUser called on server side');
+      return;
+    }
+
+    const currentUserData = safeLocalStorage.getItem('user');
+    
+    if (!currentUserData || currentUserData === 'undefined') {
+      console.warn('No existing user data found in localStorage, storing new data');
+      safeLocalStorage.setItem('user', JSON.stringify(updatedUser));
+      return;
+    }
+
+    // Parse existing user data
+    const existingUser = JSON.parse(currentUserData);
+    
+    // Merge existing user data with updated fields
+    // This preserves any additional fields that might exist in localStorage
+    const mergedUser = {
+      ...existingUser,
+      ...updatedUser,
+      // Ensure the ID matches (don't allow ID changes)
+      id: existingUser.id,
+      // Update timestamp
+      updated_at: updatedUser.updated_at || new Date().toISOString()
+    };
+
+    // Store the merged user data
+    safeLocalStorage.setItem('user', JSON.stringify(mergedUser));
+    
+    console.log('✅ Successfully updated user in localStorage:', {
+      userId: mergedUser.id,
+      email: mergedUser.email,
+      fullName: mergedUser.full_name,
+      updatedAt: mergedUser.updated_at
+    });
+
+  } catch (error) {
+    console.error('❌ Error updating user in localStorage:', error);
+    // Fallback: store the updated user data directly
+    try {
+      safeLocalStorage.setItem('user', JSON.stringify(updatedUser));
+      console.log('✅ Fallback: Stored updated user data directly');
+    } catch (fallbackError) {
+      console.error('❌ Fallback storage also failed:', fallbackError);
+    }
+  }
+};
+
+/**
+ * Complete profile update workflow:
+ * 1. Update localStorage
+ * 2. Trigger AuthContext refresh
+ * @param updatedUser - Updated user data from API
+ * @param loadAuthFromStorage - AuthContext refresh function
+ */
+export const handleProfileUpdateSuccess = (
+  updatedUser: User,
+  loadAuthFromStorage?: () => void
+): void => {
+  try {
+    console.log('🔄 Starting profile update workflow...');
+    
+    // Step 1: Update localStorage
+    updateStoredUser(updatedUser);
+    
+    // Step 2: Refresh AuthContext to reflect changes
+    if (loadAuthFromStorage) {
+      console.log('🔄 Refreshing AuthContext...');
+      // Small delay to ensure localStorage is updated
+      setTimeout(() => {
+        loadAuthFromStorage();
+        console.log('✅ AuthContext refresh completed');
+      }, 100);
+    } else {
+      console.warn('⚠️ loadAuthFromStorage function not provided');
+    }
+    
+    console.log('✅ Profile update workflow completed successfully');
+    
+  } catch (error) {
+    console.error('❌ Error in profile update workflow:', error);
   }
 };
 
@@ -242,7 +333,14 @@ export const hasAnyDetailedRole = (requiredRoles: DetailedRole[]): boolean => {
  * Check if user is platform admin (highest level)
  */
 export const isPlatformAdmin = (): boolean => {
-  return hasDetailedRole('platform_admin');
+  return hasDetailedRole('platform_admin') || hasDetailedRole('platform_super_admin');
+};
+
+/**
+ * Check if user is platform super admin (absolute highest level)
+ */
+export const isPlatformSuperAdmin = (): boolean => {
+  return hasDetailedRole('platform_super_admin');
 };
 
 /**
@@ -256,7 +354,77 @@ export const isPlatformAgent = (): boolean => {
  * Check if user is company admin
  */
 export const isCompanyAdmin = (): boolean => {
-  return hasDetailedRole('b2c_company_admin');
+  return hasDetailedRole('b2c_company_admin') || hasDetailedRole('b2c_company_owner');
+};
+
+/**
+ * Check if user is company owner (highest company level)
+ */
+export const isCompanyOwner = (): boolean => {
+  return hasDetailedRole('b2c_company_owner');
+};
+
+/**
+ * Check if user has marketing-related roles
+ */
+export const hasMarketingRole = (): boolean => {
+  return hasAnyRole([
+    'b2c_marketing_director',
+    'b2c_campaign_manager', 
+    'b2c_campaign_executive',
+    'b2c_social_media_manager'
+  ]);
+};
+
+/**
+ * Check if user has content-related roles
+ */
+export const hasContentRole = (): boolean => {
+  return hasAnyRole([
+    'b2c_content_creator',
+    'b2c_brand_manager',
+    'platform_content_moderator'
+  ]);
+};
+
+/**
+ * Check if user has analytical roles
+ */
+export const hasAnalyticalRole = (): boolean => {
+  return hasAnyRole([
+    'b2c_performance_analyst',
+    'platform_data_analyst'
+  ]);
+};
+
+/**
+ * Check if user has financial roles
+ */
+export const hasFinancialRole = (): boolean => {
+  return hasAnyRole([
+    'b2c_finance_manager',
+    'platform_financial_manager'
+  ]);
+};
+
+/**
+ * Check if user can manage campaigns
+ */
+export const canManageCampaigns = (): boolean => {
+  return hasAnyRole([
+    'b2c_company_owner',
+    'b2c_company_admin',
+    'b2c_marketing_director',
+    'b2c_campaign_manager',
+    'b2c_campaign_executive'
+  ]);
+};
+
+/**
+ * Check if user can view only (read-only access)
+ */
+export const isViewerOnly = (): boolean => {
+  return hasDetailedRole('b2c_viewer');
 };
 
 /**
@@ -272,7 +440,7 @@ export const hasPlatformAccess = (): boolean => {
  */
 export const hasCompanyAccess = (): boolean => {
   const primaryRole = getStoredPrimaryRole();
-  return primaryRole ? primaryRole.startsWith('company_') : false;
+  return primaryRole ? primaryRole.startsWith('b2c_') : false;
 };
 
 /**
@@ -292,23 +460,31 @@ export const getRoleHierarchyLevel = (): number => {
 
   const hierarchyMap: Record<DetailedRole, number> = {
     // Platform hierarchy
+    'platform_super_admin': 110,
     'platform_admin': 100,
     'platform_manager': 80,
     'platform_developer': 75,
-    'platform_user': 60,
-    'platform_accountant': 50,
-    'platform_customer_support': 40,
-    'platform_content_moderator': 35,
-    'platform_agent': 30,
+    'platform_customer_support': 70,
+    'platform_account_manager': 65,
+    'platform_financial_manager': 60,
+    'platform_content_moderator': 55,
+    'platform_data_analyst': 50,
+    'platform_operations_manager': 45,
+    'platform_agent': 40,
     
     // Company hierarchy
     'b2c_company_owner': 100,
-    'b2c_company_admin': 100,
-    'company_manager': 80,
-    'company_marketer': 60,
-    'company_accountant': 50,
-    'company_content_creator': 40,
-    'company_user': 30,
+    'b2c_company_admin': 95,
+    'b2c_marketing_director': 90,
+    'b2c_campaign_manager': 80,
+    'b2c_campaign_executive': 70,
+    'b2c_social_media_manager': 65,
+    'b2c_content_creator': 60,
+    'b2c_brand_manager': 60,
+    'b2c_performance_analyst': 55,
+    'b2c_finance_manager': 55,
+    'b2c_account_coordinator': 50,
+    'b2c_viewer': 30,
     
     // Influencer hierarchy
     'influencer_manager': 80,
@@ -325,23 +501,31 @@ export const hasHigherHierarchyThan = (targetRole: DetailedRole): boolean => {
   const currentLevel = getRoleHierarchyLevel();
   const targetHierarchyMap: Record<DetailedRole, number> = {
     // Platform hierarchy
+    'platform_super_admin': 110,
     'platform_admin': 100,
     'platform_manager': 80,
     'platform_developer': 75,
-    'platform_user': 60,
-    'platform_accountant': 50,
-    'platform_customer_support': 40,
-    'platform_content_moderator': 35,
-    'platform_agent': 30,
+    'platform_customer_support': 70,
+    'platform_account_manager': 65,
+    'platform_financial_manager': 60,
+    'platform_content_moderator': 55,
+    'platform_data_analyst': 50,
+    'platform_operations_manager': 45,
+    'platform_agent': 40,
     
     // Company hierarchy
     'b2c_company_owner': 100,
-    'b2c_company_admin': 100,
-    'company_manager': 80,
-    'company_marketer': 60,
-    'company_accountant': 50,
-    'company_content_creator': 40,
-    'company_user': 30,
+    'b2c_company_admin': 95,
+    'b2c_marketing_director': 90,
+    'b2c_campaign_manager': 80,
+    'b2c_campaign_executive': 70,
+    'b2c_social_media_manager': 65,
+    'b2c_content_creator': 60,
+    'b2c_brand_manager': 60,
+    'b2c_performance_analyst': 55,
+    'b2c_finance_manager': 55,
+    'b2c_account_coordinator': 50,
+    'b2c_viewer': 30,
     
     // Influencer hierarchy
     'influencer_manager': 80,

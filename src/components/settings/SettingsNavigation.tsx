@@ -74,6 +74,14 @@ export default function SettingsNavigation() {
       description: 'Payment information and payout preferences',
       roles: ['platform_agent']
     },
+    {
+      id: 'social-connections',
+      name: 'Social Connections',
+      href: '/settings/social-connections',
+      icon: <Send className="w-5 h-5" />,
+      description: 'Manage connected social media accounts for outreach',
+      roles: ['platform_agent']
+    },
     
     // Platform Admin tabs
     {
@@ -191,6 +199,7 @@ export default function SettingsNavigation() {
   const getTabGroups = () => {
     const groups: { [key: string]: SettingsTab[] } = {
       'Personal': [],
+      'Agent Tools': [], // New category for platform agent tools
       'Platform Management': [],
       'Company Management': [],
       'System & Security': []
@@ -199,10 +208,13 @@ export default function SettingsNavigation() {
     availableTabs.forEach(tab => {
       switch (tab.id) {
         case 'profile':
+          groups['Personal'].push(tab);
+          break;
         case 'outreach':
         case 'assignments':
         case 'payout':
-          groups['Personal'].push(tab);
+        case 'social-connections':
+          groups['Agent Tools'].push(tab); // Group agent-specific features
           break;
         case 'users':
         case 'agents':

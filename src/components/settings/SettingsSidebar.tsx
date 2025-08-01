@@ -27,6 +27,7 @@ import {
   Zap
 } from 'react-feather';
 import { DetailedRole } from '@/types/auth';
+import { BarChart3 } from 'lucide-react';
 
 interface SettingsSection {
   title: string;
@@ -124,6 +125,27 @@ export default function SettingsSidebar() {
             icon: <User className="w-5 h-5" />,
             description: 'Manage influencer contacts and communication history',
             requiredPermissions: [{ resource: 'influencer_contact', action: 'read' }]
+          },
+          {
+            name: 'Social Connections',
+            href: '/settings/social-connections',
+            icon: <Send className="w-5 h-5" />,
+            description: 'Connect and manage social media accounts for outreach',
+            requiredPermissions: []
+          },
+          {
+            name: 'Outreach Analytics',
+            href: '/settings/outreach-analytics',
+            icon: <BarChart3 className="w-5 h-5" />,
+            description: 'View outreach performance and engagement metrics',
+            requiredPermissions: []
+          },
+          {
+            name: 'Automation Settings',
+            href: '/settings/automation',
+            icon: <Settings className="w-5 h-5" />,
+            description: 'Configure automation rules and preferences',
+            requiredPermissions: []
           }
         ]
       });

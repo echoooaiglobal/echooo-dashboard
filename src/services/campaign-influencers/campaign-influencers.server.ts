@@ -419,7 +419,6 @@ export async function addInfluencerToCampaignListServer(
   authToken?: string
 ): Promise<CampaignListMember> {
   try {
-    console.log(`Server: Adding influencer to campaign list ${campaign_list_id}`);
     
     // Transform the influencer data to match the expected API format
     const requestData: AddToCampaignListRequest = {
@@ -456,24 +455,19 @@ export async function addInfluencerToCampaignListServer(
     
     if (response.error) {
       console.error('Server: FastAPI Error adding influencer to campaign list:', response.error);
-      return { 
-        success: false, 
-        message: response.error.message 
-      };
+      throw new Error(response.error.message);
     }
     
-    console.log('✅ Server: Influencer added to campaign list successfully');
-    
+    if (!response.data || !response.data.id) {
+      throw new Error('Invalid response: missing influencer id');
+    }
     return {
-      success: true,
-      ...response.data
+      ...response.data,
+      id: response.data.id as string // ensure id is string
     };
   } catch (error) {
     console.error(`💥 Server: Error adding influencer to campaign list ${campaign_list_id}:`, error);
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : 'An unknown error occurred'
-    };
+    throw error;
   }
 }
 

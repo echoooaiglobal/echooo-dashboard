@@ -21,6 +21,15 @@ export const ENDPOINTS = {
     REFRESH: (accountId: string) => `/auth/oauth/refresh/${accountId}`,
     HEALTH: '/auth/oauth/health',
   },
+
+  USERS: {
+    List: '/users',
+    CREATE: '/users',
+    DETAIL: (id: string) => `/users/${id}`,
+    UPDATE: (id: string) => `/users/${id}`,
+    DELETE: (id: string) => `/users/${id}`,
+  },
+
   CAMPAIGNS: {
     LIST: '/campaigns',
     CREATE: '/campaigns',
@@ -176,4 +185,64 @@ export const ENDPOINTS = {
     RECENT_WEEK: '/orders/recent/week',
     ANALYTICS_STATS: '/orders/analytics/stats',
   },
+
+  AGENT_SOCIAL_CONNECTIONS: {
+    // OAuth Flow endpoints
+    INITIATE_CONNECTION: '/agent-social-connections/initiate-connection',
+    OAUTH_CALLBACK: (platform: string) => `/agent-social-connections/oauth-callback/${platform}`,
+    OAUTH_STATUS: (platform: string) => `/agent-social-connections/oauth-status/${platform}`,
+    
+    // Core CRUD operations
+    CREATE: '/agent-social-connections',
+    LIST: '/agent-social-connections',
+    GET: (connectionId: string) => `/agent-social-connections/${connectionId}`,
+    UPDATE: (connectionId: string) => `/agent-social-connections/${connectionId}`,
+    DELETE: (connectionId: string) => `/agent-social-connections/${connectionId}`,
+    
+    // User-specific operations
+    USER_CONNECTIONS: '/agent-social-connections/user/connections',
+    PLATFORM_STATUS: '/agent-social-connections/user/platforms/status',
+    
+    // Platform connection management (Legacy)
+    CONNECT: '/agent-social-connections/connect',
+    DISCONNECT: (connectionId: string) => `/agent-social-connections/${connectionId}/disconnect`,
+    
+    // Token management
+    VALIDATE_TOKEN: '/agent-social-connections/validate-token',
+    REFRESH_TOKEN: (connectionId: string) => `/agent-social-connections/${connectionId}/refresh-token`,
+    
+    // Automation control
+    TOGGLE_AUTOMATION: '/agent-social-connections/automation/toggle',
+    AUTOMATION_STATUS: (connectionId: string) => `/agent-social-connections/${connectionId}/automation/status`,
+    
+    // Health monitoring
+    HEALTH_CHECK: (connectionId: string) => `/agent-social-connections/${connectionId}/health`,
+    SYSTEM_HEALTH: '/agent-social-connections/system/health',
+    
+    // Instagram messaging
+    INSTAGRAM_CONVERSATIONS: (connectionId: string) => `/agent-social-connections/${connectionId}/instagram/conversations`,
+    INSTAGRAM_MESSAGES: (connectionId: string, conversationId: string) => `/agent-social-connections/${connectionId}/instagram/conversations/${conversationId}/messages`,
+    INSTAGRAM_SEND_MESSAGE: (connectionId: string) => `/agent-social-connections/${connectionId}/instagram/send-message`,
+    INSTAGRAM_SETUP_WEBHOOKS: (connectionId: string) => `/agent-social-connections/${connectionId}/instagram/setup-webhooks`,
+    
+    // Statistics and analytics
+    STATISTICS: '/agent-social-connections/statistics',
+    ANALYTICS: '/agent-social-connections/analytics/platform-usage',
+    ERROR_REPORT: '/agent-social-connections/analytics/error-report',
+    
+    // Bulk operations
+    BULK_UPDATE: '/agent-social-connections/bulk-update',
+    BULK_VALIDATE: '/agent-social-connections/bulk-validate-tokens',
+    
+    // Platform-specific endpoints
+    INSTAGRAM_BUSINESS: '/agent-social-connections/instagram/business-accounts',
+    INSTAGRAM_CONNECT: '/agent-social-connections/instagram/connect-business-account',
+    WHATSAPP_PROFILES: '/agent-social-connections/whatsapp/business-profiles',
+    WHATSAPP_CONNECT: '/agent-social-connections/whatsapp/connect-business-profile',
+    
+    // Maintenance
+    CLEANUP_EXPIRED: '/agent-social-connections/maintenance/cleanup-expired',
+    REFRESH_ALL_TOKENS: '/agent-social-connections/maintenance/refresh-all-tokens'
+  } as const,
+  
 };
