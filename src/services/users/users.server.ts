@@ -3,14 +3,135 @@
 
 import { serverApiClient } from '@/lib/server-api';
 import { ENDPOINTS } from '@/services/api/endpoints';
+import { User } from '@/types/auth';
 import { 
-  User,
   UserDetail,
   UpdateUserRequest,
   UserListResponse,
   UserStatsResponse,
-  UserSearchParams
+  UserSearchParams,
+  PasswordChangeRequest,
+  PasswordChangeResponse
 } from '@/types/users';
+
+
+/**
+ * Get current user profile from FastAPI backend (server-side)
+ */
+export async function getCurrentUserServer(authToken?: string): Promise<UserDetail> {
+  try {
+    console.log('🚀 Server: Starting getCurrentUserServer call');
+    
+    const endpoint = ENDPOINTS.AUTH.ME;
+    console.log(`📞 Server: Making API call to ${endpoint}`);
+    
+    const response = await serverApiClient.get<UserDetail>(
+      endpoint,
+      {},
+      authToken
+    );
+    
+    if (response.error) {
+      console.error('❌ Server: FastAPI Error fetching current user:', response.error);
+      throw new Error(response.error.message);
+    }
+    
+    if (!response.data) {
+      console.warn('⚠️ Server: No current user data received from FastAPI');
+      throw new Error('Current user not found');
+    }
+    
+    console.log('✅ Server: Successfully fetched current user');
+    return response.data;
+  } catch (error) {
+    console.error('💥 Server: Error in getCurrentUserServer:', error);
+    throw error;
+  }
+}
+
+/**
+ * Update current user profile from FastAPI backend (server-side)
+ */
+export async function updateCurrentUserServer(
+  updateData: UpdateUserRequest,
+  authToken?: string
+): Promise<User> {
+  try {
+    console.log('🚀 Server: Starting updateCurrentUserServer call');
+    console.log('📋 Server: Update data:', updateData);
+    
+    const endpoint = ENDPOINTS.AUTH.ME;
+    console.log(`📞 Server: Making API call to ${endpoint}`);
+    
+    const response = await serverApiClient.put<User>(
+      endpoint,
+      updateData,
+      {},
+      authToken
+    );
+    
+    if (response.error) {
+      console.error('❌ Server: FastAPI Error updating current user:', response.error);
+      throw new Error(response.error.message);
+    }
+    
+    if (!response.data) {
+      console.warn('⚠️ Server: No updated user data received from FastAPI');
+      throw new Error('Failed to update current user profile');
+    }
+    
+    console.log('✅ Server: Successfully updated current user profile');
+    return response.data;
+  } catch (error) {
+    console.error('💥 Server: Error in updateCurrentUserServer:', error);
+    throw error;
+  }
+}
+
+/**
+ * Change current user password from FastAPI backend (server-side)
+ */
+export async function changePasswordServer(
+  passwordData: PasswordChangeRequest,
+  authToken?: string
+): Promise<PasswordChangeResponse> {
+  try {
+    console.log('🚀 Server: Starting changePasswordServer call');
+    
+    const endpoint = ENDPOINTS.AUTH.PASSWORD;
+    console.log(`📞 Server: Making API call to ${endpoint}`);
+    
+    // Send all three fields to match backend schema
+    const requestData = {
+      current_password: passwordData.current_password,
+      new_password: passwordData.new_password,
+      confirm_password: passwordData.confirm_password
+    };
+    
+    const response = await serverApiClient.put<PasswordChangeResponse>(
+      endpoint,
+      requestData,
+      {},
+      authToken
+    );
+    
+    if (response.error) {
+      console.error('❌ Server: FastAPI Error changing password:', response.error);
+      throw new Error(response.error.message);
+    }
+    
+    if (!response.data) {
+      console.warn('⚠️ Server: No password change response received from FastAPI');
+      throw new Error('Failed to change password');
+    }
+    
+    console.log('✅ Server: Successfully changed password');
+    return response.data;
+  } catch (error) {
+    console.error('💥 Server: Error in changePasswordServer:', error);
+    throw error;
+  }
+}
 
 /**
  * Get all users from FastAPI backend (server-side)
@@ -129,7 +250,7 @@ export async function updateUserServer(
     }
     
     if (!response.data) {
-      console.warn('⚠️ Server: No user data received from FastAPI');
+      console.warn('⚠️ Server: No updated user data received from FastAPI');
       throw new Error('Failed to update user');
     }
     
@@ -142,15 +263,44 @@ export async function updateUserServer(
 }
 
 /**
+ * Delete user from FastAPI backend (server-side)
+ */
+export async function deleteUserServer(
+  userId: string,
+  authToken?: string
+): Promise<void> {
+  try {
+    console.log(`🚀 Server: Starting deleteUserServer call for ${userId}`);
+    
+    const endpoint = ENDPOINTS.USERS.DELETE(userId);
+    console.log(`📞 Server: Making API call to ${endpoint}`);
+    
+    const response = await serverApiClient.delete(
+      endpoint,
+      {},
+      authToken
+    );
+    
+    if (response.error) {
+      console.error('❌ Server: FastAPI Error deleting user:', response.error);
+      throw new Error(response.error.message);
+    }
+    
+    console.log('✅ Server: Successfully deleted user');
+  } catch (error) {
+    console.error(`💥 Server: Error in deleteUserServer for ${userId}:`, error);
+    throw error;
+  }
+}
+
+/**
  * Get user statistics from FastAPI backend (server-side)
  */
-export async function getUserStatsServer(
-  authToken?: string
-): Promise<UserStatsResponse> {
+export async function getUserStatsServer(authToken?: string): Promise<UserStatsResponse> {
   try {
     console.log('🚀 Server: Starting getUserStatsServer call');
     
-    const endpoint = '/users/stats'; // Based on the backend endpoint
+    const endpoint = '/admin/users/stats';
     console.log(`📞 Server: Making API call to ${endpoint}`);
     
     const response = await serverApiClient.get<UserStatsResponse>(
@@ -166,97 +316,13 @@ export async function getUserStatsServer(
     
     if (!response.data) {
       console.warn('⚠️ Server: No user stats data received from FastAPI');
-      throw new Error('Failed to get user stats');
+      throw new Error('Failed to get user statistics');
     }
     
-    console.log('✅ Server: Successfully fetched user stats');
+    console.log('✅ Server: Successfully fetched user statistics');
     return response.data;
   } catch (error) {
     console.error('💥 Server: Error in getUserStatsServer:', error);
-    throw error;
-  }
-}
-
-/**
- * Update user status from FastAPI backend (server-side)
- */
-export async function updateUserStatusServer(
-  userId: string,
-  status: string,
-  authToken?: string
-): Promise<void> {
-  try {
-    console.log(`🚀 Server: Starting updateUserStatusServer call for ${userId}`);
-    
-    const endpoint = `/users/${userId}/status`;
-    console.log(`📞 Server: Making API call to ${endpoint}`);
-    
-    const response = await serverApiClient.put(
-      endpoint,
-      { status },
-      {},
-      authToken
-    );
-    
-    if (response.error) {
-      console.error('❌ Server: FastAPI Error updating user status:', response.error);
-      throw new Error(response.error.message);
-    }
-    
-    console.log('✅ Server: Successfully updated user status');
-  } catch (error) {
-    console.error(`💥 Server: Error in updateUserStatusServer for ${userId}:`, error);
-    throw error;
-  }
-}
-
-/**
- * Get users by type from FastAPI backend (server-side)
- */
-export async function getUsersByTypeServer(
-  userType: 'platform' | 'b2c' | 'influencer',
-  authToken?: string
-): Promise<UserDetail[]> {
-  try {
-    console.log(`🚀 Server: Starting getUsersByTypeServer call for ${userType}`);
-    
-    let endpoint: string;
-    switch (userType) {
-      case 'platform':
-        endpoint = '/users/platform-users';
-        break;
-      case 'b2c':
-        endpoint = '/users/b2c-users';
-        break;
-      case 'influencer':
-        endpoint = '/users/influencers';
-        break;
-      default:
-        throw new Error(`Invalid user type: ${userType}`);
-    }
-    
-    console.log(`📞 Server: Making API call to ${endpoint}`);
-    
-    const response = await serverApiClient.get<UserDetail[]>(
-      endpoint,
-      {},
-      authToken
-    );
-    
-    if (response.error) {
-      console.error('❌ Server: FastAPI Error fetching users by type:', response.error);
-      throw new Error(response.error.message);
-    }
-    
-    if (!response.data) {
-      console.warn('⚠️ Server: No users data received from FastAPI');
-      return [];
-    }
-    
-    console.log(`✅ Server: Successfully fetched ${response.data.length} ${userType} users`);
-    return response.data;
-  } catch (error) {
-    console.error(`💥 Server: Error in getUsersByTypeServer for ${userType}:`, error);
     throw error;
   }
 }

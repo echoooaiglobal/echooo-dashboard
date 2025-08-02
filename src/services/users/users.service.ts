@@ -1,31 +1,36 @@
 // src/services/users/users.service.ts
-// Client-side service for calling Next.js API routes
+// Updated with profile and password endpoints
+
+'use client';
 
 import { nextjsApiClient } from '@/lib/nextjs-api';
+import { ENDPOINTS } from '@/services/api/endpoints';
+import { User } from '@/types/auth';
 import { 
-  User,
   UserDetail,
   UpdateUserRequest,
-  UpdateUserResponse,
   GetUserResponse,
+  UpdateUserResponse,
   UserListResponse,
   UserStatsResponse,
   UserSearchParams,
   UserStatusUpdate,
   UserRoleUpdate,
-  AdminPasswordReset
+  AdminPasswordReset,
+  PasswordChangeRequest,
+  PasswordChangeResponse
 } from '@/types/users';
 
 /**
- * Get all users with optional filtering and pagination
+ * Get current user profile
  */
-export async function getUsers(params?: UserSearchParams): Promise<UserDetail[]> {
+export async function getCurrentUser(): Promise<UserDetail> {
   try {
-    console.log('🚀 Client Service: Starting getUsers call');
+    console.log('🚀 Client Service: Starting getCurrentUser call');
     
     if (typeof window === 'undefined') {
       console.error('❌ Client Service: Not in browser environment');
-      throw new Error('getUsers can only be called from browser');
+      throw new Error('getCurrentUser can only be called from browser');
     }
 
     const token = localStorage.getItem('accessToken');
@@ -35,29 +40,16 @@ export async function getUsers(params?: UserSearchParams): Promise<UserDetail[]>
       throw new Error('No authentication token found');
     }
 
-    // Build query parameters
-    const queryParams = new URLSearchParams();
-    if (params) {
-      Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          queryParams.append(key, value.toString());
-        }
-      });
-    }
-
-    const queryString = queryParams.toString();
-    const endpoint = queryString 
-      ? `/api/v0/users?${queryString}`
-      : '/api/v0/users';
-
+    const endpoint = `/api/v0/auth/me`;
     console.log(`📞 Client Service: Making API call to ${endpoint}`);
     
-    const response = await nextjsApiClient.get<UserListResponse>(endpoint);
+    const response = await nextjsApiClient.get<GetUserResponse>(endpoint);
     
     console.log('📦 Client Service: Raw API response:', {
       hasError: !!response.error,
       hasData: !!response.data,
-      status: response.status
+      status: response.status,
+      success: response.data?.success
     });
     
     if (response.error) {
@@ -65,21 +57,120 @@ export async function getUsers(params?: UserSearchParams): Promise<UserDetail[]>
       throw new Error(response.error.message);
     }
     
-    if (!response.data) {
-      console.warn('⚠️ Client Service: No valid users data received');
-      throw new Error('Failed to get users');
+    if (!response.data || !response.data.success || !response.data.data) {
+      console.warn('⚠️ Client Service: No valid user data received');
+      throw new Error(response.data?.error || 'Failed to get current user');
     }
     
-    console.log(`✅ Client Service: Successfully fetched ${response.data.users?.length || 0} users`);
-    return response.data.users || [];
+    console.log('✅ Client Service: Successfully fetched current user');
+    return response.data.data;
   } catch (error) {
-    console.error('💥 Client Service: Error in getUsers:', error);
+    console.error('💥 Client Service: Error in getCurrentUser:', error);
     throw error;
   }
 }
 
 /**
- * Get a user by ID
+ * Update current user profile
+ */
+export async function updateCurrentUser(updateData: UpdateUserRequest): Promise<User> {
+  try {
+    console.log('🚀 Client Service: Starting updateCurrentUser call');
+    console.log('📋 Client Service: Update data:', updateData);
+    
+    if (typeof window === 'undefined') {
+      console.error('❌ Client Service: Not in browser environment');
+      throw new Error('updateCurrentUser can only be called from browser');
+    }
+
+    const token = localStorage.getItem('accessToken');
+    console.log('🔑 Client Service: Token check:', token ? 'Token exists' : 'No token found');
+    
+    if (!token) {
+      throw new Error('No authentication token found');
+    }
+
+    const endpoint = `/api/v0/auth/me`;
+    console.log(`📞 Client Service: Making API call to ${endpoint}`);
+    
+    const response = await nextjsApiClient.put<UpdateUserResponse>(endpoint, updateData);
+    
+    console.log('📦 Client Service: Raw API response:', {
+      hasError: !!response.error,
+      hasData: !!response.data,
+      status: response.status,
+      success: response.data?.success
+    });
+    
+    if (response.error) {
+      console.error('❌ Client Service: API returned error:', response.error);
+      throw new Error(response.error.message);
+    }
+    
+    if (!response.data || !response.data.success || !response.data.data) {
+      console.warn('⚠️ Client Service: No valid user data received');
+      throw new Error(response.data?.error || 'Failed to update profile');
+    }
+    
+    console.log('✅ Client Service: Successfully updated current user profile');
+    return response.data.data;
+  } catch (error) {
+    console.error('💥 Client Service: Error in updateCurrentUser:', error);
+    throw error;
+  }
+}
+
+/**
+ * Change current user password
+ */
+export async function changePassword(passwordData: PasswordChangeRequest): Promise<PasswordChangeResponse> {
+  try {
+    console.log('🚀 Client Service: Starting changePassword call');
+    
+    if (typeof window === 'undefined') {
+      console.error('❌ Client Service: Not in browser environment');
+      throw new Error('changePassword can only be called from browser');
+    }
+
+    const token = localStorage.getItem('accessToken');
+    console.log('🔑 Client Service: Token check:', token ? 'Token exists' : 'No token found');
+    
+    if (!token) {
+      throw new Error('No authentication token found');
+    }
+
+    const endpoint = `/api/v0/auth/password`;
+    console.log(`📞 Client Service: Making API call to ${endpoint}`);
+    
+    const response = await nextjsApiClient.put<PasswordChangeResponse>(endpoint, passwordData);
+    
+    console.log('📦 Client Service: Raw API response:', {
+      hasError: !!response.error,
+      hasData: !!response.data,
+      status: response.status,
+      success: response.data?.success
+    });
+    
+    if (response.error) {
+      console.error('❌ Client Service: API returned error:', response.error);
+      throw new Error(response.error.message);
+    }
+    
+    if (!response.data || !response.data.success) {
+      console.warn('⚠️ Client Service: Password change failed');
+      throw new Error(response.data?.error || 'Failed to change password');
+    }
+    
+    console.log('✅ Client Service: Successfully changed password');
+    return response.data;
+  } catch (error) {
+    console.error('💥 Client Service: Error in changePassword:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get user by ID
  */
 export async function getUser(userId: string): Promise<UserDetail> {
   try {
@@ -170,7 +261,6 @@ export async function updateUser(userId: string, updateData: UpdateUserRequest):
     }
     
     console.log('✅ Client Service: Successfully updated user');
-    console.log('📊 Client Service: Updated user data:', response.data.data);
     return response.data.data;
   } catch (error) {
     console.error('💥 Client Service: Error in updateUser:', error);
@@ -179,15 +269,16 @@ export async function updateUser(userId: string, updateData: UpdateUserRequest):
 }
 
 /**
- * Get user statistics (admin only)
+ * Get all users
  */
-export async function getUserStats(): Promise<UserStatsResponse> {
+export async function getUsers(params?: UserSearchParams): Promise<UserDetail[]> {
   try {
-    console.log('🚀 Client Service: Starting getUserStats call');
+    console.log('🚀 Client Service: Starting getUsers call');
+    console.log('📋 Client Service: Search params:', params);
     
     if (typeof window === 'undefined') {
       console.error('❌ Client Service: Not in browser environment');
-      throw new Error('getUserStats can only be called from browser');
+      throw new Error('getUsers can only be called from browser');
     }
 
     const token = localStorage.getItem('accessToken');
@@ -197,105 +288,21 @@ export async function getUserStats(): Promise<UserStatsResponse> {
       throw new Error('No authentication token found');
     }
 
-    const endpoint = '/api/v0/users/stats';
-    console.log(`📞 Client Service: Making API call to ${endpoint}`);
-    
-    const response = await nextjsApiClient.get<UserStatsResponse>(endpoint);
-    
-    console.log('📦 Client Service: Raw API response:', {
-      hasError: !!response.error,
-      hasData: !!response.data,
-      status: response.status
-    });
-    
-    if (response.error) {
-      console.error('❌ Client Service: API returned error:', response.error);
-      throw new Error(response.error.message);
-    }
-    
-    if (!response.data) {
-      console.warn('⚠️ Client Service: No valid user stats data received');
-      throw new Error('Failed to get user stats');
-    }
-    
-    console.log('✅ Client Service: Successfully fetched user stats');
-    return response.data;
-  } catch (error) {
-    console.error('💥 Client Service: Error in getUserStats:', error);
-    throw error;
-  }
-}
-
-/**
- * Update user status (admin only)
- */
-export async function updateUserStatus(userId: string, status: string): Promise<void> {
-  try {
-    console.log(`🚀 Client Service: Starting updateUserStatus call for ${userId}`);
-    
-    if (typeof window === 'undefined') {
-      console.error('❌ Client Service: Not in browser environment');
-      throw new Error('updateUserStatus can only be called from browser');
+    // Build query parameters
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          queryParams.append(key, value.toString());
+        }
+      });
     }
 
-    const token = localStorage.getItem('accessToken');
-    console.log('🔑 Client Service: Token check:', token ? 'Token exists' : 'No token found');
+    const queryString = queryParams.toString();
+    const endpoint = queryString 
+      ? `/api/v0/users?${queryString}`
+      : '/api/v0/users';
     
-    if (!token) {
-      throw new Error('No authentication token found');
-    }
-
-    const endpoint = `/api/v0/users/${userId}/status`;
-    console.log(`📞 Client Service: Making API call to ${endpoint}`);
-    
-    const response = await nextjsApiClient.put(endpoint, { status });
-    
-    if (response.error) {
-      console.error('❌ Client Service: API returned error:', response.error);
-      throw new Error(response.error.message);
-    }
-    
-    console.log('✅ Client Service: Successfully updated user status');
-  } catch (error) {
-    console.error('💥 Client Service: Error in updateUserStatus:', error);
-    throw error;
-  }
-}
-
-/**
- * Get users by type
- */
-export async function getUsersByType(userType: 'platform' | 'b2c' | 'influencer'): Promise<UserDetail[]> {
-  try {
-    console.log(`🚀 Client Service: Starting getUsersByType call for ${userType}`);
-    
-    if (typeof window === 'undefined') {
-      console.error('❌ Client Service: Not in browser environment');
-      throw new Error('getUsersByType can only be called from browser');
-    }
-
-    const token = localStorage.getItem('accessToken');
-    console.log('🔑 Client Service: Token check:', token ? 'Token exists' : 'No token found');
-    
-    if (!token) {
-      throw new Error('No authentication token found');
-    }
-
-    let endpoint: string;
-    switch (userType) {
-      case 'platform':
-        endpoint = '/api/v0/users/platform-users';
-        break;
-      case 'b2c':
-        endpoint = '/api/v0/users/b2c-users';
-        break;
-      case 'influencer':
-        endpoint = '/api/v0/users/influencers';
-        break;
-      default:
-        throw new Error(`Invalid user type: ${userType}`);
-    }
-
     console.log(`📞 Client Service: Making API call to ${endpoint}`);
     
     const response = await nextjsApiClient.get<UserDetail[]>(endpoint);
@@ -303,7 +310,7 @@ export async function getUsersByType(userType: 'platform' | 'b2c' | 'influencer'
     console.log('📦 Client Service: Raw API response:', {
       hasError: !!response.error,
       hasData: !!response.data,
-      status: response.status
+      dataLength: Array.isArray(response.data) ? response.data.length : 'Not array'
     });
     
     if (response.error) {
@@ -312,14 +319,14 @@ export async function getUsersByType(userType: 'platform' | 'b2c' | 'influencer'
     }
     
     if (!response.data) {
-      console.warn('⚠️ Client Service: No valid users data received');
+      console.warn('⚠️ Client Service: No users data received');
       return [];
     }
     
-    console.log(`✅ Client Service: Successfully fetched ${response.data.length} ${userType} users`);
+    console.log(`✅ Client Service: Successfully fetched ${response.data.length} users`);
     return response.data;
   } catch (error) {
-    console.error('💥 Client Service: Error in getUsersByType:', error);
+    console.error('💥 Client Service: Error in getUsers:', error);
     throw error;
   }
 }

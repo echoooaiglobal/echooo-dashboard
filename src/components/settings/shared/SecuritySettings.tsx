@@ -1,12 +1,13 @@
-// ============================================
-// 2. src/components/settings/shared/SecuritySettings.tsx
-// ============================================
+// src/components/settings/shared/SecuritySettings.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import SettingsCard from './SettingsCard';
-import { Shield, Key, Smartphone, Clock, AlertTriangle, Check } from 'react-feather';
+import { Shield, Key, Smartphone, Clock, AlertTriangle, Check, Eye, EyeOff } from 'react-feather';
+import { changePassword } from '@/services/users/users.service';
+import { PasswordChangeRequest } from '@/types/users';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 export default function SecuritySettings() {
   const { user } = useAuth();
@@ -14,10 +15,15 @@ export default function SecuritySettings() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [showQRCode, setShowQRCode] = useState(false);
   const [sessions, setSessions] = useState([]);
   const [passwordStrength, setPasswordStrength] = useState(0);
+  const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState<'success' | 'error'>('success');
 
   useEffect(() => {
     loadSecuritySettings();
@@ -70,33 +76,49 @@ export default function SecuritySettings() {
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validation
     if (newPassword !== confirmPassword) {
-      alert('Passwords do not match');
+      setMessage('Passwords do not match');
+      setMessageType('error');
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      setMessage('New password must be at least 8 characters long');
+      setMessageType('error');
+      return;
+    }
+
+    if (passwordStrength < 3) {
+      setMessage('Please choose a stronger password');
+      setMessageType('error');
       return;
     }
 
     setLoading(true);
+    setMessage('');
+    
     try {
-      const response = await fetch('/api/settings/password', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          current_password: currentPassword,
-          new_password: newPassword
-        })
-      });
+      const passwordData: PasswordChangeRequest = {
+        current_password: currentPassword,
+        new_password: newPassword,
+        confirm_password: confirmPassword
+      };
 
-      if (!response.ok) throw new Error('Failed to change password');
+      await changePassword(passwordData);
 
       // Clear form
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
       
-      alert('Password changed successfully');
+      setMessage('Password changed successfully!');
+      setMessageType('success');
     } catch (error) {
       console.error('Error changing password:', error);
-      alert('Failed to change password');
+      setMessage(error instanceof Error ? error.message : 'Failed to change password. Please try again.');
+      setMessageType('error');
     } finally {
       setLoading(false);
     }
@@ -161,37 +183,63 @@ export default function SecuritySettings() {
         description="Update your account password to keep your account secure"
         icon={<Key className="w-5 h-5" />}
       >
-        <form onSubmit={handlePasswordChange} className="space-y-4">
+        <form onSubmit={handlePasswordChange} className="space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Current Password
             </label>
-            <input
-              type="password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-              required
-            />
+            <div className="relative">
+              <input
+                type={showCurrentPassword ? 'text' : 'password'}
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 pr-12"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center"
+              >
+                {showCurrentPassword ? (
+                  <EyeOff className="h-5 w-5 text-gray-400" />
+                ) : (
+                  <Eye className="h-5 w-5 text-gray-400" />
+                )}
+              </button>
+            </div>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               New Password
             </label>
-            <input
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-              required
-            />
+            <div className="relative">
+              <input
+                type={showNewPassword ? 'text' : 'password'}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 pr-12"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowNewPassword(!showNewPassword)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center"
+              >
+                {showNewPassword ? (
+                  <EyeOff className="h-5 w-5 text-gray-400" />
+                ) : (
+                  <Eye className="h-5 w-5 text-gray-400" />
+                )}
+              </button>
+            </div>
             {newPassword && (
-              <div className="mt-2">
-                <div className="flex items-center space-x-2">
+              <div className="mt-3">
+                <div className="flex items-center space-x-3">
                   <div className="flex-1 bg-gray-200 rounded-full h-2">
                     <div 
-                      className={`h-2 rounded-full transition-all ${
+                      className={`h-2 rounded-full transition-all duration-300 ${
                         passwordStrength <= 1 ? 'bg-red-500' :
                         passwordStrength === 2 ? 'bg-yellow-500' :
                         passwordStrength === 3 ? 'bg-blue-500' : 'bg-green-500'
@@ -203,6 +251,26 @@ export default function SecuritySettings() {
                     {strengthInfo.text}
                   </span>
                 </div>
+                <div className="mt-2 text-xs text-gray-500">
+                  <p>Password must contain:</p>
+                  <ul className="list-disc list-inside mt-1 space-y-1">
+                    <li className={newPassword.length >= 8 ? 'text-green-600' : 'text-gray-500'}>
+                      At least 8 characters
+                    </li>
+                    <li className={/[A-Z]/.test(newPassword) ? 'text-green-600' : 'text-gray-500'}>
+                      One uppercase letter
+                    </li>
+                    <li className={/[a-z]/.test(newPassword) ? 'text-green-600' : 'text-gray-500'}>
+                      One lowercase letter
+                    </li>
+                    <li className={/[0-9]/.test(newPassword) ? 'text-green-600' : 'text-gray-500'}>
+                      One number
+                    </li>
+                    <li className={/[^A-Za-z0-9]/.test(newPassword) ? 'text-green-600' : 'text-gray-500'}>
+                      One special character
+                    </li>
+                  </ul>
+                </div>
               </div>
             )}
           </div>
@@ -211,25 +279,61 @@ export default function SecuritySettings() {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Confirm New Password
             </label>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-              required
-            />
+            <div className="relative">
+              <input
+                type={showConfirmPassword ? 'text' : 'password'}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 pr-12"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center"
+              >
+                {showConfirmPassword ? (
+                  <EyeOff className="h-5 w-5 text-gray-400" />
+                ) : (
+                  <Eye className="h-5 w-5 text-gray-400" />
+                )}
+              </button>
+            </div>
             {confirmPassword && newPassword !== confirmPassword && (
               <p className="text-sm text-red-600 mt-1">Passwords do not match</p>
             )}
           </div>
 
-          <button
-            type="submit"
-            disabled={loading || newPassword !== confirmPassword || !newPassword}
-            className="w-full sm:w-auto px-6 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50"
-          >
-            {loading ? 'Changing Password...' : 'Change Password'}
-          </button>
+          {/* Message Display */}
+          {message && (
+            <div className={`p-4 rounded-md ${
+              messageType === 'success' 
+                ? 'bg-green-50 text-green-700 border border-green-200' 
+                : 'bg-red-50 text-red-700 border border-red-200'
+            }`}>
+              {message}
+            </div>
+          )}
+
+          <div className="flex justify-end pt-4">
+            <button
+              type="submit"
+              disabled={loading || newPassword !== confirmPassword || !newPassword || !currentPassword || passwordStrength < 3}
+              className="flex items-center justify-center px-8 py-3 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
+            >
+              {loading ? (
+                <>
+                  <LoadingSpinner size="sm" />
+                  <span className="ml-2">Updating Password...</span>
+                </>
+              ) : (
+                <>
+                  <Key className="w-5 h-5 mr-2" />
+                  Update Password
+                </>
+              )}
+            </button>
+          </div>
         </form>
       </SettingsCard>
 
@@ -268,59 +372,35 @@ export default function SecuritySettings() {
             {twoFactorEnabled ? 'Disable' : 'Enable'}
           </button>
         </div>
-
-        {showQRCode && !twoFactorEnabled && (
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-            <h4 className="font-medium text-gray-900 mb-2">Setup Two-Factor Authentication</h4>
-            <p className="text-sm text-gray-600 mb-4">
-              Scan this QR code with your authenticator app, then enter the verification code below.
-            </p>
-            {/* QR Code would be displayed here */}
-            <div className="w-48 h-48 bg-gray-200 rounded-lg flex items-center justify-center mb-4">
-              <span className="text-gray-500">QR Code</span>
-            </div>
-            <div className="flex space-x-3">
-              <input
-                type="text"
-                placeholder="Enter verification code"
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
-              <button className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700">
-                Verify
-              </button>
-            </div>
-          </div>
-        )}
       </SettingsCard>
 
       {/* Active Sessions */}
       <SettingsCard
         title="Active Sessions"
-        description="Manage your active login sessions across devices"
+        description="Manage your active login sessions across different devices"
         icon={<Clock className="w-5 h-5" />}
       >
         <div className="space-y-4">
           {sessions.length === 0 ? (
-            <p className="text-gray-500 text-sm">No active sessions found.</p>
+            <p className="text-gray-500 text-center py-4">No active sessions found</p>
           ) : (
             sessions.map((session: any, index) => (
-              <div key={index} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+              <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                 <div className="flex-1">
                   <div className="flex items-center space-x-2">
-                    <span className="font-medium text-gray-900">
-                      {session.device || 'Unknown Device'}
-                    </span>
-                    {session.is_current && (
-                      <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
-                        Current
+                    <span className="font-medium text-gray-900">{session.device || 'Unknown Device'}</span>
+                    {session.current && (
+                      <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
+                        Current Session
                       </span>
                     )}
                   </div>
-                  <p className="text-sm text-gray-600">
-                    {session.location || 'Unknown Location'} • Last active: {session.last_active || 'Unknown'}
+                  <p className="text-sm text-gray-500 mt-1">
+                    {session.location || 'Unknown Location'} • 
+                    Last active: {session.last_active || 'Just now'}
                   </p>
                 </div>
-                {!session.is_current && (
+                {!session.current && (
                   <button
                     onClick={() => handleTerminateSession(session.id)}
                     className="px-3 py-1 text-sm text-red-600 hover:text-red-800"
@@ -331,6 +411,43 @@ export default function SecuritySettings() {
               </div>
             ))
           )}
+        </div>
+      </SettingsCard>
+
+      {/* Security Recommendations */}
+      <SettingsCard
+        title="Security Recommendations"
+        description="Tips to keep your account secure"
+        icon={<AlertTriangle className="w-5 h-5" />}
+      >
+        <div className="space-y-4">
+          <div className="flex items-start space-x-3">
+            <Check className="w-5 h-5 text-green-500 mt-0.5" />
+            <div>
+              <h4 className="font-medium text-gray-900">Use a strong password</h4>
+              <p className="text-sm text-gray-600">
+                Your password should be at least 8 characters and include uppercase, lowercase, numbers, and symbols.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start space-x-3">
+            <Check className="w-5 h-5 text-green-500 mt-0.5" />
+            <div>
+              <h4 className="font-medium text-gray-900">Enable two-factor authentication</h4>
+              <p className="text-sm text-gray-600">
+                Add an extra layer of security to prevent unauthorized access to your account.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start space-x-3">
+            <Check className="w-5 h-5 text-green-500 mt-0.5" />
+            <div>
+              <h4 className="font-medium text-gray-900">Review active sessions regularly</h4>
+              <p className="text-sm text-gray-600">
+                Check for any suspicious activity and terminate sessions from unknown devices.
+              </p>
+            </div>
+          </div>
         </div>
       </SettingsCard>
     </div>

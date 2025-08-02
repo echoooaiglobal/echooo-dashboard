@@ -1,24 +1,6 @@
-// src/types/users.ts
+// src/types/users.ts - Updated to import User from auth.ts
 
-export interface User {
-  id: string;
-  email: string;
-  full_name: string;
-  phone_number: string | null;
-  status: string;
-  user_type: string | null;
-  email_verified: boolean;
-  profile_image_url: string | null;
-  created_at: string;
-  updated_at: string;
-  last_login_at: string | null;
-}
-
-export interface Role {
-  id: string;
-  name: string;
-  description: string | null;
-}
+import { User, Role } from '@/types/auth';
 
 export interface CompanyBrief {
   id: string;
@@ -33,9 +15,10 @@ export interface UserDetail extends User {
 }
 
 export interface UpdateUserRequest {
-  full_name?: string;
-  phone_number?: string;
-  profile_image_url?: string;
+  first_name?: string;
+  last_name?: string;
+  phone_number?: string | null;
+  profile_image_url?: string | null;
   bio?: string;
   location?: string;
   timezone?: string;
@@ -82,9 +65,10 @@ export interface AdminPasswordReset {
   new_password: string;
 }
 
-// Profile form data interface for components
+// Updated ProfileFormData interface for components - uses first_name and last_name
 export interface ProfileFormData {
-  full_name: string;
+  first_name: string;
+  last_name: string;
   email: string;
   phone_number: string;
   bio: string;
@@ -94,6 +78,19 @@ export interface ProfileFormData {
   profile_image_url: string;
   department?: string;
   job_title?: string;
+}
+
+// Password change request interface
+export interface PasswordChangeRequest {
+  current_password: string;
+  new_password: string;
+  confirm_password: string;
+}
+
+export interface PasswordChangeResponse {
+  success: boolean;
+  message: string;
+  error?: string;
 }
 
 // API response types

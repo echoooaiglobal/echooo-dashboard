@@ -62,19 +62,22 @@ export interface PermissionCheck {
   action: string;
   context?: Record<string, any>;
 }
-
+ 
 export interface User {
   id: string;
   email: string;
-  full_name: string;
+  first_name: string | null;
+  last_name: string | null;
+  full_name: string; // Keep for backward compatibility
   phone_number: string | null;
   status: string;
   email_verified: boolean;
   profile_image_url: string | null;
   created_at: string;
   updated_at: string;
-  last_login_at: string;
+  last_login_at: string | null;
   user_type: UserType;
+  // Optional fields that might exist in some contexts
   company_name?: string;
   company_domain?: string;
 }
