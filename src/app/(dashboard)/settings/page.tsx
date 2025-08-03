@@ -25,11 +25,11 @@ export default function SettingsIndexPage() {
         switch (role) {
           case 'platform_super_admin':
           case 'platform_admin':
-            return '/settings/monitoring';
+            return '/settings/profile';
           case 'platform_agent':
-            return '/settings/outreach';
+            return '/settings/profile';
           case 'platform_financial_manager':
-            return '/settings/orders';
+            return '/settings/profile';
           default:
             return '/settings/profile';
         }

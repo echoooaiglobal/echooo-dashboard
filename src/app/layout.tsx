@@ -16,9 +16,9 @@ export const metadata: Metadata = {
   description: 'Manage influencer campaigns with Echooo',
   icons: {
     icon: [
-      { url: '/favicons/echooo-favicon.png' },
-      { url: '/favicons/echooo-favicon.png', sizes: '16x16', type: 'image/png' },
-      { url: '/favicons/echooo-favicon.png', sizes: '32x32', type: 'image/png' },
+      { url: '/favicons/echooo-favicon-512-512.png' },
+      { url: '/favicons/echooo-favicon-512-512.png', sizes: '16x16', type: 'image/png' },
+      { url: '/favicons/echooo-favicon-512-512.png', sizes: '32x32', type: 'image/png' },
     ],
     apple: [
       { url: '/apple-touch-icon.png' },

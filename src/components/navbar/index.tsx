@@ -1,4 +1,4 @@
-// src/components/navbar/index.tsx - Updated with SafeImage support
+// src/components/navbar/index.tsx
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -279,7 +279,7 @@ export default function EnhancedNavbar() {
           <div className="flex justify-between h-16">
             <div className="flex items-center">
               <Link href="/" className="flex items-center">
-                <Image 
+                <Image  
                   src="/echooo-logo.svg" 
                   alt="Echooo" 
                   width={120} 
