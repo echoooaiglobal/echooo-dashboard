@@ -422,14 +422,14 @@ const AudienceLikersSection: React.FC<AudienceLikersSectionProps> = ({
               arcLabel={(d) => `${d.value.toFixed(1)}%`}
               theme={{
                 text: {
-                  fontSize: 16,
+                  fontSize: 12,
                   fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
                 },
                 tooltip: {
                   container: {
                     background: '#1F2937',
                     color: '#F9FAFB',
-                    fontSize: '16px',
+                    fontSize: '14px',
                     borderRadius: '8px',
                     boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
                     border: 'none'
@@ -505,14 +505,14 @@ const AudienceLikersSection: React.FC<AudienceLikersSectionProps> = ({
               arcLabel={(d) => `${d.value.toFixed(1)}%`}
               theme={{
                 text: {
-                  fontSize: 16,
+                  fontSize: 12,
                   fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
                 },
                 tooltip: {
                   container: {
                     background: '#1F2937',
                     color: '#F9FAFB',
-                    fontSize: '16px',
+                    fontSize: '14px',
                     borderRadius: '8px',
                     boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
                     border: 'none'

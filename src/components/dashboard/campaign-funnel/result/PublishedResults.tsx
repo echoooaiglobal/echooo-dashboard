@@ -1,27 +1,35 @@
 // src/components/dashboard/campaign-funnel/result/PublishedResults.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import AddVideoModal from './AddVideoModal';
+import EditVideoModal from './EditVideoModal';
 import { getVideoResults, updateVideoResult, updateAllVideoResultsWithData, deleteVideoResult } from '@/services/video-results';
 import { getInstagramPostDetails, mapToBackendFormat } from '@/services/ensembledata/user-detailed-info';
 import { VideoResult } from '@/types/user-detailed-info';
-import { Campaign } from '@/services/campaign/campaign.service';
+import { Campaign } from '@/types/campaign';
 import { formatNumber } from '@/utils/format';
 
 interface PublishedResultsProps {
   campaignData?: Campaign | null;
-  onShowAnalytics?: () => void;
   onVideoCountChange?: (count: number) => void;
+}
+
+interface ProgressUpdate {
+  total: number;
+  completed: number;
+  current: string;
+  errors: number;
 }
 
 const PublishedResults: React.FC<PublishedResultsProps> = ({ 
   campaignData, 
-  onShowAnalytics, 
   onVideoCountChange 
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddVideoModal, setShowAddVideoModal] = useState(false);
+  const [showEditVideoModal, setShowEditVideoModal] = useState(false);
+  const [editingVideo, setEditingVideo] = useState<VideoResult | null>(null);
   const [selectedVideos, setSelectedVideos] = useState<Set<string>>(new Set());
   const [videoResults, setVideoResults] = useState<VideoResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -33,9 +41,24 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
   const [selectedVideoData, setSelectedVideoData] = useState<VideoResult | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   
-  // Pagination state
+  // Progress tracking states
+  const [showProgressModal, setShowProgressModal] = useState(false);
+  const [progressData, setProgressData] = useState<ProgressUpdate>({
+    total: 0,
+    completed: 0,
+    current: '',
+    errors: 0
+  });
+
+  // Sorting states - updated to match ShortlistedTable
+  const [sortConfig, setSortConfig] = useState<{
+    key: string | null;
+    direction: 'asc' | 'desc' | null;
+  }>({ key: null, direction: null });
+  
+  // Pagination state - Changed default pageSize from 10 to 50
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(50);
   const [showPageSizeDropdown, setShowPageSizeDropdown] = useState(false);
 
   // Image proxy utility function
@@ -97,12 +120,149 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
     }
   };
 
+  // Format currency utility function - UPDATED: Remove dollar sign
+  const formatCurrency = (amount: number): string => {
+    if (!amount || amount <= 0) return 'N/A';
+    
+    return new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 4
+    }).format(amount);
+  };
+
+  // UPDATED: Enhanced getPostData function with video_play_count focus for views
+  const getPostData = (video: VideoResult) => {
+    const postData = video.post_result_obj?.data;
+    if (!postData) {
+      // When no post data, use whichever is greater between views_count and plays_count
+      const viewsFromAPI = Math.max(0, video.views_count || 0);
+      const playsFromAPI = Math.max(0, video.plays_count || 0);
+      const finalViews = Math.max(viewsFromAPI, playsFromAPI);
+      const likes = Math.max(0, video.likes_count || 0);
+      const comments = Math.max(0, video.comments_count || 0);
+      
+      // UPDATED: Proper shares handling with multiple fallbacks
+      const shares = Math.max(0, video.shares_count || 0);
+      const collaborationPrice = video.collaboration_price || 0;
+      
+      // Calculate CPE (Cost Per Engagement) - Include shares if > 0
+      const totalEngagements = likes + comments + (shares > 0 ? shares : 0);
+      const cpe = totalEngagements > 0 ? collaborationPrice / totalEngagements : 0;
+      
+      // UPDATED: Use plays for video_play_count when no post data
+      const videoPlayCount = playsFromAPI;
+      
+      return {
+        likes,
+        comments,
+        plays: playsFromAPI,
+        actualViews: finalViews,
+        shares,
+        followers: video.followers_count || 0,
+        engagementRate: '0%',
+        videoUrl: null,
+        thumbnailUrl: getProxiedImageUrl(video.thumbnail || video.media_preview || ''),
+        isVideo: false,
+        duration: video.duration || 0,
+        collaborationPrice,
+        cpv: finalViews > 0 ? collaborationPrice / finalViews : 0,
+        cpe,
+        videoPlayCount // UPDATED: Added specific video_play_count field
+      };
+    }
+
+    const likes = Math.max(0, postData.edge_media_preview_like?.count || 
+                  postData.edge_liked_by?.count || 
+                  video.likes_count || 0);
+    
+    const comments = Math.max(0, postData.edge_media_to_comment?.count || 
+                     postData.edge_media_preview_comment?.count || 
+                     postData.edge_media_to_parent_comment?.count ||
+                     video.comments_count || 0);
+    
+    // UPDATED: Enhanced shares extraction with multiple fallbacks
+    const shares = Math.max(0, 
+      video.shares_count ||                        // Primary: video level shares
+      postData.shares_count ||                     // Secondary: post data level shares
+      postData.edge_media_to_share?.count ||       // Tertiary: Instagram API format
+      0                                            // Default: 0 if no data
+    );
+    
+    // UPDATED: Focus on video_play_count from API for the Views column
+    const videoPlayCount = Math.max(0, postData.video_play_count || 0);
+    
+    // Keep existing logic for other view calculations (for backwards compatibility)
+    const videoPlaysFromAPI = Math.max(0, postData.video_view_count || postData.video_play_count || 0);
+    const generalViewsFromAPI = Math.max(0, video.views_count || 0);
+    const playsFromVideo = Math.max(0, video.plays_count || 0);
+    
+    // Take the maximum of all available view/play counts for views
+    const views = Math.max(videoPlaysFromAPI, generalViewsFromAPI, playsFromVideo);
+    const plays = Math.max(videoPlaysFromAPI, playsFromVideo);
+    
+    const followers = Math.max(0, video.followers_count || postData.owner?.edge_followed_by?.count || 0);
+    
+    // Calculate engagement rate - include shares if > 0
+    const totalEngagementForRate = likes + comments + (shares > 0 ? shares : 0);
+    const engagementRate = followers > 0 ? ((totalEngagementForRate / followers) * 100).toFixed(2) + '%' : '0%';
+    
+    // Get collaboration price from multiple sources
+    const collaborationPrice = video.collaboration_price || postData.collaboration_price || 0;
+    
+    // Calculate CPV (Cost Per View) - use video_play_count for consistency
+    const cpv = videoPlayCount > 0 ? collaborationPrice / videoPlayCount : 0;
+    
+    // Calculate CPE (Cost Per Engagement) - include shares if > 0
+    const totalEngagements = likes + comments + (shares > 0 ? shares : 0);
+    const cpe = totalEngagements > 0 ? collaborationPrice / totalEngagements : 0;
+    
+    let thumbnailUrl = '/dummy-image.jpg';
+    
+    if (postData.display_resources && postData.display_resources.length > 0) {
+      thumbnailUrl = postData.display_resources[postData.display_resources.length - 1].src;
+    } else if (postData.thumbnail_src) {
+      thumbnailUrl = postData.thumbnail_src;
+    } else if (postData.display_url) {
+      thumbnailUrl = postData.display_url;
+    } else if (video.thumbnail) {
+      thumbnailUrl = video.thumbnail;
+    } else if (video.media_preview) {
+      thumbnailUrl = video.media_preview;
+    }
+    
+    if (thumbnailUrl && !thumbnailUrl.startsWith('/api/') && !thumbnailUrl.startsWith('/user/')) {
+      if (thumbnailUrl.includes('instagram.com') || thumbnailUrl.includes('fbcdn.net') || thumbnailUrl.includes('cdninstagram.com')) {
+        thumbnailUrl = `/api/v0/instagram/image-proxy?url=${encodeURIComponent(thumbnailUrl)}`;
+      }
+    }
+    
+    const videoUrl = postData.video_url || null;
+    
+    return {
+      likes,
+      comments,
+      plays,
+      actualViews: views,
+      shares,
+      followers,
+      engagementRate,
+      videoUrl,
+      thumbnailUrl,
+      isVideo: postData.is_video || postData.__typename === 'GraphVideo',
+      duration: postData.video_duration || video.duration || 0,
+      collaborationPrice,
+      cpv,
+      cpe,
+      videoPlayCount // UPDATED: Added specific video_play_count field
+    };
+  };
+
   // Update parent component with video count whenever videoResults changes
   useEffect(() => {
     if (onVideoCountChange) {
-      onVideoCountChange(videoResults.length);
+      onVideoCountChange(videoResults?.length || 0);
     }
-  }, [videoResults.length, onVideoCountChange]);
+  }, [videoResults?.length, onVideoCountChange]);
 
   // Fetch video results on component mount
   useEffect(() => {
@@ -135,17 +295,109 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
     try {
       console.log('🔍 Fetching video results for campaign:', campaignData.id);
       const results = await getVideoResults(campaignData.id);
-      setVideoResults(results);
-      console.log('✅ Fetched video results:', results.length);
+      setVideoResults(results || []); // Ensure we always set an array
+      console.log('✅ Fetched video results:', (results || []).length);
     } catch (error) {
       console.error('💥 Error fetching video results:', error);
+      setVideoResults([]); // Set empty array on error
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleEditVideo = (video: VideoResult) => {
+    setEditingVideo(video);
+    setShowEditVideoModal(true);
+  };
+
+  // UPDATED: Fixed handleUpdateEditedVideo function with proper shares handling
+  const handleUpdateEditedVideo = async (updatedData: any) => {
+    if (!editingVideo) return;
+
+    try {
+      console.log('🔄 Updating edited video:', editingVideo.id, updatedData);
+      
+      // UPDATED: Prepare update data with proper shares handling and field mapping
+      const updatePayload = {
+        // Core video data fields (proper backend field names)
+        full_name: updatedData.fullName || updatedData.full_name,
+        influencer_username: updatedData.influencerUsername || updatedData.influencer_username,
+        title: updatedData.title,
+        likes_count: updatedData.likes,
+        comments_count: updatedData.comments,
+        shares_count: updatedData.shares_count || updatedData.shares, // UPDATED: Handle both field names
+        views_count: updatedData.views,
+        plays_count: updatedData.views, // Using views for plays as well
+        followers_count: updatedData.followers,
+        collaboration_price: updatedData.collaborationPrice || updatedData.collaboration_price,
+        
+        // UPDATED: Update the post_result_obj to reflect the manual changes with proper shares structure
+        post_result_obj: {
+          ...editingVideo.post_result_obj,
+          data: {
+            ...editingVideo.post_result_obj?.data,
+            edge_media_preview_like: { count: updatedData.likes },
+            edge_media_to_comment: { count: updatedData.comments },
+            edge_media_to_share: { count: updatedData.shares_count || updatedData.shares }, // UPDATED: Proper shares structure
+            shares_count: updatedData.shares_count || updatedData.shares, // UPDATED: Store shares at data level
+            video_play_count: updatedData.views,
+            video_view_count: updatedData.views,
+            collaboration_price: updatedData.collaborationPrice || updatedData.collaboration_price,
+            owner: {
+              ...editingVideo.post_result_obj?.data?.owner,
+              username: updatedData.influencerUsername || updatedData.influencer_username,
+              full_name: updatedData.fullName || updatedData.full_name,
+              edge_followed_by: { count: updatedData.followers }
+            }
+          }
+        }
+      };
+
+      console.log('📤 PublishedResults: Update payload shares data:', {
+        root_shares: updatePayload.shares_count,
+        post_data_shares: updatePayload.post_result_obj.data.shares_count,
+        edge_shares: updatePayload.post_result_obj.data.edge_media_to_share
+      });
+
+      const updatedResult = await updateVideoResult(editingVideo.id, updatePayload);
+
+      // UPDATED: Update the local state with the updated video and ensure shares are preserved
+      setVideoResults(prev => 
+        (prev || []).map(video => 
+          video.id === editingVideo.id ? { 
+            ...updatedResult, 
+            // UPDATED: Ensure shares_count is properly set in the local state
+            shares_count: updatedData.shares_count || updatedData.shares,
+            updated_at: new Date().toISOString(),
+            created_at: updatedResult.updated_at || new Date().toISOString()
+          } : video
+        )
+      );
+
+      console.log('✅ Video updated successfully with shares:', {
+        video_id: updatedResult.id,
+        shares_count: updatedData.shares_count || updatedData.shares
+      });
+      
+      setShowEditVideoModal(false);
+      setEditingVideo(null);
+      
+    } catch (error) {
+      console.error('💥 Error updating video:', error);
+      // Handle error - you might want to show a toast notification
+    }
+  };
+
   const handleUpdateSingleVideo = async (videoResult: VideoResult) => {
     setUpdatingVideoId(videoResult.id);
+    setShowProgressModal(true);
+    setProgressData({
+      total: 1,
+      completed: 0,
+      current: videoResult.influencer_username,
+      errors: 0
+    });
+
     try {
       console.log('🔄 Updating single video:', videoResult.id);
       
@@ -160,21 +412,45 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
       const freshInstagramData = await getInstagramPostDetails(postInput);
 
       if (!freshInstagramData.success) {
+        setProgressData(prev => ({ ...prev, errors: prev.errors + 1 }));
         throw new Error(freshInstagramData.message || 'Failed to fetch updated Instagram data');
       }
 
       const backendData = mapToBackendFormat(freshInstagramData, videoResult.campaign_id);
+      
+      // UPDATED: Preserve existing shares data if not available in fresh data
+      if (!backendData.shares_count && videoResult.shares_count) {
+        backendData.shares_count = videoResult.shares_count;
+        if (backendData.post_result_obj && backendData.post_result_obj.data) {
+          backendData.post_result_obj.data.shares_count = videoResult.shares_count;
+          backendData.post_result_obj.data.edge_media_to_share = { count: videoResult.shares_count };
+        }
+      }
+      
       const updatedResult = await updateVideoResult(videoResult.id, backendData);
 
       setVideoResults(prev => 
-        prev.map(video => 
+        (prev || []).map(video => 
           video.id === videoResult.id ? updatedResult : video
         )
       );
 
+      setProgressData(prev => ({ ...prev, completed: 1 }));
       console.log('✅ Video updated successfully:', updatedResult.id);
+      
+      // Close progress modal after a short delay
+      setTimeout(() => {
+        setShowProgressModal(false);
+      }, 1000);
+      
     } catch (error) {
       console.error('💥 Error updating video:', error);
+      setProgressData(prev => ({ ...prev, errors: prev.errors + 1 }));
+      
+      // Close progress modal after showing error
+      setTimeout(() => {
+        setShowProgressModal(false);
+      }, 2000);
     } finally {
       setUpdatingVideoId(null);
     }
@@ -188,7 +464,7 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
       await deleteVideoResult(videoId);
       
       // Remove the video from local state
-      setVideoResults(prev => prev.filter(video => video.id !== videoId));
+      setVideoResults(prev => (prev || []).filter(video => video.id !== videoId));
       
       // Clear any selection that includes this video
       setSelectedVideos(prev => {
@@ -208,9 +484,17 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
   };
 
   const handleUpdateAllVideos = async () => {
-    if (!campaignData?.id) return;
+    if (!campaignData?.id || !videoResults || videoResults.length === 0) return;
     
     setIsUpdatingAll(true);
+    setShowProgressModal(true);
+    setProgressData({
+      total: videoResults.length,
+      completed: 0,
+      current: '',
+      errors: 0
+    });
+
     try {
       console.log('🔄 Updating all videos for campaign:', campaignData.id);
       console.log('📊 Total videos to update:', videoResults.length);
@@ -220,6 +504,13 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
       for (let i = 0; i < videoResults.length; i++) {
         const video = videoResults[i];
         console.log(`🔄 Processing ${i + 1}/${videoResults.length}: ${video.influencer_username}`);
+        
+        // Update progress
+        setProgressData(prev => ({
+          ...prev,
+          current: video.influencer_username,
+          completed: i
+        }));
         
         try {
           let postInput: { url?: string; code?: string } = {};
@@ -231,13 +522,23 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
           }
           
           const freshInstagramData = await getInstagramPostDetails(postInput);
-
+          console.log('Instagram Post API Component:', freshInstagramData)
           if (!freshInstagramData.success) {
             console.warn(`⚠️ Failed to fetch fresh data for ${video.influencer_username}: ${freshInstagramData.message}`);
+            setProgressData(prev => ({ ...prev, errors: prev.errors + 1 }));
             continue;
           }
 
           const backendData = mapToBackendFormat(freshInstagramData, video.campaign_id);
+          
+          // UPDATED: Preserve existing shares data if not available in fresh data
+          if (!backendData.shares_count && video.shares_count) {
+            backendData.shares_count = video.shares_count;
+            if (backendData.post_result_obj && backendData.post_result_obj.data) {
+              backendData.post_result_obj.data.shares_count = video.shares_count;
+              backendData.post_result_obj.data.edge_media_to_share = { count: video.shares_count };
+            }
+          }
           
           updatesData.push({
             result_id: video.id,
@@ -250,8 +551,9 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
               title: backendData.title,
               views_count: backendData.view_counts,
               plays_count: backendData.play_counts,
-              likes_count: backendData.comment_counts,
-              comments_count: backendData.comment_counts,
+              likes_count: backendData.likes_count,
+              comments_count: backendData.comments_count,
+              shares_count: backendData.shares_count, // UPDATED: Include shares in bulk update
               media_preview: backendData.media_preview,
               duration: backendData.duration,
               thumbnail: backendData.thumbnail,
@@ -264,6 +566,7 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
           
         } catch (error) {
           console.error(`💥 Error preparing update for ${video.influencer_username}:`, error);
+          setProgressData(prev => ({ ...prev, errors: prev.errors + 1 }));
         }
       }
       
@@ -274,11 +577,42 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
       }
       
       const updatedResults = await updateAllVideoResultsWithData(campaignData.id, updatesData);
-      setVideoResults(updatedResults);
       
-      console.log('✅ All videos updated successfully:', updatedResults.length);
+      // Ensure we have valid updated results before setting state
+      if (updatedResults && Array.isArray(updatedResults)) {
+        setVideoResults(updatedResults);
+        console.log('✅ All videos updated successfully:', updatedResults.length);
+      } else {
+        // If the API doesn't return updated results, refetch the data
+        console.log('⚠️ API did not return updated results, refetching...');
+        await fetchVideoResults();
+      }
+      
+      // Final progress update
+      setProgressData(prev => ({ ...prev, completed: videoResults.length }));
+      
+      console.log('✅ All videos updated and refreshed successfully');
+      
+      // Close progress modal after a short delay to show completion
+      setTimeout(() => {
+        setShowProgressModal(false);
+      }, 1500);
+      
     } catch (error) {
       console.error('💥 Error updating all videos:', error);
+      
+      // If there's an error, try to refetch the latest data
+      try {
+        console.log('🔄 Attempting to refetch data after error...');
+        await fetchVideoResults();
+      } catch (refetchError) {
+        console.error('💥 Error refetching data:', refetchError);
+      }
+      
+      // Close progress modal after showing error
+      setTimeout(() => {
+        setShowProgressModal(false);
+      }, 2000);
     } finally {
       setIsUpdatingAll(false);
     }
@@ -294,77 +628,149 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
     setSelectedVideos(newSelected);
   };
 
-  const filteredVideos = videoResults.filter(video =>
+  // Updated sorting function to match ShortlistedTable exactly
+  const handleSort = (columnKey: string) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    
+    if (sortConfig.key === columnKey && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    
+    setSortConfig({ key: columnKey, direction });
+    setCurrentPage(1); // Reset to first page when sorting
+  };
+
+  // Get sort icon for column headers - exact replica from ShortlistedTable
+  const getSortIcon = (columnKey: string) => {
+    if (sortConfig.key !== columnKey) {
+      return (
+        <div className="flex flex-col items-center opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:translate-y-0.5">
+          <svg className="w-3 h-3 text-gray-400 drop-shadow-sm" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+          </svg>
+          <svg className="w-3 h-3 text-gray-400 -mt-0.5 drop-shadow-sm" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+          </svg>
+        </div>
+      );
+    }
+
+    if (sortConfig.direction === 'asc') {
+      return (
+        <div className="flex flex-col items-center animate-pulse">
+          <svg className="w-3.5 h-3.5 text-purple-600 drop-shadow-md filter brightness-110" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+          </svg>
+          <svg className="w-3 h-3 text-gray-300 -mt-0.5 drop-shadow-sm" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+          </svg>
+        </div>
+      );
+    } else {
+      return (
+        <div className="flex flex-col items-center animate-pulse">
+          <svg className="w-3 h-3 text-gray-300 drop-shadow-sm" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+          </svg>
+          <svg className="w-3.5 h-3.5 text-purple-600 -mt-0.5 drop-shadow-md filter brightness-110" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+          </svg>
+        </div>
+      );
+    }
+  };
+
+  const filteredVideos = (videoResults || []).filter(video =>
     video.influencer_username.toLowerCase().includes(searchTerm.toLowerCase()) ||
     video.full_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const getPostData = (video: VideoResult) => {
-    const postData = video.post_result_obj?.data;
-    if (!postData) return {
-      likes: video.likes_count || 0,
-      comments: video.comments_count || 0,
-      views: video.views_count || 0,
-      plays: video.plays_count || 0,
-      followers: 0,
-      engagementRate: '0%',
-      videoUrl: null,
-      thumbnailUrl: getProxiedImageUrl(video.thumbnail || video.media_preview || ''),
-      isVideo: false,
-      duration: video.duration || 0
-    };
+  // Updated sorting logic to match ShortlistedTable exactly - UPDATED with shares support
+  const sortedVideos = React.useMemo(() => {
+    if (!sortConfig.key || !sortConfig.direction) {
+      return filteredVideos;
+    }
 
-    const likes = postData.edge_media_preview_like?.count || 
-                  postData.edge_liked_by?.count || 
-                  video.likes_count || 0;
-    
-    const comments = postData.edge_media_to_comment?.count || 
-                     postData.edge_media_preview_comment?.count || 
-                     postData.edge_media_to_parent_comment?.count ||
-                     video.comments_count || 0;
-    
-    // Separate video_view_count and video_play_count
-    const views = postData.video_view_count || video.views_count || 0;
-    const plays = postData.video_play_count || video.plays_count || 0;
-    
-    const followers = postData.owner?.edge_followed_by?.count || 0;
-    const engagementRate = followers > 0 ? (((likes + comments) / followers) * 100).toFixed(2) + '%' : '0%';
-    
-    let thumbnailUrl = '/dummy-image.jpg';
-    
-    if (postData.display_resources && postData.display_resources.length > 0) {
-      thumbnailUrl = postData.display_resources[postData.display_resources.length - 1].src;
-    } else if (postData.thumbnail_src) {
-      thumbnailUrl = postData.thumbnail_src;
-    } else if (postData.display_url) {
-      thumbnailUrl = postData.display_url;
-    } else if (video.thumbnail) {
-      thumbnailUrl = video.thumbnail;
-    } else if (video.media_preview) {
-      thumbnailUrl = video.media_preview;
-    }
-    
-    if (thumbnailUrl && !thumbnailUrl.startsWith('/api/') && !thumbnailUrl.startsWith('/user/')) {
-      if (thumbnailUrl.includes('instagram.com') || thumbnailUrl.includes('fbcdn.net') || thumbnailUrl.includes('cdninstagram.com')) {
-        thumbnailUrl = `/api/v0/instagram/image-proxy?url=${encodeURIComponent(thumbnailUrl)}`;
+    return [...filteredVideos].sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+
+      const aData = getPostData(a);
+      const bData = getPostData(b);
+
+      switch (sortConfig.key) {
+        case 'name':
+          aValue = (a.full_name || a.influencer_username).toLowerCase();
+          bValue = (b.full_name || b.influencer_username).toLowerCase();
+          break;
+        case 'followers':
+          aValue = Number(aData.followers) || 0;
+          bValue = Number(bData.followers) || 0;
+          break;
+        case 'likes':
+          aValue = Number(aData.likes) || 0;
+          bValue = Number(bData.likes) || 0;
+          break;
+        case 'comments':
+          aValue = Number(aData.comments) || 0;
+          bValue = Number(bData.comments) || 0;
+          break;
+        case 'shares': // UPDATED: Added shares sorting
+          aValue = Number(aData.shares) || 0;
+          bValue = Number(bData.shares) || 0;
+          break;
+        case 'views': // UPDATED: Use videoPlayCount for sorting the Views column
+          aValue = Number(aData.videoPlayCount) || 0;
+          bValue = Number(bData.videoPlayCount) || 0;
+          break;
+        case 'engagementRate':
+          aValue = parseFloat(aData.engagementRate.replace('%', '')) || 0;
+          bValue = parseFloat(bData.engagementRate.replace('%', '')) || 0;
+          break;
+        case 'collaborationPrice':
+          aValue = Number(aData.collaborationPrice) || 0;
+          bValue = Number(bData.collaborationPrice) || 0;
+          break;
+        case 'cpv':
+          aValue = Number(aData.cpv) || 0;
+          bValue = Number(bData.cpv) || 0;
+          break;
+        case 'cpe':
+          aValue = Number(aData.cpe) || 0;
+          bValue = Number(bData.cpe) || 0;
+          break;
+        case 'postDate':
+          aValue = new Date(a.post_created_at || 0).getTime();
+          bValue = new Date(b.post_created_at || 0).getTime();
+          break;
+        case 'updatedAt':
+          aValue = new Date(a.updated_at || a.created_at || 0).getTime();
+          bValue = new Date(b.updated_at || b.created_at || 0).getTime();
+          break;
+        default:
+          return 0;
       }
-    }
-    
-    const videoUrl = postData.video_url || null;
-    
-    return {
-      likes,
-      comments,
-      views,
-      plays,
-      followers,
-      engagementRate,
-      videoUrl,
-      thumbnailUrl,
-      isVideo: postData.is_video || postData.__typename === 'GraphVideo',
-      duration: postData.video_duration || video.duration || 0
-    };
-  };
+
+      // Handle null/undefined values
+      if (aValue === null || aValue === undefined) return sortConfig.direction === 'asc' ? 1 : -1;
+      if (bValue === null || bValue === undefined) return sortConfig.direction === 'asc' ? -1 : 1;
+
+      // Handle different data types
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+
+      // String comparison (convert to string if needed)
+      const aStr = String(aValue).toLowerCase();
+      const bStr = String(bValue).toLowerCase();
+      
+      if (sortConfig.direction === 'asc') {
+        return aStr.localeCompare(bStr);
+      } else {
+        return bStr.localeCompare(aStr);
+      }
+    });
+  }, [filteredVideos, sortConfig]);
 
   const handleVideoClick = (video: VideoResult) => {
     const postData = getPostData(video);
@@ -385,12 +791,12 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
     setSelectedVideoData(null);
   };
 
-  // Pagination calculations
-  const totalItems = filteredVideos.length;
+  // Pagination calculations - Use sortedVideos instead of filteredVideos
+  const totalItems = sortedVideos.length;
   const totalPages = Math.ceil(totalItems / pageSize);
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = Math.min(startIndex + pageSize, totalItems);
-  const paginatedVideos = filteredVideos.slice(startIndex, endIndex);
+  const paginatedVideos = sortedVideos.slice(startIndex, endIndex);
 
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= totalPages) {
@@ -440,9 +846,10 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
 
   return (
     <div className="pt-4">
-      {/* Search Bar and Action Buttons */}
+      {/* Updated Search Bar and Action Buttons */}
       <div className="flex items-center justify-between mb-6 px-4">
-        <div className="relative flex-1 mr-6">
+        {/* Expanded search input to fill more space */}
+        <div className="relative flex-1 mr-4">
           <input
             type="text"
             placeholder="Search Influencer"
@@ -471,14 +878,14 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
           
           <button
             onClick={handleUpdateAllVideos}
-            disabled={isUpdatingAll || videoResults.length === 0}
+            disabled={isUpdatingAll || !videoResults || videoResults.length === 0}
             className="flex items-center px-8 py-3 bg-gradient-to-r from-blue-400 to-blue-500 text-white rounded-full hover:from-blue-500 hover:to-blue-600 transition-all duration-200 text-sm font-medium shadow-lg min-w-[160px] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isUpdatingAll ? (
               <>
                 <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
                 Updating...
               </>
@@ -492,16 +899,6 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
             )}
           </button>
           
-          <button 
-            onClick={onShowAnalytics}
-            className="flex items-center px-8 py-3 bg-gradient-to-r from-pink-100 to-rose-100 text-pink-600 rounded-full hover:from-pink-200 hover:to-rose-200 transition-all duration-200 text-sm font-medium min-w-[150px]"
-          >
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h2a2 2 0 01-2-2z" />
-            </svg>
-            View Analytics
-          </button>
-          
           <button className="flex items-center px-6 py-3 text-gray-600 hover:bg-gray-50 rounded-full border border-gray-200 transition-colors duration-200 min-w-[60px]">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
@@ -510,13 +907,78 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
         </div>
       </div>
 
+      {/* Progress Modal */}
+      {showProgressModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)' }}>
+          <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4">
+            <div className="p-8">
+              <div className="text-center mb-6">
+                <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-blue-100 mb-4">
+                  <svg className="h-8 w-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                  Updating Posts
+                </h3>
+                <p className="text-sm text-gray-500">
+                  Please wait while we refresh the post data...
+                </p>
+              </div>
+
+              {/* Progress Bar */}
+              <div className="mb-6">
+                <div className="flex justify-between text-sm text-gray-600 mb-2">
+                  <span>Progress</span>
+                  <span>{progressData.completed} / {progressData.total}</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-300 ease-out"
+                    style={{ 
+                      width: `${progressData.total > 0 ? (progressData.completed / progressData.total) * 100 : 0}%` 
+                    }}
+                  ></div>
+                </div>
+                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                  <span>{progressData.total > 0 ? Math.round((progressData.completed / progressData.total) * 100) : 0}% Complete</span>
+                  {progressData.errors > 0 && (
+                    <span className="text-red-500">{progressData.errors} errors</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Current Item */}
+              {progressData.current && (
+                <div className="text-center">
+                  <p className="text-sm text-gray-600 mb-1">Currently updating:</p>
+                  <p className="font-medium text-gray-900 truncate">@{progressData.current}</p>
+                </div>
+              )}
+
+              {/* Completion Message */}
+              {progressData.completed === progressData.total && progressData.total > 0 && (
+                <div className="text-center mt-4">
+                  <div className="inline-flex items-center px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Update Complete!
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Loading State */}
       {isLoading && (
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
             <svg className="animate-spin h-8 w-8 text-pink-500 mx-auto mb-4" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
             <p className="text-gray-500">Loading video results...</p>
           </div>
@@ -535,41 +997,136 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
         </div>
       )}
 
-      {/* Table */}
+      {/* UPDATED Table with Sticky Header and Shares Column */}
       {!isLoading && campaignData?.id && (
         <div className="bg-white rounded-lg shadow w-full relative">
-          <div className="w-full min-w-full table-fixed">
+          <div className="w-full min-w-full table-fixed max-h-[600px] overflow-y-auto">
             <table className="min-w-full divide-y divide-gray-200 text-xs">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50 sticky top-0 z-10">
                 <tr>
-                  <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
-                    <span className="truncate">Post ({totalItems})</span>
+                  <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
+                    <button 
+                      onClick={() => handleSort('name')}
+                      className="flex items-center justify-between w-full cursor-pointer hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 transition-all duration-200 group select-none"
+                    >
+                      <span className="group-hover:text-purple-700 transition-colors duration-200 truncate">Post ({totalItems})</span>
+                      <div className="transform group-hover:scale-110 transition-transform duration-200">
+                        {getSortIcon('name')}
+                      </div>
+                    </button>
                   </th>
-                  <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
-                    <span className="truncate">Followers</span>
+                  <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/14">
+                    <button 
+                      onClick={() => handleSort('followers')}
+                      className="flex items-center justify-between w-full cursor-pointer hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 transition-all duration-200 group select-none"
+                    >
+                      <span className="group-hover:text-purple-700 transition-colors duration-200 truncate">Followers</span>
+                      <div className="transform group-hover:scale-110 transition-transform duration-200">
+                        {getSortIcon('followers')}
+                      </div>
+                    </button>
                   </th>
-                  <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
-                    <span className="truncate">Likes</span>
+                  <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/14">
+                    <button 
+                      onClick={() => handleSort('likes')}
+                      className="flex items-center justify-between w-full cursor-pointer hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 transition-all duration-200 group select-none"
+                    >
+                      <span className="group-hover:text-purple-700 transition-colors duration-200 truncate">Likes</span>
+                      <div className="transform group-hover:scale-110 transition-transform duration-200">
+                        {getSortIcon('likes')}
+                      </div>
+                    </button>
                   </th>
-                  <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
-                    <span className="truncate">Comments</span>
+                  <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/14">
+                    <button 
+                      onClick={() => handleSort('comments')}
+                      className="flex items-center justify-between w-full cursor-pointer hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 transition-all duration-200 group select-none"
+                    >
+                      <span className="group-hover:text-purple-700 transition-colors duration-200 truncate">Comments</span>
+                      <div className="transform group-hover:scale-110 transition-transform duration-200">
+                        {getSortIcon('comments')}
+                      </div>
+                    </button>
                   </th>
-                  <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
-                    <span className="truncate">Views</span>
+                  {/* UPDATED: Added Shares Column Header */}
+                  <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/14">
+                    <button 
+                      onClick={() => handleSort('shares')}
+                      className="flex items-center justify-between w-full cursor-pointer hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 transition-all duration-200 group select-none"
+                    >
+                      <span className="group-hover:text-purple-700 transition-colors duration-200 truncate">Shares</span>
+                      <div className="transform group-hover:scale-110 transition-transform duration-200">
+                        {getSortIcon('shares')}
+                      </div>
+                    </button>
                   </th>
-                  <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
-                    <span className="truncate">Plays</span>
+                  <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/14">
+                    <button 
+                      onClick={() => handleSort('views')}
+                      className="flex items-center justify-between w-full cursor-pointer hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 transition-all duration-200 group select-none"
+                    >
+                      <span className="group-hover:text-purple-700 transition-colors duration-200 truncate">Views</span>
+                      <div className="transform group-hover:scale-110 transition-transform duration-200">
+                        {getSortIcon('views')}
+                      </div>
+                    </button>
                   </th>
-                  <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
-                    <span className="truncate">Eng Rate</span>
+                  <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/14">
+                    <button 
+                      onClick={() => handleSort('engagementRate')}
+                      className="flex items-center justify-between w-full cursor-pointer hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 transition-all duration-200 group select-none"
+                    >
+                      <span className="group-hover:text-purple-700 transition-colors duration-200 truncate">Eng Rate</span>
+                      <div className="transform group-hover:scale-110 transition-transform duration-200">
+                        {getSortIcon('engagementRate')}
+                      </div>
+                    </button>
                   </th>
-                  <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
-                    <span className="truncate">Post Date</span>
+                  <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/14">
+                    <button 
+                      onClick={() => handleSort('cpv')}
+                      className="flex items-center justify-between w-full cursor-pointer hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 transition-all duration-200 group select-none"
+                    >
+                      <span className="group-hover:text-purple-700 transition-colors duration-200 truncate">CPV</span>
+                      <div className="transform group-hover:scale-110 transition-transform duration-200">
+                        {getSortIcon('cpv')}
+                      </div>
+                    </button>
                   </th>
-                  <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
-                    <span className="truncate">Added Date</span>
+                  <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/14">
+                    <button 
+                      onClick={() => handleSort('cpe')}
+                      className="flex items-center justify-between w-full cursor-pointer hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 transition-all duration-200 group select-none"
+                    >
+                      <span className="group-hover:text-purple-700 transition-colors duration-200 truncate">CPE</span>
+                      <div className="transform group-hover:scale-110 transition-transform duration-200">
+                        {getSortIcon('cpe')}
+                      </div>
+                    </button>
                   </th>
-                  <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
+                  <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/14">
+                    <button 
+                      onClick={() => handleSort('postDate')}
+                      className="flex items-center justify-between w-full cursor-pointer hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 transition-all duration-200 group select-none"
+                    >
+                      <span className="group-hover:text-purple-700 transition-colors duration-200 truncate">Post Date</span>
+                      <div className="transform group-hover:scale-110 transition-transform duration-200">
+                        {getSortIcon('postDate')}
+                      </div>
+                    </button>
+                  </th>
+                  <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/14">
+                    <button 
+                      onClick={() => handleSort('updatedAt')}
+                      className="flex items-center justify-between w-full cursor-pointer hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 transition-all duration-200 group select-none"
+                    >
+                      <span className="group-hover:text-purple-700 transition-colors duration-200 truncate">Updated at</span>
+                      <div className="transform group-hover:scale-110 transition-transform duration-200">
+                        {getSortIcon('updatedAt')}
+                      </div>
+                    </button>
+                  </th>
+                  <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/14">
                     <span className="truncate">Actions</span>
                   </th>
                 </tr>
@@ -577,7 +1134,7 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
               <tbody className="bg-white divide-y divide-gray-200">
                 {paginatedVideos.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="py-12 text-center">
+                    <td colSpan={12} className="py-12 text-center">
                       <svg className="h-12 w-12 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24">
                         <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                       </svg>
@@ -674,14 +1231,26 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
                         <td className="px-2 py-4 whitespace-nowrap text-xs text-gray-500">
                           {formatNumber(postData.comments)}
                         </td>
+                        {/* UPDATED: Shares Column Data */}
                         <td className="px-2 py-4 whitespace-nowrap text-xs text-gray-500">
-                          {postData.views > 0 ? formatNumber(postData.views) : 'N/A'}
+                          {formatNumber(postData.shares)}
                         </td>
+                        {/* UPDATED: Views Column - Now displays video_play_count */}
                         <td className="px-2 py-4 whitespace-nowrap text-xs text-gray-500">
-                          {postData.plays > 0 ? formatNumber(postData.plays) : 'N/A'}
+                          {postData.videoPlayCount > 0 ? formatNumber(postData.videoPlayCount) : 'N/A'}
                         </td>
                         <td className="px-2 py-4 whitespace-nowrap text-xs text-gray-500">
                           {postData.engagementRate}
+                        </td>
+
+                        {/* CPV Column - UPDATED: Removed $ symbol */}
+                        <td className="px-2 py-4 whitespace-nowrap text-xs text-gray-500">
+                          {formatCurrency(postData.cpv)}
+                        </td>
+
+                        {/* CPE Column - UPDATED: Removed $ symbol */}
+                        <td className="px-2 py-4 whitespace-nowrap text-xs text-gray-500">
+                          {formatCurrency(postData.cpe)}
                         </td>
 
                         {/* Post Date */}
@@ -692,11 +1261,11 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
                           </div>
                         </td>
 
-                        {/* Added Date */}
+                        {/* UPDATED AT */}
                         <td className="px-2 py-4 whitespace-nowrap text-xs text-gray-500">
                           <div className="flex flex-col">
-                            <span className="font-medium">{formatDate(video.created_at)}</span>
-                            <span className="text-xs text-gray-400">{formatRelativeTime(video.created_at)}</span>
+                            <span className="font-medium">{formatDate(video.updated_at || video.created_at)}</span>
+                            <span className="text-xs text-gray-400">{formatRelativeTime(video.updated_at || video.created_at)}</span>
                           </div>
                         </td>
 
@@ -712,13 +1281,23 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
                               {updatingVideoId === video.id ? (
                                 <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
                                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
                               ) : (
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                                 </svg>
                               )}
+                            </button>
+                            
+                            <button
+                              onClick={() => handleEditVideo(video)}
+                              className="text-green-500 hover:text-green-700 transition-colors duration-150 p-1 rounded hover:bg-green-50"
+                              title="Edit video details"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
                             </button>
                             
                             <button
@@ -745,7 +1324,7 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
                               {deletingVideoId === video.id ? (
                                 <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
                                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
                               ) : (
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -897,7 +1476,7 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
                     <div className="flex items-center justify-center">
                       <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
                       Deleting...
                     </div>
@@ -1008,12 +1587,13 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
                         <p className="text-gray-500">Comments</p>
                       </div>
                       <div className="text-center">
-                        <p className="font-medium text-gray-900">{postData.views > 0 ? formatNumber(postData.views) : 'N/A'}</p>
-                        <p className="text-gray-500">Views</p>
+                        <p className="font-medium text-gray-900">{formatNumber(postData.shares)}</p>
+                        <p className="text-gray-500">Shares</p>
                       </div>
+                      {/* UPDATED: Modal now shows video_play_count for consistency */}
                       <div className="text-center">
-                        <p className="font-medium text-gray-900">{postData.plays > 0 ? formatNumber(postData.plays) : 'N/A'}</p>
-                        <p className="text-gray-500">Plays</p>
+                        <p className="font-medium text-gray-900">{postData.videoPlayCount > 0 ? formatNumber(postData.videoPlayCount) : 'N/A'}</p>
+                        <p className="text-gray-500">Views</p>
                       </div>
                     </>
                   );
@@ -1042,6 +1622,18 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
             setShowAddVideoModal(false);
             fetchVideoResults();
           }}
+        />
+      )}
+
+      {/* Edit Video Modal */}
+      {showEditVideoModal && editingVideo && (
+        <EditVideoModal 
+          video={editingVideo}
+          onClose={() => {
+            setShowEditVideoModal(false);
+            setEditingVideo(null);
+          }}
+          onSubmit={handleUpdateEditedVideo}
         />
       )}
     </div>

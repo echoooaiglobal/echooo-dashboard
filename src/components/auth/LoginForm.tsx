@@ -7,7 +7,7 @@ import { LoginCredentials } from '@/types/auth';
 import { AtSign, Lock, AlertCircle, Eye, EyeOff } from 'react-feather';
 import { useLogin } from '@/hooks/useLogin';
 import { AccountInactiveError, isAuthError } from '@/services/auth/auth.errors';
-import OAuthButtons from './OAuthButtons';
+// import OAuthButtons from './OAuthButtons'; // TEMPORARILY COMMENTED OUT
 
 interface LoginFormProps {
   onSuccess?: (redirectPath?: string) => void;
@@ -22,7 +22,7 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const { loginWithRedirect, isLoading, error: hookError } = useLogin();
   const [error, setError] = useState<string | null>(null);
-  const [oauthError, setOAuthError] = useState<string | null>(null);
+  // const [oauthError, setOAuthError] = useState<string | null>(null); // TEMPORARILY COMMENTED OUT
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -39,7 +39,7 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setOAuthError(null);
+    // setOAuthError(null); // TEMPORARILY COMMENTED OUT
     
     try {
       // The hook will handle login and appropriate routing
@@ -68,21 +68,24 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
     }
   };
 
-  const handleOAuthError = (errorMessage: string) => {
-    setOAuthError(errorMessage);
-    setError(null); // Clear regular login errors
-  };
+  // TEMPORARILY COMMENTED OUT - OAuth error handler
+  // const handleOAuthError = (errorMessage: string) => {
+  //   setOAuthError(errorMessage);
+  //   setError(null); // Clear regular login errors
+  // };
 
   return (
     <div>
-      {(error || hookError || oauthError) && (
+      {/* Updated error display - removed oauthError */}
+      {(error || hookError) && (
         <div className="bg-red-50 text-red-700 p-4 rounded-lg mb-6 flex items-start">
           <AlertCircle className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
-          <span className="text-sm">{error || hookError || oauthError}</span>
+          <span className="text-sm">{error || hookError}</span>
         </div>
       )}
 
-      {/* OAuth Login Options */}
+      {/* TEMPORARILY COMMENTED OUT - OAuth Login Options */}
+      {/* 
       <div className="mb-8">
         <OAuthButtons 
           onError={handleOAuthError}
@@ -98,6 +101,7 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
           </div>
         </div>
       </div>
+      */}
 
       {/* Regular Login Form */}
       <form onSubmit={handleSubmit} className="space-y-6">

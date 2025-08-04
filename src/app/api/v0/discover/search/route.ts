@@ -187,7 +187,7 @@ export async function POST(request: Request) {
         average_views: item.average_views,
         contact_details: item.contact_details,
         content_count: item.content_count,
-        creator_locations: item.creator_locations,
+        creator_location: item.creator_location,
         external_id: item.external_id,
         gender: item.gender,
         introduction: item.introduction,
@@ -196,6 +196,39 @@ export async function POST(request: Request) {
         platform_account_type: item.platform_account_type,
         subscriber_count: item.subscriber_count,
         url: item.url,
+        filter_match: item.filter_match,
+
+              // ADD THESE NEW FIELDS:
+        creator_age: item.creator_age || item.age || null,
+        audience_locations: item.audience_locations || 
+                          item.filter_match?.audience_locations || 
+                          item.demographic_data?.audience_locations || 
+                          [],
+        audience_age_groups: item.audience_age_groups || 
+                            item.filter_match?.audience_age || 
+                            item.demographic_data?.audience_age || 
+                            [],
+        audience_demographics: {
+          age_distribution: item.audience_age_distribution || 
+                          item.filter_match?.audience_age || 
+                          [],
+          location_distribution: item.audience_location_distribution || 
+                                item.filter_match?.audience_locations || 
+                                [],
+          gender_distribution: item.audience_gender_distribution || 
+                              item.filter_match?.audience_gender || 
+                              []
+        },
+        
+        // Enhanced reel views handling
+        instagram_options: {
+          ...item.instagram_options,
+          reel_views: item.instagram_options?.reel_views || 
+                    item.filter_match?.instagram_options?.reel_views ||
+                    item.average_reel_views ||
+                    null
+        },
+        
         work_platform: {
           id: item.work_platform?.id,
           name: item.work_platform?.name,
@@ -209,6 +242,7 @@ export async function POST(request: Request) {
         metadata: data.metadata,
         total: influencers.length,
         cached: false,
+        alldata:data.data,
         cacheKey: cacheKey.substring(0, 16) + '...' // For debugging
       };
 

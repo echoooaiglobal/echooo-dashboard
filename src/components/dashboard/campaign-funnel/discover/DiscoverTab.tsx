@@ -261,12 +261,12 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
     }
   }, [fetchPlatforms]);
 
-  useEffect(() => {
-    // Only fetch if we're on the discovered tab, have a selected platform, and it's not a new campaign
-    if (defaultFilters && !isNewCampaign && selectedPlatform) {
-      fetchInfluencers(searchParams);
-    }
-  }, [defaultFilters, isNewCampaign, selectedPlatform]);
+  // useEffect(() => {
+  //   // Only fetch if we're on the discovered tab, have a selected platform, and it's not a new campaign
+  //   if (defaultFilters && !isNewCampaign && selectedPlatform) {
+  //     fetchInfluencers(searchParams);
+  //   }
+  // }, [defaultFilters, isNewCampaign, selectedPlatform]);
 
   // Fetch campaign list members when campaign data is available
   useEffect(() => {
