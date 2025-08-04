@@ -13,7 +13,7 @@ import { DiscoveredCreatorsResults } from '@/types/insights-iq';
 import { getCampaignListMembers, CampaignListMember, CampaignListMembersResponse } from '@/services/campaign/campaign-list.service';
 import { InfluencerSearchFilter } from '@/lib/creator-discovery-types';
 import { Platform } from '@/types/platform';
-import { formatNumber } from '@/utils/format'
+import { formatNumber } from '@/utils/format';
 
 interface DiscoverTabProps {
   campaignData?: Campaign | null;
@@ -97,7 +97,6 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
       
       if (result.success && result.data) {
         setPlatforms(result.data);
-       
         
         // Set default platform (Instagram) if available and no platform is selected
         if (!selectedPlatform && result.data.length > 0) {
@@ -136,77 +135,195 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
     setSelectedPlatform(platform);
     
     // Update search params with new platform work_platform_id
-    const updatedParams = {
-      ...searchParams,
-      work_platform_id: platform.work_platform_id,
-      offset: 0 // Reset pagination when platform changes
-    };
+    setSearchParams(prev => ({
+      ...prev,
+      work_platform_id: platform.work_platform_id
+    }));
     
-    setSearchParams(updatedParams);
-    setLoadCount(1);
-    
-    // Trigger API call with new platform if we're on discovered tab
-    if (activeFilter === 'discovered' && !isNewCampaign) {
+    // Only trigger new search if we're on the discovered tab and have filters applied
+    if (activeFilter === 'discovered' && defaultFilters) {
+      const updatedParams = {
+        ...searchParams,
+        work_platform_id: platform.work_platform_id,
+        offset: 0 // Reset to first page when changing platform
+      };
       fetchInfluencers(updatedParams);
     }
   };
 
-  // Function to fetch influencers - make it a useCallback to prevent unnecessary re-renders
-  const fetchInfluencers = useCallback(async (params: InfluencerSearchFilter) => {
-    setIsLoading(true);
-    try {
-      const apiUrl = '/api/v0/discover/search';
-      
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(params),
-      });
-      
-      const data = await response.json();
-      console.log('📊 API response data:', data);
-      
-      // Always replace results for pagination (don't append)
-      setDiscoveredCreatorsResults(data);
-      setTotalResults(data?.metadata?.total_results || 0);
-    } catch (error) {
-      console.error('❌ Error fetching influencers:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [selectedPlatform]);
-
-  // Function to fetch campaign list members with pagination
-  const fetchCampaignListMembers = async (page: number = 1, size: number = pageSize) => {
-    // Check if campaign data exists and has campaign lists
+  // Function to fetch campaign list members (for shortlisted tab)
+  const fetchCampaignListMembers = async (page: number = 1, size: number = 10) => {
     if (!campaignData?.campaign_lists || campaignData.campaign_lists.length === 0) {
+      console.log('No campaign lists available');
       return;
     }
 
+    const listId = campaignData.campaign_lists[0].id;
+    
     setIsLoadingShortlisted(true);
     try {
-      // Get the first campaign list ID from the campaign data
-      const listId = campaignData.campaign_lists[0].id;
+      console.log('🔄 Fetching campaign list members...');
       
       const response = await getCampaignListMembers(listId, page, size);
       
       if (response.success) {
-        // Directly assign the members without transformation
         setShortlistedMembers(response);
-        setShortlistedCount(response.pagination.total_items || 0);
+        setShortlistedCount(response.pagination?.total_items || 0);
         setCurrentPage(page);
+        console.log('✅ Campaign list members fetched successfully');
       } else {
+        console.error('❌ Failed to fetch campaign list members:', response.message);
         setShortlistedMembers(null);
         setShortlistedCount(0);
       }
     } catch (error) {
+      console.error('❌ Error fetching campaign list members:', error);
       setShortlistedMembers(null);
       setShortlistedCount(0);
     } finally {
       setIsLoadingShortlisted(false);
     }
+  };
+
+  // Function to fetch discovered influencers
+  const fetchInfluencers = async (params: InfluencerSearchFilter) => {
+    setIsLoading(true);
+    
+    try {
+      console.log('🔄 Fetching influencers with params:', params);
+      
+      const response = await fetch('/api/v0/influencers/discover', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+        body: JSON.stringify(params)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch influencers: ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        setDiscoveredCreatorsResults(result.data);
+        setInfluencers(result.data.influencers || []);
+        setTotalResults(result.data.total_count || 0);
+        console.log('✅ Influencers fetched successfully');
+      } else {
+        console.error('❌ Failed to fetch influencers:', result.error);
+        setInfluencers([]);
+        setTotalResults(0);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching influencers:', error);
+      setInfluencers([]);
+      setTotalResults(0);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Function to handle search text changes
+  const handleSearchTextChange = (text: string) => {
+    // For now, we'll just trigger a search when text is provided
+    // In the future, this could be mapped to bio_phrase or other search fields
+    if (text.length > 0) {
+      const updatedParams = {
+        ...searchParams,
+        bio_phrase: text, // Map search text to bio phrase for now
+        offset: 0 // Reset to first page when searching
+      };
+      
+      setSearchParams(updatedParams);
+      setLoadCount(1); // Reset load count when searching
+      fetchInfluencers(updatedParams);
+    } else {
+      // Clear bio_phrase when search is cleared
+      const updatedParams = {
+        ...searchParams,
+        bio_phrase: undefined,
+        offset: 0
+      };
+      
+      setSearchParams(updatedParams);
+      setLoadCount(1);
+      fetchInfluencers(updatedParams);
+    }
+  };
+
+  // Get next batch size for load more functionality
+  const getNextBatchSize = () => {
+    const baseSize = searchParams.limit || 10;
+    return Math.min(baseSize, totalResults - influencers.length);
+  };
+
+  // Load more influencers
+  const loadMore = () => {
+    const newOffset = influencers.length;
+    const updatedParams = {
+      ...searchParams,
+      offset: newOffset
+    };
+    
+    setSearchParams(updatedParams);
+    setLoadCount(loadCount + 1);
+    
+    // Fetch more influencers and append to existing results
+    fetchInfluencersAppend(updatedParams);
+  };
+
+  // Fetch and append influencers (for load more)
+  const fetchInfluencersAppend = async (params: InfluencerSearchFilter) => {
+    setIsLoading(true);
+    
+    try {
+      const response = await fetch('/api/v0/influencers/discover', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+        body: JSON.stringify(params)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch more influencers: ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        // Append new influencers to existing ones
+        setInfluencers(prev => [...prev, ...(result.data.influencers || [])]);
+        console.log('✅ More influencers loaded successfully');
+      }
+    } catch (error) {
+      console.error('❌ Error loading more influencers:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Clear all filters
+  const handleClearFilters = () => {
+    const clearedParams: InfluencerSearchFilter = {
+      work_platform_id: selectedPlatform?.work_platform_id || "9bb8913b-ddd9-430b-a66a-d74d846e6c66",
+      sort_by: { field: "FOLLOWER_COUNT", order: "DESCENDING" },
+      limit: 10,
+      offset: 0,
+      post_type: "ALL"
+    };
+    
+    setSearchParams(clearedParams);
+    setLoadCount(1);
+    
+    // Clear the results
+    setInfluencers([]);
+    setTotalResults(0);
+    setDiscoveredCreatorsResults(null);
   };
 
   // Function to handle page changes from child component
@@ -254,28 +371,7 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
     }
   };
 
-  // NEW: Load platforms when component mounts
-  useEffect(() => { 
-    if(platforms.length === 0) {
-      fetchPlatforms();
-    }
-  }, [fetchPlatforms]);
-
-  // useEffect(() => {
-  //   // Only fetch if we're on the discovered tab, have a selected platform, and it's not a new campaign
-  //   if (defaultFilters && !isNewCampaign && selectedPlatform) {
-  //     fetchInfluencers(searchParams);
-  //   }
-  // }, [defaultFilters, isNewCampaign, selectedPlatform]);
-
-  // Fetch campaign list members when campaign data is available
-  useEffect(() => {
-    if (campaignData?.campaign_lists && campaignData.campaign_lists.length > 0 && !isNewCampaign) {
-      fetchCampaignListMembers(1, pageSize); // Start with page 1
-    }
-  }, [campaignData?.campaign_lists, isNewCampaign]);
-
-  // Function to refresh shortlisted influencers (call this after adding/removing)
+  // Function to refresh shortlisted influencers (called this after adding/removing)
   const refreshShortlistedInfluencers = () => {
     // Refresh the current page to maintain pagination state
     fetchCampaignListMembers(currentPage, pageSize);
@@ -339,98 +435,32 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
     
     const updatedParams = {
       ...searchParams,
-      sort_by: { 
-        field: sortField, 
-        order: sortOrder 
-      },
-      offset: 0 // Reset to first page when sort changes
+      sort_by: { field: sortField, order: sortOrder },
+      offset: 0 // Reset to first page when sorting
     };
     
     setSearchParams(updatedParams);
-    setLoadCount(1); // Reset load count when sort changes
+    setLoadCount(1); // Reset load count when sorting
     
-    // Trigger API call for sort changes
+    // Trigger API call with new sort
     if (activeFilter === 'discovered') {
       fetchInfluencers(updatedParams);
     }
   };
 
-  // Handler for load more (if still needed)
-  const loadMore = () => {
-    const currentLimit = searchParams.limit || 20;
-    const currentOffset = searchParams.offset || 0;
-    const nextOffset = currentOffset + currentLimit;
-    
-    const updatedParams = {
-      ...searchParams,
-      offset: nextOffset
-    };
-    
-    setSearchParams(updatedParams);
-    setLoadCount(prev => prev + 1);
-    
-    // Trigger API call for load more
-    if (activeFilter === 'discovered') {
-      fetchInfluencers(updatedParams);
+  // NEW: Load platforms when component mounts
+  useEffect(() => { 
+    if (platforms.length === 0) {
+      fetchPlatforms();
     }
-  };
+  }, [fetchPlatforms]);
 
-  // Handler for clearing all filters
-  const handleClearFilters = () => {
-    const clearedParams: InfluencerSearchFilter = {
-      work_platform_id: selectedPlatform?.work_platform_id || "9bb8913b-ddd9-430b-a66a-d74d846e6c66",
-      follower_count: {
-        min: 1000,
-        max: 10000000
-      },
-      audience_gender: {
-        type: "ANY",
-        operator: "GT",
-        percentage_value: 0
-      },
-      creator_gender: "ANY",
-      creator_locations: [],
-      sort_by: {
-        field: "FOLLOWER_COUNT",
-        order: "DESCENDING"
-      },
-      limit: searchParams.limit || 20,
-      offset: 0,
-      audience_source: "ANY",
-      has_audience_info: false,
-      exclude_private_profiles: false
-    };
-    
-    setSearchParams(clearedParams);
-    setLoadCount(1); // Reset load count when filters are cleared
-    
-    // Trigger API call with cleared filters
-    if (activeFilter === 'discovered') {
-      fetchInfluencers(clearedParams);
+  // Fetch campaign list members when campaign data is available
+  useEffect(() => {
+    if (campaignData?.campaign_lists && campaignData.campaign_lists.length > 0 && !isNewCampaign) {
+      fetchCampaignListMembers(1, pageSize); // Start with page 1
     }
-  };
-
-  // Calculate the next batch size to unlock
-  const getNextBatchSize = () => {
-    return loadCount * 20;
-  };
-
-  // Handle search text change - UPDATE: This still triggers immediately for search
-  const handleSearchTextChange = (text: string) => {
-    const updatedParams = {
-      ...searchParams,
-      description_keywords: text,
-      offset: 0
-    };
-    
-    setSearchParams(updatedParams);
-    setLoadCount(1);
-    
-    // Trigger API call for search (search should still be immediate)
-    if (activeFilter === 'discovered') {
-      fetchInfluencers(updatedParams);
-    }
-  };
+  }, [campaignData?.campaign_lists, isNewCampaign]);
 
   // If the brand form is being shown, display it
   if (showBrandForm) {
@@ -525,6 +555,9 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
           onPageChange={handlePageChange}
           onPageSizeChange={handlePageSizeChange}
           shortlistedMembers={shortlistedMembers as CampaignListMembersResponse}
+          // NEW: Add these props for CSV import functionality
+          selectedPlatform={selectedPlatform}
+          onInfluencerAdded={refreshShortlistedInfluencers}
         />
       )}
     </div>

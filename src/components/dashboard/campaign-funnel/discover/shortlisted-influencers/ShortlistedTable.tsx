@@ -74,6 +74,49 @@ const ShortlistedTable: React.FC<ShortlistedTableProps> = ({
     return metricsObj[key] ?? defaultValue;
   };
 
+  // 🔧 FIXED: Enhanced profile picture getter to prioritize high-res images
+  const getProfilePicture = (member: CampaignListMember): string => {
+    // 1. Check for profileImage in additional_metrics (high-res from EnsembleData)
+    const profileImageFromMetrics = getAdditionalMetric(member, 'profileImage');
+    if (profileImageFromMetrics) {
+      return profileImageFromMetrics;
+    }
+    
+    // 2. Check standard profile_pic_url field
+    const standardProfilePic = member.social_account?.profile_pic_url;
+    if (standardProfilePic) {
+      return standardProfilePic;
+    }
+    
+    // 3. Fallback to generated avatar
+    return `https://i.pravatar.cc/150?u=${member.social_account?.id}`;
+  };
+
+  // 🔧 FIXED: Enhanced following count getter to check multiple sources  
+  const getFollowingCount = (member: CampaignListMember): number | null => {
+    // 1. Check standard following_count field
+    const standardFollowing = member.social_account?.following_count;
+    if (typeof standardFollowing === 'number') {
+      return standardFollowing;
+    }
+    
+    // 2. Check additional_metrics for following count (from EnsembleData conversion)
+    const followingFromMetrics = getAdditionalMetric(member, 'following_count');
+    if (typeof followingFromMetrics === 'number') {
+      return followingFromMetrics;
+    }
+    
+    // 3. Check if it's stored as a string and convert
+    if (typeof followingFromMetrics === 'string') {
+      const parsed = parseInt(followingFromMetrics);
+      if (!isNaN(parsed)) {
+        return parsed;
+      }
+    }
+    
+    return null;
+  };
+
   // Helper function to parse JSON strings safely
   const parseJSONSafely = (jsonString: any, defaultValue: any = null) => {
     if (!jsonString) return defaultValue;
@@ -270,10 +313,33 @@ const ShortlistedTable: React.FC<ShortlistedTableProps> = ({
           <div className="flex-shrink-0 h-12 w-12 relative">
             <img
               className="rounded-full object-cover h-12 w-12 border-2 border-gray-200 shadow-sm"
-              src={member.social_account?.profile_pic_url || getAdditionalMetric(member, 'profileImage') || `https://i.pravatar.cc/150?u=${member.social_account?.id}`}
+              src={getProfilePicture(member)} // 🔧 FIXED: Use enhanced profile picture getter
               alt={member.social_account?.full_name}
               onError={(e) => {
-                (e.target as HTMLImageElement).src = `https://i.pravatar.cc/150?u=${member.social_account?.id}`;
+                // Enhanced fallback chain for broken images
+                const target = e.target as HTMLImageElement;
+                if (target.src.includes('pravatar')) {
+                  // If pravatar fails, use a solid color background with initials
+                  target.style.display = 'none';
+                  const initials = (member.social_account?.full_name || 'U')
+                    .split(' ')
+                    .map(n => n[0])
+                    .join('')
+                    .toUpperCase()
+                    .substring(0, 2);
+                  
+                  // Create a simple colored div with initials
+                  const parent = target.parentElement;
+                  if (parent && !parent.querySelector('.initials-fallback')) {
+                    const fallbackDiv = document.createElement('div');
+                    fallbackDiv.className = 'initials-fallback absolute inset-0 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full flex items-center justify-center text-white font-semibold text-sm';
+                    fallbackDiv.textContent = initials;
+                    parent.appendChild(fallbackDiv);
+                  }
+                } else {
+                  // First fallback attempt to pravatar
+                  target.src = `https://i.pravatar.cc/150?u=${member.social_account?.id}`;
+                }
               }}
             /> 
           </div>
@@ -457,7 +523,7 @@ const ShortlistedTable: React.FC<ShortlistedTableProps> = ({
       label: 'Following',
       width: 'w-20',
       defaultVisible: false,
-      getValue: (member) => member.social_account?.following_count,
+      getValue: (member) => getFollowingCount(member), // 🔧 FIXED: Use enhanced following count getter
       render: (value) => typeof value === 'number' ? formatNumber(value) : 'N/A'
     },
     {

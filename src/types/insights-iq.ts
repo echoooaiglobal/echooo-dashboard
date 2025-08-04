@@ -116,6 +116,8 @@ export interface Influencer {
   engagements: string;
   external_id: string | null;
   followers: number; // Changed from string to number for better handling
+  following?: number;
+  following_count?: number;
   gender: string | null;
   introduction: string;
   isVerified: boolean;
@@ -133,7 +135,7 @@ export interface Influencer {
   audience_locations?: AudienceLocation[];
   audience_age_groups?: any; // Flexible type to handle different structures
   audience_demographics?: AudienceDemographics;
-  
+  category?: string; // New field for category
   // NEW: Enhanced reel views fields
   reel_views?: number;
   average_reel_views?: number;

@@ -137,6 +137,64 @@ const formatLocation = (member: CampaignListMember) => {
   return 'N/A';
 };
 
+// Helper function to get contact details (email or phone)
+const getContactDetails = (member: CampaignListMember) => {
+  // Check for contact details in additional_metrics
+  const contactsData = getAdditionalMetric(member, 'contact_details');
+  const parsed = parseJSONSafely(contactsData, []);
+  
+  if (Array.isArray(parsed) && parsed.length > 0) {
+    // Look for email first, then phone
+    const email = parsed.find(contact => 
+      contact.type && contact.type.toLowerCase().includes('email')
+    );
+    if (email && email.value) {
+      return email.value;
+    }
+    
+    const phone = parsed.find(contact => 
+      contact.type && (
+        contact.type.toLowerCase().includes('phone') || 
+        contact.type.toLowerCase().includes('mobile') ||
+        contact.type.toLowerCase().includes('tel')
+      )
+    );
+    if (phone && phone.value) {
+      return phone.value;
+    }
+    
+    // If no email/phone found, return the first available contact
+    if (parsed[0] && parsed[0].value) {
+      return parsed[0].value;
+    }
+  }
+  
+  // Check for individual contact fields as fallback
+  const primaryType = getAdditionalMetric(member, 'primary_contact_type');
+  const primaryValue = getAdditionalMetric(member, 'primary_contact_value');
+  
+  if (primaryType && primaryValue) {
+    return primaryValue;
+  }
+  
+  // Check for direct email fields
+  const email = getAdditionalMetric(member, 'email') || 
+               getAdditionalMetric(member, 'contact_email');
+  if (email) {
+    return email;
+  }
+  
+  // Check for direct phone fields
+  const phone = getAdditionalMetric(member, 'phone') || 
+               getAdditionalMetric(member, 'contact_phone') ||
+               getAdditionalMetric(member, 'mobile');
+  if (phone) {
+    return phone;
+  }
+  
+  return 'N/A';
+};
+
 // Helper function to get work platform info
 const getWorkPlatform = (member: CampaignListMember) => {
   const platformData = getAdditionalMetric(member, 'work_platform');
@@ -300,7 +358,7 @@ export const getAllExportColumns = (): ExportColumnDefinition[] => [
   }
 ];
 
-// Updated prepare data function that uses visible columns + static Profile URL + static Username
+// Updated prepare data function that uses visible columns + static Username + Contact Details + Profile URL
 const prepareExportData = (members: CampaignListMember[], visibleColumnKeys: string[]) => {
   const allColumns = getAllExportColumns();
   const visibleColumns = allColumns.filter(col => visibleColumnKeys.includes(col.key));
@@ -330,6 +388,10 @@ const prepareExportData = (members: CampaignListMember[], visibleColumnKeys: str
       Object.assign(rowData, newRowData);
     }
     
+    // ALWAYS add Contact Details column before Profile URL
+    const contactDetails = getContactDetails(member);
+    rowData['Contact Details'] = contactDetails;
+    
     // ALWAYS add the static "Profile URL" column at the end
     const profileUrl = member.social_account?.account_url || getAdditionalMetric(member, 'url') || 'N/A';
     rowData['Profile URL'] = profileUrl;
@@ -358,6 +420,7 @@ export const exportToExcel = (
     
     console.log('📊 Export data prepared with columns:', Object.keys(exportData[0]));
     console.log('👤 Username column included:', Object.keys(exportData[0]).includes('Username'));
+    console.log('📞 Contact Details column included:', Object.keys(exportData[0]).includes('Contact Details'));
     console.log('🔗 Profile URL column included:', Object.keys(exportData[0]).includes('Profile URL'));
     
     // Create workbook
@@ -366,7 +429,7 @@ export const exportToExcel = (
     // Create worksheet with data (headers will be automatically created from object keys)
     const ws = XLSX.utils.json_to_sheet(exportData);
     
-    // Set dynamic column widths based on number of columns (including Profile URL)
+    // Set dynamic column widths based on number of columns (including Contact Details and Profile URL)
     const columnCount = Object.keys(exportData[0] || {}).length;
     const columnWidths = Array(columnCount).fill(0).map((_, index) => {
       // Adjust width based on column content
@@ -377,6 +440,8 @@ export const exportToExcel = (
         return { wch: 25 };
       } else if (key && key.includes('Location')) {
         return { wch: 20 };
+      } else if (key && key === 'Contact Details') {
+        return { wch: 30 }; // Wide column for email addresses
       } else if (key && key === 'Profile URL') {
         return { wch: 35 }; // Wider column for URLs
       } else {
