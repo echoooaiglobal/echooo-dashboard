@@ -13,6 +13,8 @@ import { InfluencerSearchFilter, SpecificContactDetail, AudienceInterestAffinity
 import { Platform } from '@/types/platform';
 import { FilterContext } from '@/utils/filter-utils';
 import { CreatorLocationSelection } from '@/lib/types';
+import { getCreatorProfile } from '@/services/ensembledata/creator-profile';
+import { Influencer as InsightsIQInfluencer } from '@/types/insights-iq';
 
 interface DiscoveredInfluencersProps {
   campaignData?: Campaign | null;
@@ -308,12 +310,65 @@ const DiscoveredInfluencers: React.FC<DiscoveredInfluencersProps> = ({
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
-  // Handle add to list from search dropdown
-  const handleAddToListFromSearch = (influencer: UserhandleResult) => {
-    console.log('Add to List clicked for:', influencer);
-    // TODO: Implement add to list functionality
-    // This would need to convert UserhandleResult to Influencer format
-    // and call the existing handleAddToList function
+  // Handle add to list from search dropdown - UPDATED with proper state management
+  const handleAddToListFromSearch = async (influencer: UserhandleResult) => {
+    console.log('🎯 Add to List clicked for:', influencer);
+    
+    if (!campaignData || !campaignData.campaign_lists || !campaignData.campaign_lists.length) {
+      console.error('❌ No campaign list found');
+      alert('No campaign list found. Please ensure the campaign has a list.');
+      return;
+    }
+
+    if (!selectedPlatform || !selectedPlatform.id) {
+      console.error('❌ No platform selected or platform ID missing');
+      alert('Please select a platform first.');
+      return;
+    }
+
+    const listId = campaignData.campaign_lists[0].id;
+    const platformId = selectedPlatform.id;
+
+    console.log('🔄 Adding influencer to list with platform ID:', platformId);
+
+    // Set loading state for this specific influencer
+    setIsAdding(prev => ({ ...prev, [influencer.username]: true }));
+
+    try {
+      // Step 1: Get detailed creator profile from 3rd party API
+      const creatorProfileResponse = await getCreatorProfile({
+        username: influencer.username,
+        platform: 'instagram', // Assuming Instagram for now
+        include_detailed_info: true,
+      });
+
+      console.log('📊 Creator profile response:', creatorProfileResponse);
+
+      if (!creatorProfileResponse.data) {
+        throw new Error('No creator profile data received');
+      }
+
+      const response = await addInfluencerToList(listId, creatorProfileResponse.data, platformId);
+        
+      if (response.success) {
+        // UPDATE: Add the influencer to the addedInfluencers state to show "Added" label
+        setAddedInfluencers(prev => ({ ...prev, [influencer.username]: true }));
+        console.log('✅ Successfully added influencer to list:', influencer.username);
+        
+        // Call the callback to refresh the shortlisted members list
+        onInfluencerAdded && onInfluencerAdded();
+      } else {
+        console.error('❌ Failed to add influencer to list:', response.message);
+        alert(`Failed to add ${influencer.fullname || influencer.username} to list: ${response.message}`);
+      }
+    } catch (error) {
+      console.error('💥 Error in add to list process:', error);
+      alert(`An error occurred while adding ${influencer.fullname || influencer.username} to the list`);
+    } finally {
+      // Always clear loading state
+      setIsAdding(prev => ({ ...prev, [influencer.username]: false }));
+      console.log('🏁 Finished processing add to list request for:', influencer.username);
+    }
   };
 
   // Handle influencer selection
@@ -356,8 +411,7 @@ const DiscoveredInfluencers: React.FC<DiscoveredInfluencersProps> = ({
 
   // Handle add to list function
   const handleAddToList = async (influencer: Influencer) => {
-
-
+    
     if (!campaignData || !campaignData.campaign_lists || !campaignData.campaign_lists.length) {
       console.error('No campaign list found');
       return;
@@ -448,7 +502,7 @@ const DiscoveredInfluencers: React.FC<DiscoveredInfluencersProps> = ({
               </div>
             )}
 
-            {/* Search Results Dropdown */}
+            {/* Search Results Dropdown - UPDATED with proper button states */}
             {showSearchDropdown && searchResults.length > 0 && (
               <div className="absolute z-50 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-xl max-h-96 overflow-y-auto">
                 <div className="p-3">
@@ -545,17 +599,51 @@ const DiscoveredInfluencers: React.FC<DiscoveredInfluencersProps> = ({
                               Profile Insights
                             </button>
 
-                            {/* Add to List Button */}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleAddToListFromSearch(result);
-                              }}
-                              className="flex items-center px-2 py-1 text-xs text-purple-600 bg-purple-100 hover:bg-purple-200 rounded-md transition-colors"
-                              title="Add to List"
-                            >
-                              Add to List
-                            </button>
+                            {/* Add to List Button - FIXED to show proper state */}
+                            {addedInfluencers[result.username] ? (
+                              // Show "Added" state
+                              <span className="flex items-center px-2 py-1 text-xs text-green-600 bg-green-100 rounded-md">
+                                <svg 
+                                  xmlns="http://www.w3.org/2000/svg" 
+                                  className="h-3 w-3 mr-1" 
+                                  fill="none" 
+                                  viewBox="0 0 24 24" 
+                                  stroke="currentColor"
+                                >
+                                  <path 
+                                    strokeLinecap="round" 
+                                    strokeLinejoin="round" 
+                                    strokeWidth={2} 
+                                    d="M5 13l4 4L19 7" 
+                                  />
+                                </svg>
+                                Added
+                              </span>
+                            ) : (
+                              // Show "Add to List" button
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleAddToListFromSearch(result);
+                                }}
+                                disabled={isAdding[result.username]}
+                                className={`flex items-center px-2 py-1 text-xs rounded-md transition-colors ${
+                                  isAdding[result.username]
+                                    ? 'text-gray-400 bg-gray-100 cursor-not-allowed'
+                                    : 'text-purple-600 bg-purple-100 hover:bg-purple-200'
+                                }`}
+                                title={isAdding[result.username] ? 'Adding...' : 'Add to List'}
+                              >
+                                {isAdding[result.username] ? (
+                                  <>
+                                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-gray-400 mr-1"></div>
+                                    Adding...
+                                  </>
+                                ) : (
+                                  'Add to List'
+                                )}
+                              </button>
+                            )}
                           </div>
                         </div>
                       </div>
