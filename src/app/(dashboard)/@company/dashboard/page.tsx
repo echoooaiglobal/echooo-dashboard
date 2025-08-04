@@ -34,44 +34,43 @@ export default function CompanyDashboardPage() {
       setIsRedirecting(true);
       
       try {
-        // Different behavior based on company role
+        // Different behavior based on company role - UPDATED with actual roles
         switch (primaryRole) {
-          case 'company_marketer':
+          case 'b2c_marketing_director':
+          case 'b2c_campaign_manager':
+          case 'b2c_campaign_executive':
           case 'b2c_company_admin':
-          case 'company_manager':
           case 'b2c_company_owner':
             // These roles should redirect to campaigns
-            console.log('🔄 Company Dashboard: Redirecting marketing roles to campaigns');
             const company = getStoredCompany();
             
-            if (company && company.id) { console.log('🔍 Company Dashboard: Found company, fetching campaigns...');
+            if (company && company.id) {
               try {
                 const campaigns = await getCompanyCampaigns(company.id);
                 
-                if (campaigns && campaigns.length > 0) { console.log('✅ Company Dashboard: Found campaigns, redirecting to /campaigns');
+                if (campaigns && campaigns.length > 0) {
                   // Navigate to campaigns list page, not a specific campaign
-                  console.log('✅ Company Dashboard: Found campaigns, redirecting to /campaigns');
                   router.push('/campaigns');
                 } else {
-                  console.warn('⚠️ Company Dashboard: No campaigns found, redirecting to create new campaign');
                   // No campaigns, redirect to create new campaign
-                  console.log('📝 Company Dashboard: No campaigns found, redirecting to /campaigns/new');
                   router.push('/campaigns/new');
                 }
               } catch (campaignError) {
-                console.error('❌ Company Dashboard: Error fetching campaigns:', campaignError);
                 // If there's an error fetching campaigns, just go to campaigns page
                 router.push('/campaigns');
               }
             } else {
-              console.warn('⚠️ Company Dashboard: No company data found, staying on dashboard');
               setIsRedirecting(false);
             }
             break;
             
-          case 'company_accountant':
-          case 'company_content_creator':
-          case 'company_user':
+          case 'b2c_social_media_manager':
+          case 'b2c_content_creator':
+          case 'b2c_brand_manager':
+          case 'b2c_performance_analyst':
+          case 'b2c_finance_manager':
+          case 'b2c_account_coordinator':
+          case 'b2c_viewer':
           default:
             // These roles stay on the dashboard
             console.log('🏠 Company Dashboard: Non-marketing role, staying on dashboard');
@@ -103,29 +102,54 @@ export default function CompanyDashboardPage() {
     );
   }
   
-  // Show dashboard with role-specific welcome message
+  // Show dashboard with role-specific welcome message - UPDATED with actual roles
   const getRoleSpecificMessage = () => {
     switch (primaryRole) {
       case 'b2c_company_owner':
-        return 'Manage your company campaigns and team.';
-      case 'company_manager':
-        return 'Oversee marketing operations and team performance.';
-      case 'company_marketer':
-        return 'Create and optimize your marketing campaigns.';
-      case 'company_accountant':
-        return 'Review financial data and campaign budgets.';
-      case 'company_content_creator':
-        return 'Collaborate on content creation and campaign assets.';
+        return 'Manage your company campaigns, team, and overall strategy.';
+      case 'b2c_company_admin':
+        return 'Administer company settings, users, and campaign oversight.';
+      case 'b2c_marketing_director':
+        return 'Oversee marketing strategy and campaign performance across all initiatives.';
+      case 'b2c_campaign_manager':
+        return 'Create, manage, and optimize your influencer marketing campaigns.';
+      case 'b2c_campaign_executive':
+        return 'Execute campaigns and coordinate with influencers and stakeholders.';
+      case 'b2c_social_media_manager':
+        return 'Manage social media strategy and influencer relationships.';
+      case 'b2c_content_creator':
+        return 'Create compelling content and campaign assets for your initiatives.';
+      case 'b2c_brand_manager':
+        return 'Maintain brand consistency and guidelines across all campaigns.';
+      case 'b2c_performance_analyst':
+        return 'Analyze campaign performance and provide actionable insights.';
+      case 'b2c_finance_manager':
+        return 'Oversee campaign budgets, payments, and financial reporting.';
+      case 'b2c_account_coordinator':
+        return 'Coordinate campaign activities and ensure smooth execution.';
+      case 'b2c_viewer':
+        return 'View campaign data and performance metrics.';
       default:
         return 'Welcome to your company dashboard.';
     }
+  };
+  
+  // Format role name for display - UPDATED
+  const formatRoleName = (role: string|null) => {
+    if (!role) return 'User';
+    
+    // Remove prefixes and format
+    return role
+      .replace('b2c_', '')
+      .replace('_', ' ')
+      .replace(/\b\w/g, l => l.toUpperCase());
   };
   
   return (
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-800 mb-2">
-          {primaryRole?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())} Dashboard
+          {formatRoleName(primaryRole)} Dashboard
         </h1>
         <p className="text-gray-600">{getRoleSpecificMessage()}</p>
       </div>

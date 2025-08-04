@@ -1,25 +1,28 @@
-// src/app/(dashboard)/layout.tsx - WORKING VERSION WITH SETTINGS SUPPORT
+// src/app/(dashboard)/layout.tsx - UPDATED VERSION WITH NAVBAR INTEGRATION
 'use client';
 
 import { ReactNode, useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { useSidebar } from '@/context/SidebarContext';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import SessionExpiredModal from '@/components/auth/SessionExpiredModal';
 import ClientOnly from '@/components/ClientOnly';
 import Sidebar from '@/components/dashboard/Sidebar';
+
+interface DashboardLayoutProps {
+  children: ReactNode;
+  platform: ReactNode;
+  company: ReactNode;
+  influencer: ReactNode;
+}
 
 export default function DashboardLayout({
   children,
   platform,
   company,
   influencer
-}: {
-  children: ReactNode;
-  platform: ReactNode;
-  company: ReactNode;
-  influencer: ReactNode;
-}) {
+}: DashboardLayoutProps) {
   const { 
     isLoading, 
     isAuthenticated, 
@@ -29,11 +32,11 @@ export default function DashboardLayout({
     getUserType,
     getPrimaryRole
   } = useAuth();
+  const { isSidebarCollapsed, setIsSidebarCollapsed } = useSidebar();
   const router = useRouter();
   const pathname = usePathname();
   const [retryCount, setRetryCount] = useState(0);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
   const maxRetries = 3;
 
   useEffect(() => {
@@ -88,8 +91,9 @@ export default function DashboardLayout({
   if (!isAuthenticated) {
     return null;
   }
-  
+  console.log('user?.user_type::', user?.user_type)
   if (!user?.user_type) {
+    console.log('user?.user_type::2', user?.user_type)
     return (
       <ClientOnly>
         <SessionExpiredModal />
@@ -152,7 +156,7 @@ function DashboardContent({
     // For non-settings routes, use parallel routes based on user type
     if (userType === 'platform') {
       content = platform;
-    } else if (userType === 'company') {
+    } else if (userType === 'b2c') {
       content = company;
     } else if (userType === 'influencer') {
       content = influencer;
@@ -164,10 +168,7 @@ function DashboardContent({
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-blue-150 to-purple-100 overflow-x-hidden">
       {/* SIDEBAR */}
-      <Sidebar 
-        isCollapsed={isSidebarCollapsed} 
-        setIsCollapsed={setIsSidebarCollapsed} 
-      />
+      <Sidebar />
       
       {/* MAIN CONTENT AREA - FIXED: Proper margins and width constraints */}
       <div 

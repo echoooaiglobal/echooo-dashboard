@@ -1,10 +1,11 @@
-// src/components/dashboard/Sidebar.tsx - FIXED VERSION WITH PROPER LAYOUT
+// src/components/dashboard/Sidebar.tsx - UPDATED VERSION (No icons when collapsed)
 'use client';
 
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
+import { useSidebar } from '@/context/SidebarContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { DetailedRole } from '@/types/auth';
 import {
@@ -32,9 +33,6 @@ import {
   Server,
   CreditCard,
   UserCheck,
-  X,
-  Menu,
-  ChevronLeft
 } from 'react-feather';
 
 // Enhanced icon mapping
@@ -74,13 +72,13 @@ interface NavigationItem {
 }
 
 interface SidebarProps {
-  isCollapsed: boolean;
-  setIsCollapsed: (collapsed: boolean) => void;
+  // No props needed - using context now
 }
 
-export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
+export default function Sidebar(props?: SidebarProps) {
   const pathname = usePathname();
   const { getPrimaryRole, getUserType } = useAuth();
+  const { isSidebarCollapsed } = useSidebar();
   const { canAccessResource } = usePermissions();
 
   const primaryRole = getPrimaryRole() as DetailedRole;
@@ -196,10 +194,6 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
     return true;
   });
 
-  const toggleSidebar = () => {
-    setIsCollapsed(!isCollapsed);
-  };
-
   // Get style for active links
   const isActive = (href: string) => {
     return pathname === href || pathname?.startsWith(`${href}/`);
@@ -209,33 +203,15 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
     return null;
   }
 
-  // When collapsed, show only a small toggle button (attached to left edge)
-  if (isCollapsed) {
-    return (
-      <div className="fixed top-20 left-0 z-50">
-        <button
-          onClick={toggleSidebar}
-          className="p-2 bg-white rounded-r-lg shadow-lg border-t border-r border-b border-gray-200 hover:bg-gray-50 transition-colors group"
-          title="Open Navigation"
-        >
-          <Menu className="w-4 h-4 text-gray-600 group-hover:text-gray-900" />
-        </button>
-      </div>
-    );
+  // REMOVED: The collapsed state toggle button - this is now handled by navbar
+  // When collapsed, return null (don't show anything)
+  if (isSidebarCollapsed) {
+    return null;
   }
 
   // When expanded, show full sidebar
   return (
     <>
-      {/* Close button - positioned outside sidebar */}
-      <button
-        onClick={toggleSidebar}
-        className="fixed top-20 left-64 z-50 p-2 bg-white rounded-r-lg shadow-lg border-t border-r border-b border-gray-200 hover:bg-gray-50 transition-all duration-200 group"
-        title="Close Navigation"
-      >
-        <ChevronLeft className="w-4 h-4 text-gray-600 group-hover:text-gray-900" />
-      </button>
-
       {/* Sidebar */}
       <aside className="fixed top-16 left-0 w-64 h-[calc(100vh-4rem)] bg-white border-r border-gray-200 z-40 flex flex-col shadow-lg">
         {/* Navigation */}

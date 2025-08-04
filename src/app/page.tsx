@@ -10,14 +10,19 @@ import { useAuth } from '@/context/AuthContext';
 export default function Home() {
 
   const router = useRouter();
-  const { isAuthenticated } = useAuth();
-
+  const { isAuthenticated, getPrimaryRole } = useAuth();
+  const primaryRole = getPrimaryRole();
+  console.log('primaryRole', primaryRole)
   useEffect(() => {
 
     if (!isAuthenticated) {
       router.replace('/login'); // use replace to avoid adding to browser history
     } else {
-      router.push('/campaigns');
+      if(primaryRole == 'b2c_company_owner'){
+        router.push('/campaigns');
+      }else{
+        router.push('/dashboard');
+      }
     }
   }, [isAuthenticated]);
 

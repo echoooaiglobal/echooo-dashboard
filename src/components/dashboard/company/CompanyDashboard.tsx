@@ -37,10 +37,10 @@ export default function CompanyDashboard() {
   return (
     <div className="w-full">
       {/* Stats & Performance Metrics Section */}
-      <DashboardMetricsSection userType="company" />
+      <DashboardMetricsSection userType="b2c" />
 
       {/* Campaign Funnel Section */}
-      <CampaignFunnelSection userType="company" />
+      <CampaignFunnelSection userType="b2c" />
 
     </div>
   );

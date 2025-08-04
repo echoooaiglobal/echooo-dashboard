@@ -14,14 +14,14 @@ interface MetricItem {
 
 // Define the props for the component
 interface DashboardMetricsSectionProps {
-  userType?: 'company' | 'influencer' | 'platform';
+  userType?: 'b2c' | 'influencer' | 'platform';
 }
 
 // Tabs available in the metrics section
 type MetricTab = 'stats' | 'performance' | 'both';
 
 const DashboardMetricsSection: React.FC<DashboardMetricsSectionProps> = ({ 
-  userType = 'company' 
+  userType = 'b2c' 
 }) => {
   const [isExpanded, setIsExpanded] = useState(false); // Changed from true to false
   const [activeTab, setActiveTab] = useState<MetricTab>('stats');

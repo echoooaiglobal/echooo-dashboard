@@ -12,7 +12,6 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 export default function SettingsIndexPage() {
   const { getPrimaryRole, isLoading } = useAuth();
   const router = useRouter();
-  console.log('aaaaaaaaaaa')
   useEffect(() => {
     if (isLoading) return;
     

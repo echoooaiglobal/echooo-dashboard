@@ -12,7 +12,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import Link from 'next/link';
 
 interface ProfileSettingsProps {
-  userType: 'platform' | 'company' | 'influencer';
+  userType: 'platform' | 'b2c' | 'influencer';
   showCompanyFields?: boolean;
 }
 
@@ -50,7 +50,7 @@ export default function ProfileSettings({ userType, showCompanyFields = false }:
           focusColor: 'focus:ring-indigo-500 focus:border-indigo-500',
           dotColor: 'bg-indigo-600'
         };
-      case 'company':
+      case 'b2c':
         return {
           primary: 'blue',
           bgColor: 'bg-blue-600',

@@ -94,7 +94,7 @@ export function CampaignProvider({ children }: { children: React.ReactNode }) {
   // Refresh campaigns function with throttling
   const refreshCampaigns = useCallback(async (force = false) => {
     // Don't fetch if user is not authenticated or not a company
-    if (!isAuthenticated || user?.user_type !== 'company') {
+    if (!isAuthenticated || user?.user_type !== 'b2c') {
       return;
     }
     
@@ -128,7 +128,7 @@ export function CampaignProvider({ children }: { children: React.ReactNode }) {
 
   // Initial fetch when context mounts
   useEffect(() => {
-    if (isAuthenticated && user?.user_type === 'company') {
+    if (isAuthenticated && user?.user_type === 'b2c') {
       refreshCampaigns();
     }
   }, [isAuthenticated, user, refreshCampaigns]);

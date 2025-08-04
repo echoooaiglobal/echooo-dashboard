@@ -274,17 +274,17 @@ export const getStoredPrimaryRole = (): DetailedRole | null => {
 /**
  * Get the user type from localStorage (quick access)
  */
-export const getStoredUserType = (): 'platform' | 'company' | 'influencer' | null => {
+export const getStoredUserType = (): 'platform' | 'b2c' | 'influencer' | null => {
   const userType = safeLocalStorage.getItem('userType');
-  return userType as 'platform' | 'company' | 'influencer' || null;
+  return userType as 'platform' | 'b2c' | 'influencer' || null;
 };
 
 /**
  * Get user type from detailed role
  */
-export const getUserTypeFromRole = (detailedRole: DetailedRole): 'platform' | 'company' | 'influencer' => {
+export const getUserTypeFromRole = (detailedRole: DetailedRole): 'platform' | 'b2c' | 'influencer' => {
   if (detailedRole.startsWith('platform_')) return 'platform';
-  if (detailedRole.startsWith('b2c_')) return 'company';
+  if (detailedRole.startsWith('b2c_')) return 'b2c';
   if (detailedRole.startsWith('influencer')) return 'influencer';
   throw new Error(`Unknown role: ${detailedRole}`);
 };
@@ -546,7 +546,7 @@ export const getDashboardRoute = (): string => {
   if (!userType || !primaryRole) return '/login';
   
   // Special routing for company users
-  if (userType === 'company') {
+  if (userType === 'b2c') {
     return '/dashboard'; // CompanyDashboardPage will handle redirection to campaigns
   }
   
@@ -612,7 +612,7 @@ export const initializeAuthState = (): {
   user: User | null;
   roles: Role[];
   primaryRole: DetailedRole | null;
-  userType: 'platform' | 'company' | 'influencer' | null;
+  userType: 'platform' | 'b2c' | 'influencer' | null;
 } => {
   const isValid = validateAuthData();
   

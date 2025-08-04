@@ -7,7 +7,7 @@ export interface LoginCredentials {
 }
 
 // Main user types (dashboard level)
-export type UserType = 'platform' | 'company' | 'influencer';
+export type UserType = 'platform' | 'b2c' | 'influencer';
 
 // Detailed role types for granular permissions
 export type PlatformRole = 

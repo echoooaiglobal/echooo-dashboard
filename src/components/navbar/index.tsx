@@ -1,19 +1,25 @@
-// src/components/navbar/index.tsx
+// src/components/navbar/index.tsx - Updated with Sidebar Toggle
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { useSidebar } from '@/context/SidebarContext';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { User, Settings, LogOut, Bell, Menu, X } from 'react-feather';
 import CampaignsDropdown from './CampaignsDropdown';
-import { UserAvatar } from '@/components/ui/SafeImage'; // ADDED: Import SafeImage component
+import { UserAvatar } from '@/components/ui/SafeImage';
 import { DetailedRole } from '@/types/auth';
 import { usePermissions } from '@/hooks/usePermissions';
 
-export default function EnhancedNavbar() {
+interface NavbarProps {
+  // No props needed - using context now
+}
+
+export default function Navbar(props?: NavbarProps) {
   const { isAuthenticated, user, logout, getPrimaryRole, getUserType, isLoading } = useAuth();
+  const { isSidebarCollapsed, toggleSidebar } = useSidebar();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -36,6 +42,31 @@ export default function EnhancedNavbar() {
 
   // Check if we're on the landing page
   const isLandingPage = pathname === '/';
+
+  // Check if we're on dashboard pages (where sidebar should be shown)
+  const isDashboardPage = isAuthenticated && (
+    pathname?.startsWith('/dashboard') || 
+    pathname?.startsWith('/users') ||
+    pathname?.startsWith('/companies') ||
+    pathname?.startsWith('/agents') ||
+    pathname?.startsWith('/campaigns') ||
+    pathname?.startsWith('/analytics') ||
+    pathname?.startsWith('/settings') ||
+    pathname?.startsWith('/discover') ||
+    pathname?.startsWith('/influencers') ||
+    pathname?.startsWith('/profile') ||
+    pathname?.startsWith('/payments') ||
+    pathname?.startsWith('/assigned-lists') ||
+    pathname?.startsWith('/outreach') ||
+    pathname?.startsWith('/contacts') ||
+    pathname?.startsWith('/performance') ||
+    pathname?.startsWith('/operations') ||
+    pathname?.startsWith('/automation') ||
+    pathname?.startsWith('/teams') ||
+    pathname?.startsWith('/reports') ||
+    pathname?.startsWith('/system') ||
+    pathname?.startsWith('/notifications')
+  );
 
   // ADDED: Helper function to get user initials
   const getUserInitials = (user: any) => {
@@ -106,6 +137,11 @@ export default function EnhancedNavbar() {
     setIsCampaignsOpen(!isCampaignsOpen);
   };
   const closeCampaigns = () => setIsCampaignsOpen(false);
+
+  // ADDED: Sidebar toggle handler
+  const handleToggleSidebar = () => {
+    toggleSidebar();
+  };
 
   const handleLogout = async () => {
     try {
@@ -275,11 +311,11 @@ export default function EnhancedNavbar() {
   if (isLoading) {
     return (
       <nav className="sticky top-0 left-0 right-0 z-50 bg-white shadow-md">
-        <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-4">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
               <Link href="/" className="flex items-center">
-                <Image  
+                <Image 
                   src="/echooo-logo.svg" 
                   alt="Echooo" 
                   width={120} 
@@ -309,10 +345,21 @@ export default function EnhancedNavbar() {
           ? 'bg-transparent' 
           : 'bg-white shadow-md'
     }`}>
-      <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-4">
         <div className="flex justify-between h-16">
           {/* Logo and primary navigation */}
-          <div className="flex">
+          <div className="flex items-center">
+            {/* ADDED: Sidebar toggle button - only show on dashboard pages when authenticated */}
+            {isDashboardPage && (
+              <button
+                onClick={handleToggleSidebar}
+                className="p-2 mr-3 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+                title={isSidebarCollapsed ? "Open Navigation" : "Close Navigation"}
+              >
+                <Menu className="w-5 h-5" />
+              </button>
+            )}
+            
             <div className="flex-shrink-0 flex items-center">
               <Link href="/" className="flex items-center">
                 <Image 
@@ -332,7 +379,7 @@ export default function EnhancedNavbar() {
               // Authenticated nav options
               <div className="hidden md:flex md:items-center md:space-x-4">
                 {/* Campaigns Dropdown Component - only for company users */}
-                {userType === 'company' && (
+                {userType === 'b2c' && (
                   <div ref={campaignsRef}>
                     <CampaignsDropdown 
                       isOpen={isCampaignsOpen}

@@ -98,7 +98,7 @@ export default function WelcomeSection({ user, activeTab, onTabChange }: Welcome
                             <div className="w-2 h-2 bg-red-500 rounded-sm" />
                           </div>
                         </div>
-                        <span className="text-white">Stop Autopilot</span>
+                        <span className="text-white">Stop AI Autopilot</span>
                       </>
                     ) : (
                       <>
@@ -106,7 +106,7 @@ export default function WelcomeSection({ user, activeTab, onTabChange }: Welcome
                           <Zap className="w-4 h-4 text-white" />
                           <div className="absolute inset-0 bg-white/20 rounded-full animate-ping" />
                         </div>
-                        <span className="text-white">Start Autopilot</span>
+                        <span className="text-white">Start AI Autopilot</span>
                       </>
                     )}
                   </>

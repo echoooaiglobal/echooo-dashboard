@@ -1,13 +1,15 @@
-// src/app/layout.tsx
+// src/app/layout.tsx - ROOT LAYOUT WITH SINGLE NAVBAR
+import { ReactNode } from 'react';
 import { Inter } from 'next/font/google';
-import '@/styles/globals.css';
-import { LocationCacheProvider } from '@/context/LocationCacheContext';
 import { AuthProvider } from '@/context/AuthContext';
+import { SidebarProvider } from '@/context/SidebarContext';
+import { LocationCacheProvider } from '@/context/LocationCacheContext';
 import { CampaignProvider } from '@/context/CampaignContext';
-import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import { Toaster } from 'react-hot-toast';
 import Navbar from '@/components/navbar';
-import type { Metadata } from 'next';
 import ClientOnly from '@/components/ClientOnly';
+import type { Metadata } from 'next';
+import '@/styles/globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -16,9 +18,9 @@ export const metadata: Metadata = {
   description: 'Manage influencer campaigns with Echooo',
   icons: {
     icon: [
-      { url: '/favicons/echooo-favicon-512-512.png' },
-      { url: '/favicons/echooo-favicon-512-512.png', sizes: '16x16', type: 'image/png' },
-      { url: '/favicons/echooo-favicon-512-512.png', sizes: '32x32', type: 'image/png' },
+      { url: '/favicons/echooo-favicon.png' },
+      { url: '/favicons/echooo-favicon.png', sizes: '16x16', type: 'image/png' },
+      { url: '/favicons/echooo-favicon.png', sizes: '32x32', type: 'image/png' },
     ],
     apple: [
       { url: '/apple-touch-icon.png' },
@@ -26,19 +28,38 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body 
-        className={inter.className} 
+        className={inter.className}
         suppressHydrationWarning={true}
       >
         <ClientOnly>
           <AuthProvider>
             <CampaignProvider>
               <LocationCacheProvider>
-                <Navbar />
-                <main className="w-full">{children}</main>
+                <SidebarProvider>
+                  {/* Single navbar for the entire app */}
+                  <Navbar />
+                  
+                  {/* Main content */}
+                  <main className="w-full">
+                    {children}
+                  </main>
+                  
+                  {/* Toast notifications */}
+                  <Toaster 
+                    position="top-right"
+                    toastOptions={{
+                      duration: 4000,
+                      style: {
+                        background: '#363636',
+                        color: '#fff',
+                      },
+                    }}
+                  />
+                </SidebarProvider>
               </LocationCacheProvider>
             </CampaignProvider>
           </AuthProvider>

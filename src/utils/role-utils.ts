@@ -12,9 +12,9 @@ export const getPrimaryRole = (roles: Role[]): DetailedRole | null => {
 /**
  * Get the user type from updated detailed role
  */
-export const getUserTypeFromRole = (detailedRole: DetailedRole): 'platform' | 'company' | 'influencer' => {
+export const getUserTypeFromRole = (detailedRole: DetailedRole): 'platform' | 'b2c' | 'influencer' => {
   if (detailedRole.startsWith('platform_')) return 'platform';
-  if (detailedRole.startsWith('b2c_')) return 'company';
+  if (detailedRole.startsWith('b2c_')) return 'b2c';
   if (detailedRole.startsWith('influencer')) return 'influencer';
   throw new Error(`Unknown role: ${detailedRole}`);
 };
@@ -44,7 +44,7 @@ export const isPlatformRole = (role: DetailedRole): role is PlatformRole => {
  * Check if user is company role
  */
 export const isCompanyRole = (role: DetailedRole): role is CompanyRole => {
-  return role.startsWith('company_');
+  return role.startsWith('b2c_company_');
 };
 
 /**
@@ -66,7 +66,7 @@ export const getDashboardRouteForRole = (user: User | null, roles: Role[]): stri
   const userType = getUserTypeFromRole(primaryRole);
   
   // For company users, redirect to campaigns if they exist
-  if (userType === 'company') {
+  if (userType === 'b2c') {
     return '/dashboard'; // Will be handled by CompanyDashboardPage to redirect to campaigns
   }
   
@@ -89,12 +89,12 @@ export const getRoleHierarchyLevel = (role: DetailedRole): number => {
     'platform_agent': 30,
     
     // Company hierarchy
-    'company_admin': 100,
-    'company_manager': 80,
-    'company_marketer': 60,
-    'company_accountant': 50,
-    'company_content_creator': 40,
-    'company_user': 30,
+    'b2c_company_admin': 100,
+    'b2c_company_manager': 80,
+    'b2c_company_marketer': 60,
+    'b2c_company_accountant': 50,
+    'b2c_company_content_creator': 40,
+    'b2c_company_user': 30,
     
     // Influencer hierarchy
     'influencer_manager': 80,

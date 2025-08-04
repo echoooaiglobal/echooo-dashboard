@@ -14,7 +14,7 @@ export default function CompanyLayout({ children }: { children: ReactNode }) {
     const userType = getUserType();
     const primaryRole = getPrimaryRole();
     
-    if (user && userType !== 'company') {
+    if (user && userType !== 'b2c') {
       console.log('User does not have company access, redirecting to unauthorized');
       router.push('/unauthorized');
       return;
@@ -29,7 +29,7 @@ export default function CompanyLayout({ children }: { children: ReactNode }) {
   
   // Don't render anything if not a company user
   const userType = getUserType();
-  if (user && userType !== 'company') {
+  if (user && userType !== 'b2c') {
     return null;
   }
   

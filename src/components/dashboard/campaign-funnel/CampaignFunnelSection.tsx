@@ -14,14 +14,14 @@ import { Campaign } from '@/types/campaign';
 type FunnelTab = 'discover' | 'outreach' | 'management' | 'result' | 'payments';
 
 interface CampaignFunnelSectionProps {
-  userType?: 'company' | 'influencer' | 'platform';
+  userType?: 'b2c' | 'influencer' | 'platform';
   campaignData?: Campaign | null;
   isNewCampaign?: boolean;
   initialTab?: FunnelTab;
 }
 
 const CampaignFunnelSection: React.FC<CampaignFunnelSectionProps> = ({ 
-  userType = 'company',
+  userType = 'b2c',
   campaignData = null,
   isNewCampaign = false,
   initialTab = 'discover'

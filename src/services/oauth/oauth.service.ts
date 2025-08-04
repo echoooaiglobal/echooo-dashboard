@@ -60,7 +60,7 @@
   export async function initiateOAuth(
     provider: string, 
     linkMode: boolean = false,
-    userType?: 'influencer' | 'company' | 'platform' // FIXED: Changed from = 'platform' to optional
+    userType?: 'influencer' | 'b2c' | 'platform' // FIXED: Changed from = 'platform' to optional
   ): Promise<OAuthAuthorizationResponse> {
     try {
       console.log(`🚀 Client Service: Starting initiateOAuth call for ${provider}`, {
