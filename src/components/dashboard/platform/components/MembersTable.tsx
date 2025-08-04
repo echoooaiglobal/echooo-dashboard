@@ -694,7 +694,7 @@ const CopyMessageButton = ({
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
       console.error('Failed to copy message:', error);
-      alert('Failed to copy message to clipboard');
+      // alert('Failed to copy message to clipboard');
     }
   };
   

@@ -266,7 +266,7 @@ const InfluencerProfileReport: React.FC<InfluencerProfileReportProps> = ({
       setTimeout(() => setUrlCopied(false), 2000);
     } catch (error) {
       console.error('Failed to copy URL:', error);
-      alert('Failed to copy URL');
+      // alert('Failed to copy URL');
     }
   };
 

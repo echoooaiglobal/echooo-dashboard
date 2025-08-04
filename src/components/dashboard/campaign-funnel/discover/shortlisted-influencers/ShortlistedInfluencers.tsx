@@ -259,7 +259,7 @@ const ShortlistedInfluencers: React.FC<ShortlistedInfluencersProps> = ({
       }
     } catch (error) {
       console.error('Error processing outreach action:', error);
-      alert(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      // alert(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       // Only reset loading if we actually set it
       if (buttonConfig.action === 'start-with-existing') {
@@ -306,7 +306,7 @@ const ShortlistedInfluencers: React.FC<ShortlistedInfluencersProps> = ({
         errorMessage = error.message;
       }
       
-      alert(errorMessage);
+      // alert(errorMessage);
     } finally {
       // Reset both loading states
       setIsSavingTemplate(false);
@@ -344,7 +344,7 @@ const ShortlistedInfluencers: React.FC<ShortlistedInfluencersProps> = ({
     console.log('⚙️ Manage Outreach function called');
     
     if (!campaignData?.list_assignments || campaignData.list_assignments.length === 0) {
-      alert('No list assignments found to manage');
+      // alert('No list assignments found to manage');
       return;
     }
 
@@ -361,7 +361,7 @@ const ShortlistedInfluencers: React.FC<ShortlistedInfluencersProps> = ({
       .join('\n');
 
     const message = `Outreach Status Breakdown:\n\n${statusBreakdown}\n\nUse the campaign management tools to modify outreach status.`;
-    alert(message);
+    // alert(message);
   };
 
   /**
@@ -412,7 +412,7 @@ const ShortlistedInfluencers: React.FC<ShortlistedInfluencersProps> = ({
     );
 
     if (selectedMembers.length === 0) {
-      alert('No valid members selected for removal');
+      // alert('No valid members selected for removal');
       return;
     }
 
@@ -450,7 +450,7 @@ const ShortlistedInfluencers: React.FC<ShortlistedInfluencersProps> = ({
       }
     } catch (error) {
       console.error('Error in bulk remove:', error);
-      alert('An error occurred during bulk removal');
+      // alert('An error occurred during bulk removal');
     } finally {
       setRemovingInfluencers([]);
     }
