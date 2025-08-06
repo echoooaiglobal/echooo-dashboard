@@ -83,11 +83,40 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Parse request body
-    const updateData: UpdateUserRequest = await request.json();
-    console.log('📝 API Route: Update data received:', {
+    // Always process as FormData for consistency
+    console.log('📁 API Route: Processing FormData request');
+    
+    const formData = await request.formData();
+    
+    // Extract form fields - INCLUDE ALL NAME FIELDS
+    const updateData: UpdateUserRequest = {
+      first_name: formData.get('first_name') as string || undefined,
+      last_name: formData.get('last_name') as string || undefined,
+      full_name: formData.get('full_name') as string || undefined,
+      phone_number: formData.get('phone_number') as string || undefined,
+      language: formData.get('language') as string || undefined,
+    };
+
+    // Handle profile image file if present
+    const profileImageFile = formData.get('profile_image') as File;
+    if (profileImageFile && profileImageFile.size > 0) {
+      console.log('🖼️ API Route: Profile image file detected:', {
+        name: profileImageFile.name,
+        size: profileImageFile.size,
+        type: profileImageFile.type
+      });
+      
+      // Convert file to base64 to pass through your existing flow
+      const bytes = await profileImageFile.arrayBuffer();
+      const buffer = Buffer.from(bytes);
+      const base64 = buffer.toString('base64');
+      updateData.profile_image_url = `data:${profileImageFile.type};base64,${base64}`;
+    }
+
+    console.log('📝 API Route: Update data processed:', {
       hasFirstName: !!updateData.first_name,
       hasLastName: !!updateData.last_name,
+      hasFullName: !!updateData.full_name,
       hasPhoneNumber: !!updateData.phone_number,
       hasProfileImage: !!updateData.profile_image_url,
       fields: Object.keys(updateData)
@@ -107,6 +136,7 @@ export async function PUT(request: NextRequest) {
     console.log('🚀 API Route: Calling FastAPI backend...');
     
     // Call FastAPI backend through server-side service with auth token
+    // USING YOUR UPDATED CONSISTENT FLOW
     const updatedUser = await updateCurrentUserServer(updateData, authToken);
     
     console.log('✅ API Route: Successfully updated current user profile');

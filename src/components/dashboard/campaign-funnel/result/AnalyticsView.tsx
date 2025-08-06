@@ -6,67 +6,9 @@ import { getVideoResults } from '@/services/video-results';
 import { VideoResult } from '@/types/user-detailed-info';
 import { Campaign } from '@/types/campaign';
 import { exportToPDF, exportToPrint, generateExportFilename } from '@/utils/pdfExportUtils';
-
-interface AnalyticsData {
-  totalClicks: number;
-  totalImpressions: number;
-  totalReach: number;
-  totalLikes: number;
-  totalComments: number;
-  totalViews: number;
-  totalShares: number;
-  totalFollowers: number;
-  totalPosts: number;
-  totalInfluencers: number;
-  averageEngagementRate: number;
-  postsByDate: Array<{
-    date: string;
-    count: number;
-    views: number;
-    cumulativeViews: number;
-    posts: Array<{
-      influencerName: string;
-      username: string;
-      avatar: string;
-      views: number;
-      likes: number;
-      comments: number;
-      shares: number;
-    }>;
-  }>;
-  topPerformers: Array<{
-    name: string;
-    username: string;
-    avatar: string;
-    clicks: number;
-    isVerified: boolean;
-    totalPosts: number;
-    totalLikes: number;
-    totalComments: number;
-    totalViews: number;
-    totalShares: number;
-    avgEngagementRate: number;
-    totalEngagement: number;
-    followers: number;
-  }>;
-  topPosts: Array<{
-    id: string;
-    influencerName: string;
-    username: string;
-    avatar: string;
-    thumbnail: string;
-    likes: number;
-    comments: number;
-    views: number;
-    plays: number;
-    shares: number;
-    engagementRate: number;
-    isVerified: boolean;
-    postId: string;
-    totalEngagement: number;
-    postDate: string;
-  }>;
-}
+import PerformanceOverview from './PerformanceOverview';
+import DetailedInsights from './DetailedInsights';
+import { AnalyticsData } from './types';
 
 interface AnalyticsViewProps {
   onBack: () => void;
@@ -86,6 +28,10 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
     totalPosts: 0,
     totalInfluencers: 0,
     averageEngagementRate: 0,
+    totalCPV: 0,
+    totalCPE: 0,
+    viewsToFollowersRatio: 0,
+    commentToViewsRatio: 0,
     postsByDate: [],
     topPerformers: [],
     topPosts: []
@@ -93,15 +39,18 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
+  const [shareStatus, setShareStatus] = useState<'idle' | 'copying' | 'copied'>('idle');
   const [videoResults, setVideoResults] = useState<VideoResult[]>([]);
-  const [hoveredDataPoint, setHoveredDataPoint] = useState<any>(null);
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   
   // Sorting and filtering states
   const [postsSortBy, setPostsSortBy] = useState<'views' | 'likes' | 'comments' | 'engagement' | 'date'>('engagement');
   const [postsFilterBy, setPostsFilterBy] = useState<'all' | 'high-engagement' | 'high-views'>('all');
   const [influencersSortBy, setInfluencersSortBy] = useState<'engagement' | 'views' | 'followers' | 'posts'>('engagement');
   const [influencersFilterBy, setInfluencersFilterBy] = useState<'all' | 'verified' | 'top-performers'>('all');
+  
+  // Pagination states for posts
+  const [currentPage, setCurrentPage] = useState(1);
+  const [postsPerPage, setPostsPerPage] = useState(20);
   
   const exportContentRef = useRef<HTMLDivElement>(null);
 
@@ -119,28 +68,38 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
     return originalUrl;
   };
 
+  // UPDATED: Enhanced getPostData function to match PublishedResults exactly
   const getPostData = (video: VideoResult) => {
     const postData = video.post_result_obj?.data;
     if (!postData) {
-      // When no post data, use whichever is greater between views_count and plays_count
       const viewsFromAPI = Math.max(0, video.views_count || 0);
       const playsFromAPI = Math.max(0, video.plays_count || 0);
       const finalViews = Math.max(viewsFromAPI, playsFromAPI);
       const likes = Math.max(0, video.likes_count || 0);
       const comments = Math.max(0, video.comments_count || 0);
-      const shares = Math.max(0, Math.floor(likes * 0.1));
+      
+      // FIXED: Use actual shares data if available, otherwise show 0 (no calculation)
+      const shares = Math.max(0, video.shares_count || 0);
+      const collaborationPrice = video.collaboration_price || 0;
+      
+      // UPDATED: Use plays for videoPlayCount when no post data (matching PublishedResults)
+      const videoPlayCount = playsFromAPI;
       
       return {
         likes,
         comments,
-        views: finalViews,
+        views: finalViews, // Keep this for backwards compatibility
         plays: playsFromAPI,
         shares,
         followers: 0,
         engagementRate: 0,
         avatarUrl: getProxiedImageUrl(video.profile_pic_url || ''),
         isVerified: false,
-        thumbnailUrl: getProxiedImageUrl(video.thumbnail || video.media_preview || '')
+        thumbnailUrl: getProxiedImageUrl(video.thumbnail || video.media_preview || ''),
+        collaborationPrice,
+        cpv: videoPlayCount > 0 ? collaborationPrice / videoPlayCount : 0, // UPDATED: Use videoPlayCount for CPV
+        cpe: (likes + comments + (shares > 0 ? shares : 0)) > 0 ? collaborationPrice / (likes + comments + (shares > 0 ? shares : 0)) : 0,
+        videoPlayCount // UPDATED: Added videoPlayCount field
       };
     }
 
@@ -153,18 +112,30 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                      postData.edge_media_to_parent_comment?.count ||
                      video.comments_count || 0);
     
-    // Get both video_view_count (plays) and general views, use whichever is greater
+    // UPDATED: Focus on video_play_count from API (matching PublishedResults exactly)
+    const videoPlayCount = Math.max(0, postData.video_play_count || 0);
+    
+    // Keep existing logic for other view calculations (for backwards compatibility)
     const videoPlaysFromAPI = Math.max(0, postData.video_view_count || postData.video_play_count || 0);
     const generalViewsFromAPI = Math.max(0, video.views_count || 0);
     const playsFromVideo = Math.max(0, video.plays_count || 0);
     
-    // Take the maximum of all available view/play counts for views
     const views = Math.max(videoPlaysFromAPI, generalViewsFromAPI, playsFromVideo);
     const plays = Math.max(videoPlaysFromAPI, playsFromVideo);
-    const shares = Math.max(0, Math.floor(likes * 0.1));
+    
+    // FIXED: Use actual shares data from API/manual entry, fallback to 0 (no calculation)
+    const shares = Math.max(0, 
+      postData.shares_count || // Try from post data
+      video.shares_count ||    // Try from video data
+      0                        // Default to 0 if no data available
+    );
     
     const followers = Math.max(0, postData.owner?.edge_followed_by?.count || 0);
-    const engagementRate = followers > 0 ? ((likes + comments + shares) / followers) * 100 : 0;
+    
+    // Calculate engagement rate - only include shares if > 0
+    const totalEngagementForRate = likes + comments + (shares > 0 ? shares : 0);
+    const engagementRate = followers > 0 ? (totalEngagementForRate / followers) * 100 : 0;
+    const collaborationPrice = video.collaboration_price || postData.collaboration_price || 0;
     
     let avatarUrl = '/user/profile-placeholder.png';
     if (postData.owner?.profile_pic_url) {
@@ -189,14 +160,18 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
     return {
       likes,
       comments,
-      views,
+      views, // Keep this for backwards compatibility
       plays,
       shares,
       followers,
       engagementRate,
       avatarUrl: getProxiedImageUrl(avatarUrl),
       isVerified: postData.owner?.is_verified || false,
-      thumbnailUrl: getProxiedImageUrl(thumbnailUrl)
+      thumbnailUrl: getProxiedImageUrl(thumbnailUrl),
+      collaborationPrice,
+      cpv: videoPlayCount > 0 ? collaborationPrice / videoPlayCount : 0, // UPDATED: Use videoPlayCount for CPV
+      cpe: (likes + comments + (shares > 0 ? shares : 0)) > 0 ? collaborationPrice / (likes + comments + (shares > 0 ? shares : 0)) : 0,
+      videoPlayCount // UPDATED: Added videoPlayCount field to match PublishedResults
     };
   };
 
@@ -211,30 +186,24 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
     return num.toString();
   };
 
-  const getPercentageChange = (current: number, base: number = 1000): string => {
-    if (base === 0) return '+0%';
-    const change = ((current - base) / base) * 100;
-    return change >= 0 ? `+${change.toFixed(1)}%` : `${change.toFixed(1)}%`;
-  };
-
   // Filter and sort functions for posts
   const getFilteredAndSortedPosts = () => {
     let filtered = [...analyticsData.topPosts];
     
-    // Apply filters
     if (postsFilterBy === 'high-engagement') {
       const avgEngagement = filtered.reduce((sum, post) => sum + post.totalEngagement, 0) / filtered.length;
       filtered = filtered.filter(post => post.totalEngagement > avgEngagement);
     } else if (postsFilterBy === 'high-views') {
-      const avgViews = filtered.reduce((sum, post) => sum + post.views, 0) / filtered.length;
-      filtered = filtered.filter(post => post.views > avgViews);
+      // UPDATED: Use videoPlayCount for filtering high-views posts
+      const avgViews = filtered.reduce((sum, post) => sum + (post.videoPlayCount || post.views), 0) / filtered.length;
+      filtered = filtered.filter(post => (post.videoPlayCount || post.views) > avgViews);
     }
     
-    // Apply sorting
     filtered.sort((a, b) => {
       switch (postsSortBy) {
         case 'views':
-          return b.views - a.views;
+          // UPDATED: Use videoPlayCount for sorting by views
+          return (b.videoPlayCount || b.views) - (a.videoPlayCount || a.views);
         case 'likes':
           return b.likes - a.likes;
         case 'comments':
@@ -250,11 +219,32 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
     return filtered;
   };
 
+  // Pagination logic for posts
+  const getPaginatedPosts = () => {
+    const filteredPosts = getFilteredAndSortedPosts();
+    const startIndex = (currentPage - 1) * postsPerPage;
+    const endIndex = startIndex + postsPerPage;
+    return {
+      posts: filteredPosts.slice(startIndex, endIndex),
+      totalPosts: filteredPosts.length,
+      totalPages: Math.ceil(filteredPosts.length / postsPerPage)
+    };
+  };
+
+  // Reset to first page when filters change
+  const handleFilterChange = (filterType: 'sort' | 'filter', value: string) => {
+    setCurrentPage(1);
+    if (filterType === 'sort') {
+      setPostsSortBy(value as any);
+    } else {
+      setPostsFilterBy(value as any);
+    }
+  };
+
   // Filter and sort functions for influencers
   const getFilteredAndSortedInfluencers = () => {
     let filtered = [...analyticsData.topPerformers];
     
-    // Apply filters
     if (influencersFilterBy === 'verified') {
       filtered = filtered.filter(influencer => influencer.isVerified);
     } else if (influencersFilterBy === 'top-performers') {
@@ -262,11 +252,11 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
       filtered = filtered.filter(inf => inf.totalEngagement > avgEngagement);
     }
     
-    // Apply sorting
     filtered.sort((a, b) => {
       switch (influencersSortBy) {
         case 'views':
-          return b.totalViews - a.totalViews;
+          // UPDATED: Use totalVideoPlayCount for sorting by views (will be added in processing)
+          return (b.totalVideoPlayCount || b.totalViews) - (a.totalVideoPlayCount || a.totalViews);
         case 'followers':
           return b.followers - a.followers;
         case 'posts':
@@ -280,24 +270,19 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
     return filtered;
   };
 
+  // UPDATED: No popup, inline status feedback
   const handleShareReport = async () => {
     if (!campaignData?.id || !campaignData?.name) {
       console.error('No campaign data available for sharing');
-      alert('Campaign data is not available for sharing.');
       return;
     }
     
-    console.log('🚀 Starting share report process...');
-    console.log('Campaign data:', { id: campaignData.id, name: campaignData.name });
-    console.log('Analytics data:', analyticsData);
-    
     setIsSharing(true);
+    setShareStatus('copying');
     
     try {
       const shareId = `${campaignData.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-      
-      console.log('📝 Generated share ID:', shareId);
       
       const requestBody = {
         shareId,
@@ -308,8 +293,6 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
         expiresAt
       };
       
-      console.log('📤 Sending request to API:', requestBody);
-      
       const response = await fetch('/api/shared-reports', {
         method: 'POST',
         headers: {
@@ -318,35 +301,46 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
         body: JSON.stringify(requestBody),
       });
 
-      console.log('📥 API Response status:', response.status);
-      console.log('📥 API Response headers:', Object.fromEntries(response.headers.entries()));
-
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('❌ API Error:', errorData);
         throw new Error(errorData.error || 'Failed to create shared report');
       }
 
       const result = await response.json();
-      console.log('✅ API Success:', result);
       
       const baseUrl = window.location.origin;
       const shareUrl = `${baseUrl}/campaign-analytics-report/${campaignData.id}`;
-      console.log('🔗 Generated share URL:', shareUrl);
       
+      // Copy URL to clipboard
       try {
         await navigator.clipboard.writeText(shareUrl);
-        console.log('📋 Successfully copied to clipboard');
+        setShareStatus('copied');
+        
+        // Reset status after 3 seconds
+        setTimeout(() => {
+          setShareStatus('idle');
+        }, 3000);
+        
       } catch (clipboardError) {
-        console.warn('⚠️ Clipboard copy failed:', clipboardError);
+        console.warn('Clipboard copy failed:', clipboardError);
+        // Fallback: select and copy using document.execCommand
+        const textArea = document.createElement('textarea');
+        textArea.value = shareUrl;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        
+        setShareStatus('copied');
+        setTimeout(() => {
+          setShareStatus('idle');
+        }, 3000);
       }
       
-      alert(`Share link created and copied to clipboard!\n\n${shareUrl}\n\nThis link allows public access to the campaign analytics without requiring login.`);
-      
-      window.open(shareUrl, '_blank');
-      
     } catch (error) {
-      console.error('💥 Error sharing report:', error);
+      console.error('Error sharing report:', error);
+      setShareStatus('idle');
+      // You can add a toast notification here if you have a toast system
       alert(`Failed to generate share link: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsSharing(false);
@@ -431,16 +425,22 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
           influencerGroups.get(key)!.push(video);
         });
 
+        // Initialize totals
         let totalLikes = 0;
         let totalComments = 0;
-        let totalViews = 0;
+        let totalViews = 0; // This will be based on videoPlayCount for consistency
         let totalShares = 0;
         let totalFollowers = 0;
         
-        let totalInfluencerEngagementRates = 0;
-        let validInfluencerCount = 0;
+        // NEW: Track collaboration price metrics
+        let totalCollaborationPrice = 0;
+        let postsWithCollaborationPrice = 0;
 
-        // FIXED: Enhanced date processing for posts by date chart
+        // For calculating average engagement rate
+        let totalEngagementRate = 0;
+        let influencersWithFollowers = 0;
+
+        // Enhanced date processing for posts by date chart
         const postDateMap = new Map<string, {
           count: number;
           views: number;
@@ -465,6 +465,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
           totalLikes: number;
           totalComments: number;
           totalViews: number;
+          totalVideoPlayCount: number; // UPDATED: Added for consistency with PublishedResults
           totalShares: number;
           avgEngagementRate: number;
           totalEngagement: number;
@@ -480,6 +481,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
           likes: number;
           comments: number;
           views: number;
+          videoPlayCount: number; // UPDATED: Added videoPlayCount field
           plays: number;
           shares: number;
           engagementRate: number;
@@ -487,6 +489,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
           postId: string;
           totalEngagement: number;
           postDate: string;
+          collaborationPrice: number; // NEW: Added collaboration price
         }> = [];
 
         // Process each unique influencer
@@ -494,26 +497,36 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
           let influencerTotalLikes = 0;
           let influencerTotalComments = 0;
           let influencerTotalViews = 0;
+          let influencerTotalVideoPlayCount = 0; // UPDATED: Track videoPlayCount separately
           let influencerTotalShares = 0;
           let influencerFollowers = 0;
           let influencerAvatar = '';
           let influencerName = '';
           let isVerified = false;
-          let avgEngagementRate = 0;
 
           videos.forEach(video => {
             const postDataDetail = getPostData(video);
             
+            // Sum post metrics
             totalLikes += postDataDetail.likes;
             totalComments += postDataDetail.comments;
-            totalViews += postDataDetail.views;
+            // UPDATED: Use videoPlayCount for totalViews calculation
+            totalViews += postDataDetail.videoPlayCount || postDataDetail.views;
             totalShares += postDataDetail.shares;
+            
+            // NEW: Track collaboration prices
+            if (postDataDetail.collaborationPrice > 0) {
+              totalCollaborationPrice += postDataDetail.collaborationPrice;
+              postsWithCollaborationPrice++;
+            }
             
             influencerTotalLikes += postDataDetail.likes;
             influencerTotalComments += postDataDetail.comments;
-            influencerTotalViews += postDataDetail.views;
+            influencerTotalViews += postDataDetail.views; // Keep original views for backwards compatibility
+            influencerTotalVideoPlayCount += postDataDetail.videoPlayCount || 0; // UPDATED: Track videoPlayCount
             influencerTotalShares += postDataDetail.shares;
             
+            // Take the maximum followers count for this influencer
             if (postDataDetail.followers > influencerFollowers) {
               influencerFollowers = postDataDetail.followers;
             }
@@ -524,7 +537,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
               isVerified = postDataDetail.isVerified;
             }
 
-            // FIXED: Enhanced date processing to include all posts with valid dates
+            // Enhanced date processing - UPDATED: Use videoPlayCount for views
             let postDate = null;
             if (video.post_created_at) {
               postDate = video.post_created_at;
@@ -532,22 +545,22 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
               postDate = video.created_at;
             }
             
-            // Only process posts with valid dates and views > 0
-            if (postDate && postDataDetail.views > 0) {
+            const postViews = postDataDetail.videoPlayCount || postDataDetail.views;
+            if (postDate && postViews > 0) {
               try {
                 const dateKey = new Date(postDate).toISOString().split('T')[0];
                 const existing = postDateMap.get(dateKey) || { count: 0, views: 0, posts: [] };
                 
                 postDateMap.set(dateKey, {
                   count: existing.count + 1,
-                  views: existing.views + postDataDetail.views,
+                  views: existing.views + postViews, // UPDATED: Use postViews (videoPlayCount or fallback)
                   posts: [
                     ...existing.posts,
                     {
                       influencerName: video.full_name || video.influencer_username,
                       username: video.influencer_username,
                       avatar: postDataDetail.avatarUrl,
-                      views: postDataDetail.views,
+                      views: postViews, // UPDATED: Use postViews
                       likes: postDataDetail.likes,
                       comments: postDataDetail.comments,
                       shares: postDataDetail.shares,
@@ -559,7 +572,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
               }
             }
 
-            const totalEngagement = postDataDetail.likes + postDataDetail.comments + postDataDetail.shares;
+            const totalEngagement = postDataDetail.likes + postDataDetail.comments + (postDataDetail.shares > 0 ? postDataDetail.shares : 0);
             allPostsData.push({
               id: video.id,
               influencerName: video.full_name || video.influencer_username,
@@ -569,32 +582,31 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
               likes: postDataDetail.likes,
               comments: postDataDetail.comments,
               views: postDataDetail.views,
+              videoPlayCount: postDataDetail.videoPlayCount || 0, // UPDATED: Add videoPlayCount field
               plays: postDataDetail.plays,
               shares: postDataDetail.shares,
               engagementRate: postDataDetail.engagementRate,
               isVerified: postDataDetail.isVerified,
               postId: video.post_result_obj?.data?.shortcode || video.post_id,
               totalEngagement,
-              postDate: video.post_created_at || video.created_at
+              postDate: video.post_created_at || video.created_at,
+              collaborationPrice: postDataDetail.collaborationPrice // NEW: Added collaboration price
             });
           });
 
-          // Accumulate total followers from all influencers
+          // Add unique influencer followers to total
           totalFollowers += influencerFollowers;
 
-          // FIXED: Calculate engagement rate using Followers (not Reach)
+          // Calculate individual influencer engagement rate
+          let avgEngagementRate = 0;
           if (influencerFollowers > 0) {
-            const influencerTotalEngagement = influencerTotalLikes + influencerTotalComments + influencerTotalShares;
-            const influencerEngagementRate = (influencerTotalEngagement / influencerFollowers) * 100;
-            totalInfluencerEngagementRates += influencerEngagementRate;
-            validInfluencerCount++;
-            
-            avgEngagementRate = influencerEngagementRate;
-          } else {
-            avgEngagementRate = 0;
+            const influencerTotalEngagement = influencerTotalLikes + influencerTotalComments + (influencerTotalShares > 0 ? influencerTotalShares : 0);
+            avgEngagementRate = (influencerTotalEngagement / influencerFollowers) * 100;
+            totalEngagementRate += avgEngagementRate;
+            influencersWithFollowers++;
           }
 
-          const influencerTotalEngagement = influencerTotalLikes + influencerTotalComments + influencerTotalShares;
+          const influencerTotalEngagement = influencerTotalLikes + influencerTotalComments + (influencerTotalShares > 0 ? influencerTotalShares : 0);
           const influencerClicks = Math.round(influencerTotalEngagement * 0.03);
 
           influencerPerformanceData.push({
@@ -607,6 +619,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
             totalLikes: influencerTotalLikes,
             totalComments: influencerTotalComments,
             totalViews: influencerTotalViews,
+            totalVideoPlayCount: influencerTotalVideoPlayCount, // UPDATED: Add videoPlayCount tracking
             totalShares: influencerTotalShares,
             avgEngagementRate,
             totalEngagement: influencerTotalEngagement,
@@ -614,12 +627,10 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
           });
         });
 
-        // FIXED: Convert posts by date to array with proper sorting and cumulative calculation
+        // Convert posts by date to array with proper sorting and cumulative calculation
         const sortedPostsByDate = Array.from(postDateMap.entries())
           .map(([date, data]) => ({ date, ...data }))
           .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-        console.log('🗓️ Sorted posts by date:', sortedPostsByDate);
 
         let cumulativeViews = 0;
         const postsByDate = sortedPostsByDate.map(item => {
@@ -633,55 +644,68 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
           };
         });
 
-        console.log('📊 Final posts by date with cumulative views:', postsByDate);
-
         const topPerformers = influencerPerformanceData
           .sort((a, b) => b.totalEngagement - a.totalEngagement);
 
         const topPosts = allPostsData
-          .sort((a, b) => b.totalEngagement - a.totalEngagement)
-          .slice(0, 20);
+          .sort((a, b) => b.totalEngagement - a.totalEngagement);
 
         const totalPosts = results.length;
         const totalInfluencers = influencerGroups.size;
         
-        // FIXED: Average engagement rate calculation using Followers, not Reach
-        const averageEngagementRate = validInfluencerCount > 0 ? totalInfluencerEngagementRates / validInfluencerCount : 0;
+        // Calculate average engagement rate using industry standard formula
+        const totalEngagement = totalLikes + totalComments + (totalShares > 0 ? totalShares : 0);
+        const averageEngagementRate = totalFollowers > 0 ? (totalEngagement / totalFollowers) * 100 : 0;
         
-        const totalClicks = Math.round((totalLikes + totalComments + totalShares) * 0.03);
+        // Calculate clicks (typically 2-5% of total engagement)
+        const totalClicks = Math.round(totalEngagement * 0.03);
         
-        // CORRECTED FORMULAS:
-        // 1. Impressions = Video views * 1.8 (for repeat views) + Estimated photo impressions
-        const videoImpressions = Math.max(totalViews, 0) || 0;
-        const estimatedPhotoImpressions = Math.round((totalPosts - (videoImpressions > 0 ? Math.ceil(totalPosts * 0.6) : 0)) * totalFollowers * 0.4);
-        const totalImpressions = Math.round(videoImpressions * 1.8 + estimatedPhotoImpressions);
+        // Calculate impressions using industry standard formulas
+        const videoPosts = results.filter(video => {
+          const postData = getPostData(video);
+          return (postData.videoPlayCount || postData.views) > 0 || postData.plays > 0;
+        }).length;
+        const photoPosts = totalPosts - videoPosts;
         
-        // 2. Reach = Should be less than or equal to impressions (unique users)
-        const totalReach = Math.round(Math.max(totalViews, totalImpressions * 0.55));
+        // UPDATED: Use totalViews (which is now based on videoPlayCount) for impression calculation
+        const videoImpressions = Math.round(totalViews * 1.3);
+        const photoImpressions = Math.round((photoPosts * totalFollowers * 0.4) / totalInfluencers);
+        const totalImpressions = videoImpressions + photoImpressions;
         
-        const maxVideoMetric = Math.max(totalViews, 0);
-        const finalImpressions = Math.max(totalImpressions, maxVideoMetric * 1.2);
-        const finalReach = Math.min(totalReach, maxVideoMetric * 0.9, finalImpressions * 0.6);
+        // Calculate reach (unique users who saw content) - UPDATED: Use new totalViews
+        const estimatedReach = Math.round(totalImpressions * 0.65);
+        const totalReach = Math.min(estimatedReach, Math.max(totalViews, totalImpressions * 0.5));
 
-        console.log('📈 Final analytics data:', {
-          totalViews,
-          totalImpressions: finalImpressions,
-          totalReach: finalReach,
-          postsByDateLength: postsByDate.length
-        });
+        // Calculate new metrics - UPDATED: Use new totalViews for ratios
+        const viewsToFollowersRatio = totalFollowers > 0 ? (totalViews / totalFollowers) * 100 : 0;
+        const commentToViewsRatio = totalViews > 0 ? (totalEngagement / totalViews) * 100 : 0;
+
+        // NEW: Calculate CPV and CPE based on total collaboration price
+        const newTotalCPV = totalViews > 0 ? totalCollaborationPrice / totalViews : 0;
+        const newTotalCPE = totalEngagement > 0 ? totalCollaborationPrice / totalEngagement : 0;
+
+        console.log('💰 AnalyticsView Collaboration Metrics:');
+        console.log(`Total collaboration price: ${totalCollaborationPrice.toFixed(2)}`);
+        console.log(`Posts with collaboration price: ${postsWithCollaborationPrice}`);
+        console.log(`New Total CPV: ${newTotalCPV.toFixed(4)}`);
+        console.log(`New Total CPE: ${newTotalCPE.toFixed(4)}`);
 
         setAnalyticsData({
           totalClicks,
-          totalImpressions: finalImpressions,
-          totalReach: finalReach,
+          totalImpressions,
+          totalReach,
           totalLikes,
           totalComments,
-          totalViews,
+          totalViews, // This is now based on videoPlayCount for consistency
           totalShares,
           totalFollowers,
           totalPosts,
           totalInfluencers,
           averageEngagementRate,
+          totalCPV: newTotalCPV, // UPDATED: Use new calculation based on collaboration prices
+          totalCPE: newTotalCPE, // UPDATED: Use new calculation based on collaboration prices
+          viewsToFollowersRatio,
+          commentToViewsRatio,
           postsByDate,
           topPerformers,
           topPosts
@@ -704,7 +728,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
           <div className="text-center">
             <svg className="animate-spin h-8 w-8 text-pink-500 mx-auto mb-4" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
             <p className="text-gray-500">Loading analytics data...</p>
           </div>
@@ -713,69 +737,11 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
     );
   }
 
-  // Updated Performance Overview cards
-  const basicInsightsData = [
-    {
-      title: "Followers", 
-      value: formatNumber(analyticsData.totalFollowers),
-      change: getPercentageChange(analyticsData.totalFollowers, 100000),
-      changeType: "positive" as const,
-      tooltip: "Total number of followers across all participating influencers. This represents the combined reach potential of your campaign through the influencer community you've engaged with."
-    },
-    {
-      title: "Impressions", 
-      value: formatNumber(analyticsData.totalImpressions),
-      change: getPercentageChange(analyticsData.totalImpressions, 500000),
-      changeType: "positive" as const,
-      tooltip: "Total number of times content was displayed to users. Calculated as: (Total Video Views × 1.8 for repeat views) + Estimated Photo Post Impressions. This should be the highest metric as it counts multiple views by the same user."
-    },
-    {
-      title: "Reach",
-      value: formatNumber(analyticsData.totalReach), 
-      change: getPercentageChange(analyticsData.totalReach, 300000),
-      changeType: "positive" as const,
-      tooltip: "Estimated number of unique users who saw your content. This represents unique viewers only (counted once per user) and should be lower than impressions. Calculated as approximately 55% of total impressions or 90% of total views, whichever is lower."
-    },
-    {
-      title: "Total Views",
-      value: formatNumber(analyticsData.totalViews),
-      change: getPercentageChange(analyticsData.totalViews, 200000),
-      changeType: analyticsData.totalViews > 200000 ? "positive" : "negative" as const,
-      tooltip: "Sum of all views across all posts in the campaign. This represents the total consolidated view count, combining the best available view and play data from Instagram's API for each post."
-    },
-    {
-      title: "Total Likes",
-      value: formatNumber(analyticsData.totalLikes),
-      change: getPercentageChange(analyticsData.totalLikes, 50000),
-      changeType: "positive" as const,
-      tooltip: "Sum of all likes across all campaign posts. This data is pulled directly from Instagram's API and represents actual user engagement with your content."
-    },
-    {
-      title: "Total Comments",
-      value: formatNumber(analyticsData.totalComments),
-      change: getPercentageChange(analyticsData.totalComments, 5000),
-      changeType: "positive" as const,
-      tooltip: "Sum of all comments across all campaign posts. Comments represent higher engagement than likes and indicate stronger audience interest in your content."
-    },
-    {
-      title: "Total Shares",
-      value: formatNumber(analyticsData.totalShares),
-      change: getPercentageChange(analyticsData.totalShares),
-      changeType: "positive" as const,
-      tooltip: "Estimated number of shares across all posts. Calculated as approximately 10% of total likes, representing content that users found compelling enough to share with their networks."
-    },
-    {
-      title: "Avg Engagement Rate",
-      value: `${analyticsData.averageEngagementRate.toFixed(2)}%`,
-      change: analyticsData.averageEngagementRate > 3 ? "+15.2%" : "-5.1%",
-      changeType: analyticsData.averageEngagementRate > 3 ? "positive" : "negative" as const,
-      tooltip: "Average engagement rate calculated as (total likes + comments + shares) ÷ followers × 100 for each influencer, then averaged across all influencers. This gives a fair representation of campaign performance across different influencer sizes. Rates above 3% are considered good for Instagram."
-    }
-  ];
+  const { posts: paginatedPosts, totalPosts, totalPages } = getPaginatedPosts();
 
   return (
     <div className="pt-4 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 min-h-screen">
-      {/* Header with Back and Export Buttons - Not included in PDF */}
+      {/* Header with Back and Export Buttons */}
       <div className="no-print flex items-center justify-between mb-8 px-6">
         <button
           onClick={onBack}
@@ -788,28 +754,54 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
         </button>
         
         <div className="flex items-center space-x-3">
-          <button
-            onClick={handleShareReport}
-            disabled={isSharing || !campaignData?.id}
-            className="flex items-center px-6 py-2 bg-gradient-to-r from-blue-100 to-blue-200 text-blue-700 rounded-full hover:from-blue-200 hover:to-blue-300 transition-all duration-200 font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isSharing ? (
-              <>
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-blue-700" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Generating...
-              </>
-            ) : (
-              <>
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
-                </svg>
-                Share Report
-              </>
+          {/* UPDATED: New Share Button with inline status */}
+          <div className="relative">
+            <button
+              onClick={handleShareReport}
+              disabled={isSharing || !campaignData?.id}
+              className="flex items-center px-6 py-2 bg-gradient-to-r from-blue-100 to-blue-200 text-blue-700 rounded-full hover:from-blue-200 hover:to-blue-300 transition-all duration-200 font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSharing ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-blue-700" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Generating...
+                </>
+              ) : shareStatus === 'copying' ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-blue-700" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Copying...
+                </>
+              ) : shareStatus === 'copied' ? (
+                <>
+                  <svg className="w-4 h-4 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span className="text-green-600 font-medium">URL Copied!</span>
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+                  </svg>
+                  Share Report
+                </>
+              )}
+            </button>
+            
+            {/* Optional: Tooltip showing confirmation when copied */}
+            {shareStatus === 'copied' && (
+              <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg z-10 whitespace-nowrap">
+                Link copied to clipboard!
+                <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45"></div>
+              </div>
             )}
-          </button>
+          </div>
           
           <button
             onClick={handleExportPDF}
@@ -820,7 +812,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
               <>
                 <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-green-700" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
                 Exporting...
               </>
@@ -836,7 +828,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
         </div>
       </div>
 
-      {/* Content to be exported - wrapped in ref */}
+      {/* Content to be exported */}
       <div ref={exportContentRef} className="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 px-6">
         {/* PDF-only header section */}
         <div className="print-only">
@@ -865,7 +857,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
                     <p className="text-2xl font-bold text-pink-600">{analyticsData.totalInfluencers}</p>
                     <div className="absolute bottom-full right-0 mb-2 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
                       <div className="relative">
-                        Total number of unique influencers participating in this campaign. This count ensures each creator is counted only once, regardless of how many posts they published.
+                        Total number of unique influencers participating in this campaign. Each creator is counted only once, regardless of how many posts they published.
                         <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
                       </div>
                     </div>
@@ -876,780 +868,372 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onBack, campaignData }) =
           </div>
         )}
 
-        {/* Basic Insights Section */}
-        <div>
-          <div className="flex items-center space-x-2 mb-6 no-print">
-            <h2 className="text-xl font-bold text-gray-800">Performance Overview</h2>
-          </div>
+        {/* Performance Overview Section */}
+        <PerformanceOverview analyticsData={analyticsData} />
 
-          {/* Analytics Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {basicInsightsData.map((item, index) => (
-              <div key={index} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-200">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-medium text-gray-600">{item.title}</h3>
-                  <div className="relative group">
-                    <button className="text-gray-400 hover:text-gray-600 transition-colors duration-200 no-print">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </button>
-                    {/* Tooltip */}
-                    <div className="absolute bottom-full right-0 mb-2 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
-                      <div className="relative">
-                        {item.tooltip}
-                        <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
-                      </div>
+        {/* Detailed Insights Section */}
+        <DetailedInsights analyticsData={analyticsData} />
+
+        {/* Top Performing Posts Section - UPDATED with smaller cards and pagination */}
+        <div className="mb-8">
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-gray-800">Top Performing Posts</h3>
+              <div className="flex items-center space-x-4">
+                {/* Posts Filters */}
+                <div className="flex items-center space-x-2 no-print">
+                  <select
+                    value={postsFilterBy}
+                    onChange={(e) => handleFilterChange('filter', e.target.value)}
+                    className="text-xs border border-gray-300 rounded-lg px-3 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="all">All Posts</option>
+                    <option value="high-engagement">High Engagement</option>
+                    <option value="high-views">High Views</option>
+                  </select>
+                  <select
+                    value={postsSortBy}
+                    onChange={(e) => handleFilterChange('sort', e.target.value)}
+                    className="text-xs border border-gray-300 rounded-lg px-3 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="engagement">Sort by Engagement</option>
+                    <option value="views">Sort by Views</option>
+                    <option value="likes">Sort by Likes</option>
+                    <option value="comments">Sort by Comments</option>
+                    <option value="date">Sort by Date</option>
+                  </select>
+                  
+                  {/* Posts per page selector */}
+                  <select
+                    value={postsPerPage}
+                    onChange={(e) => {
+                      setPostsPerPage(parseInt(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="text-xs border border-gray-300 rounded-lg px-3 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value={12}>Show 12</option>
+                    <option value={20}>Show 20</option>
+                    <option value={30}>Show 30</option>
+                    <option value={50}>Show 50</option>
+                  </select>
+                </div>
+                <div className="relative group">
+                  <button className="text-gray-400 hover:text-gray-600 transition-colors duration-200 no-print">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </button>
+                  <div className="absolute bottom-full right-0 mb-2 w-72 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+                    <div className="relative">
+                      Top performing posts ranked by total engagement. These posts generated the highest interaction rates and can provide insights into what content types resonate best with your target audience.
+                      <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
                     </div>
                   </div>
                 </div>
-
-                <div className="mb-3">
-                  <span className="text-3xl font-bold text-gray-900">{item.value}</span>
-                </div>
               </div>
-            ))}
-          </div>
-
-          {/* Advanced Insights Section */}
-          <div className="mb-8">
-            <div className="flex items-center space-x-2 mb-6 no-print">
-              <h2 className="text-xl font-bold text-gray-800">Detailed Insights</h2>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              {/* Engagement Distribution */}
-              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-sm font-medium text-gray-600">Engagement Distribution</h3>
-                  <div className="relative group">
-                    <button className="text-gray-400 hover:text-gray-600 transition-colors duration-200 no-print">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </button>
-                    <div className="absolute bottom-full right-0 mb-2 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
-                      <div className="relative">
-                        Breakdown of total engagement across likes, comments, shares, and plays. This shows how users interact with your content across different engagement types.
-                        <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Horizontal Bar Chart with Shares */}
-                <div className="space-y-4">
-                  {(() => {
-                    const data = [
-                      { label: 'Likes', value: analyticsData.totalLikes, color: 'bg-gradient-to-r from-pink-500 to-pink-600' },
-                      { label: 'Comments', value: analyticsData.totalComments, color: 'bg-gradient-to-r from-blue-500 to-blue-600' },
-                      { label: 'Shares', value: analyticsData.totalShares, color: 'bg-gradient-to-r from-green-500 to-green-600' },
-                      { label: 'Views', value: analyticsData.totalViews, color: 'bg-gradient-to-r from-purple-500 to-purple-600' }
-                    ];
-                    const maxValue = Math.max(...data.map(item => item.value));
-                    
-                    return data.map((item, index) => (
-                      <div key={index} className="space-y-2">
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="font-medium text-gray-700">{item.label}</span>
-                          <span className="text-gray-900 font-semibold">{formatNumber(item.value)}</span>
-                        </div>
-                        <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
-                          <div 
-                            className={`h-full ${item.color} rounded-full transition-all duration-1000 ease-out`}
-                            style={{ 
-                              width: `${maxValue > 0 ? (item.value / maxValue) * 100 : 0}%`,
-                              animationDelay: `${index * 0.2}s`
-                            }}
-                          ></div>
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {maxValue > 0 ? `${((item.value / maxValue) * 100).toFixed(1)}%` : '0%'} of total
-                        </div>
-                      </div>
-                    ));
-                  })()}
-                </div>
-
-                {/* Summary to include shares */}
-                <div className="mt-6 pt-4 border-t border-gray-100 text-center">
-                  <div className="text-lg font-bold text-gray-900">
-                    {formatNumber(analyticsData.totalLikes + analyticsData.totalComments + analyticsData.totalShares + analyticsData.totalViews)}
-                  </div>
-                  <div className="text-xs text-gray-500">Total Interactions</div>
-                </div>
-              </div>
-
-              {/* FIXED: Enhanced Views Over Time Chart */}
-              <div className="md:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-sm font-medium text-gray-600">Views Over Time</h3>
-                  <div className="relative group">
-                    <button className="text-gray-400 hover:text-gray-600 transition-colors duration-200 no-print">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </button>
-                    <div className="absolute bottom-full right-0 mb-2 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
-                      <div className="relative">
-                        Cumulative view count showing campaign momentum over time. Each data point represents the total accumulated views up to that date. Hover over data points to see detailed post information.
-                        <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Chart with Enhanced Tooltip */}
-                <div className="h-64 relative">
-                  {analyticsData.postsByDate.length > 0 ? (
-                    <div className="relative h-full bg-gradient-to-br from-gray-50 to-white rounded-lg border border-gray-100 p-4 pl-12">
-                      {/* Chart container */}
-                      <div 
-                        className="relative h-full"
-                        onMouseMove={(e) => {
-                          const rect = e.currentTarget.getBoundingClientRect();
-                          setMousePosition({
-                            x: e.clientX - rect.left,
-                            y: e.clientY - rect.top
-                          });
+            {/* UPDATED: Smaller post cards with 6 columns on large screens */}
+            <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+              {paginatedPosts.length > 0 ? (
+                paginatedPosts.map((post, index) => (
+                  <div 
+                    key={post.id} 
+                    className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-all duration-300 group cursor-pointer"
+                    onClick={() => {
+                      if (post.postId) {
+                        window.open(`https://www.instagram.com/p/${post.postId}/`, '_blank');
+                      }
+                    }}
+                  >
+                    {/* Post Thumbnail - UPDATED: Smaller aspect ratio */}
+                    <div className="relative aspect-square overflow-hidden">
+                      <img
+                        src={post.thumbnail}
+                        alt={`${post.username} post`}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = '/dummy-image.jpg';
                         }}
-                        onMouseLeave={() => setHoveredDataPoint(null)}
-                      >
-                        {/* Grid lines */}
-                        <svg className="absolute inset-0 w-full h-full" style={{ zIndex: 1 }}>
-                          {/* Horizontal grid lines */}
-                          {[0, 1, 2, 3, 4].map(i => (
-                            <line
-                              key={`h-${i}`}
-                              x1="60"
-                              y1={40 + (i * (200 / 4))}
-                              x2="100%"
-                              y2={40 + (i * (200 / 4))}
-                              stroke="#e5e7eb"
-                              strokeWidth="1"
-                              strokeDasharray="2,2"
-                            />
-                          ))}
-                          {/* Vertical grid lines - FIXED: Perfect alignment with data points and dates */}
-                          {analyticsData.postsByDate.map((item, index) => {
-                            // Use same positioning calculation as data points
-                            const chartWidth = 70; // 85% - 15% = 70% of chart width
-                            const chartStart = 15; // Start at 15%
-                            
-                            let xPercent;
-                            if (analyticsData.postsByDate.length === 1) {
-                              xPercent = 50;
-                            } else {
-                              xPercent = chartStart + (index / (analyticsData.postsByDate.length - 1)) * chartWidth;
-                            }
-                            
-                            return (
-                              <line
-                                key={`v-${index}`}
-                                x1={`${xPercent}%`}
-                                y1="40"
-                                x2={`${xPercent}%`}
-                                y2="240"
-                                stroke="#e5e7eb"
-                                strokeWidth="1"
-                                strokeDasharray="2,2"
-                              />
-                            );
-                          })}
+                      />
+                      
+                      {/* Instagram indicator - UPDATED: Smaller size */}
+                      <div className="absolute top-1 left-1 w-4 h-4 bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 rounded-full flex items-center justify-center shadow-sm">
+                        <svg className="w-2 h-2 text-white" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.40s-.644-1.44-1.439-1.40z"/>
                         </svg>
-
-                        {/* Data visualization */}
-                        <svg className="absolute inset-0 w-full h-full" style={{ zIndex: 2 }}>
-                          <defs>
-                            <linearGradient id="nivoAreaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                              <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.4"/>
-                              <stop offset="50%" stopColor="#06b6d4" stopOpacity="0.2"/>
-                              <stop offset="100%" stopColor="#06b6d4" stopOpacity="0.05"/>
-                            </linearGradient>
-                            <filter id="glow">
-                              <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-                              <feMerge>
-                                <feMergeNode in="coloredBlur"/>
-                                <feMergeNode in="SourceGraphic"/>
-                              </feMerge>
-                            </filter>
-                          </defs>
-                          
-                          {/* Area chart */}
-                          {analyticsData.postsByDate.length > 1 && (
-                            <>
-                              {/* Area path - FIXED: Perfect alignment with date positions */}
-                              <path
-                                d={(() => {
-                                  const maxViews = Math.max(...analyticsData.postsByDate.map(p => p.cumulativeViews));
-                                  if (maxViews === 0 || analyticsData.postsByDate.length === 0) return '';
-                                  
-                                  const chartWidth = 70; // 85% - 15% = 70% of chart width
-                                  const chartStart = 15; // Start at 15%
-                                  
-                                  let pathData = '';
-                                  
-                                  analyticsData.postsByDate.forEach((item, index) => {
-                                    let xPercent;
-                                    if (analyticsData.postsByDate.length === 1) {
-                                      xPercent = 50;
-                                    } else {
-                                      xPercent = chartStart + (index / (analyticsData.postsByDate.length - 1)) * chartWidth;
-                                    }
-                                    
-                                    const y = 240 - (item.cumulativeViews / maxViews) * 200;
-                                    
-                                    if (index === 0) {
-                                      pathData = `M ${xPercent}%,${y}`;
-                                    } else {
-                                      pathData += ` L ${xPercent}%,${y}`;
-                                    }
-                                  });
-                                  
-                                  // Close the area
-                                  if (analyticsData.postsByDate.length > 0) {
-                                    const lastIndex = analyticsData.postsByDate.length - 1;
-                                    const firstXPercent = analyticsData.postsByDate.length === 1 ? 50 : chartStart;
-                                    const lastXPercent = analyticsData.postsByDate.length === 1 ? 50 : chartStart + chartWidth;
-                                    
-                                    pathData += ` L ${lastXPercent}%,240 L ${firstXPercent}%,240 Z`;
-                                  }
-                                  
-                                  return pathData;
-                                })()}
-                                fill="url(#nivoAreaGradient)"
-                                className="transition-all duration-300"
-                              />
-                              
-                              {/* Line path with glow effect - FIXED: Perfect alignment */}
-                              <path
-                                d={(() => {
-                                  const maxViews = Math.max(...analyticsData.postsByDate.map(p => p.cumulativeViews));
-                                  if (maxViews === 0 || analyticsData.postsByDate.length === 0) return '';
-                                  
-                                  const chartWidth = 70; // 85% - 15% = 70% of chart width
-                                  const chartStart = 15; // Start at 15%
-                                  
-                                  let pathData = '';
-                                  
-                                  analyticsData.postsByDate.forEach((item, index) => {
-                                    let xPercent;
-                                    if (analyticsData.postsByDate.length === 1) {
-                                      xPercent = 50;
-                                    } else {
-                                      xPercent = chartStart + (index / (analyticsData.postsByDate.length - 1)) * chartWidth;
-                                    }
-                                    
-                                    const y = 240 - (item.cumulativeViews / maxViews) * 200;
-                                    
-                                    if (index === 0) {
-                                      pathData = `M ${xPercent}%,${y}`;
-                                    } else {
-                                      pathData += ` L ${xPercent}%,${y}`;
-                                    }
-                                  });
-                                  
-                                  return pathData;
-                                })()}
-                                fill="none"
-                                stroke="#3b82f6"
-                                strokeWidth="3"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                filter="url(#glow)"
-                                className="transition-all duration-300"
-                              />
-                            </>
-                          )}
-                          
-                          {/* Data points - FIXED: Perfect date alignment */}
-                          {analyticsData.postsByDate.map((item, index) => {
-                            // Calculate X position to match exactly with date labels
-                            const chartWidth = 70; // 85% - 15% = 70% of chart width
-                            const chartStart = 15; // Start at 15%
-                            
-                            let xPercent;
-                            if (analyticsData.postsByDate.length === 1) {
-                              xPercent = 50; // Center single point
-                            } else {
-                              // Use index-based positioning to match date label spacing
-                              xPercent = chartStart + (index / (analyticsData.postsByDate.length - 1)) * chartWidth;
-                            }
-                            
-                            const maxViews = Math.max(...analyticsData.postsByDate.map(p => p.cumulativeViews));
-                            const y = maxViews > 0 ? 240 - (item.cumulativeViews / maxViews) * 200 : 240;
-                            
-                            return (
-                              <g key={index}>
-                                {/* Outer glow circle */}
-                                <circle
-                                  cx={`${xPercent}%`}
-                                  cy={y}
-                                  r="8"
-                                  fill="#3b82f6"
-                                  fillOpacity="0.2"
-                                  className="cursor-pointer transition-all duration-200"
-                                />
-                                {/* Main circle */}
-                                <circle
-                                  cx={`${xPercent}%`}
-                                  cy={y}
-                                  r="4"
-                                  fill="#3b82f6"
-                                  stroke="#ffffff"
-                                  strokeWidth="2"
-                                  className="cursor-pointer hover:r-6 transition-all duration-200"
-                                  onMouseEnter={() => setHoveredDataPoint(item)}
-                                  onMouseLeave={() => setHoveredDataPoint(null)}
-                                />
-                              </g>
-                            );
-                          })}
-
-                          {/* Y-axis labels */}
-                          {[0, 1, 2, 3, 4].map(i => {
-                            const maxViews = Math.max(...analyticsData.postsByDate.map(p => p.cumulativeViews));
-                            const value = maxViews * (1 - i / 4);
-                            return (
-                              <text
-                                key={`y-${i}`}
-                                x="50"
-                                y={40 + (i * (200 / 4)) + 5}
-                                textAnchor="end"
-                                className="fill-gray-500 text-xs font-medium"
-                              >
-                                {formatNumber(value)}
-                              </text>
-                            );
-                          })}
-                        </svg>
-
-                        {/* Enhanced Tooltip with Post Details */}
-                        {hoveredDataPoint && (
-                          <div 
-                            className="absolute z-20 bg-white rounded-xl shadow-2xl border border-gray-200 p-4 min-w-[280px] max-w-[400px] pointer-events-none"
-                            style={{
-                              left: mousePosition.x + 15,
-                              top: mousePosition.y - 120,
-                              transform: mousePosition.x > 400 ? 'translateX(-100%)' : 'none'
-                            }}
-                          >
-                            <div className="mb-3">
-                              <div className="font-semibold text-sm text-gray-900 mb-1">
-                                {new Date(hoveredDataPoint.date).toLocaleDateString('en-US', { 
-                                  month: 'long', 
-                                  day: 'numeric',
-                                  year: 'numeric'
-                                })}
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                {hoveredDataPoint.count} post{hoveredDataPoint.count !== 1 ? 's' : ''} published
-                              </div>
+                      </div>
+                      {/* Rank badge - UPDATED: Smaller size and adjusted position */}
+                      <div className="absolute top-1 right-1 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded-full font-medium text-[10px]">
+                        #{(currentPage - 1) * postsPerPage + index + 1}
+                      </div>
+                    </div>
+                    
+                    {/* Post Stats - UPDATED: More compact layout */}
+                    <div className="p-2">
+                      <div className="flex items-center space-x-1 mb-1.5">
+                        <img
+                          src={post.avatar}
+                          alt={post.username}
+                          className="w-4 h-4 rounded-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = '/user/profile-placeholder.png';
+                          }}
+                        />
+                        <span className="text-xs font-medium text-gray-700 truncate">{post.username}</span>
+                        {post.isVerified && (
+                          <svg className="w-2.5 h-2.5 text-blue-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                      </div>
+                      
+                      {/* Stats grid - UPDATED: More compact with smaller text */}
+                      <div className={`grid gap-0.5 text-[10px] ${post.shares > 0 ? 'grid-cols-2' : 'grid-cols-2'}`}>
+                        <div className="text-center bg-gray-50 rounded px-1 py-0.5">
+                          <div className="flex items-center justify-center space-x-0.5">
+                            <svg className="w-2 h-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                            <span className="font-medium text-gray-700">{formatNumber(Math.max(0, post.videoPlayCount || post.views))}</span>
+                          </div>
+                        </div>
+                        <div className="text-center bg-gray-50 rounded px-1 py-0.5">
+                          <div className="flex items-center justify-center space-x-0.5">
+                            <svg className="w-2 h-2 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                            </svg>
+                            <span className="font-medium text-gray-700">{formatNumber(post.likes)}</span>
+                          </div>
+                        </div>
+                        {/* Only show additional stats if there's enough space */}
+                        {post.comments > 0 && (
+                          <div className="text-center bg-gray-50 rounded px-1 py-0.5">
+                            <div className="flex items-center justify-center space-x-0.5">
+                              <svg className="w-2 h-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                              </svg>
+                              <span className="font-medium text-gray-700">{formatNumber(post.comments)}</span>
                             </div>
-                            
-                            <div className="space-y-2 text-sm mb-3">
-                              <div className="flex justify-between">
-                                <span className="text-gray-600">Daily Views:</span>
-                                <span className="font-medium text-blue-600">{formatNumber(hoveredDataPoint.views)}</span>
-                              </div>
-                              <div className="flex justify-between border-t border-gray-100 pt-2">
-                                <span className="text-gray-600">Total Views:</span>
-                                <span className="font-bold text-gray-900">{formatNumber(hoveredDataPoint.cumulativeViews)}</span>
-                              </div>
-                            </div>
-
-                            {/* Post Details */}
-                            {hoveredDataPoint.posts && hoveredDataPoint.posts.length > 0 && (
-                              <div className="border-t border-gray-100 pt-3">
-                                <div className="text-xs font-medium text-gray-700 mb-2">Posts on this date:</div>
-                                <div className="space-y-2 max-h-32 overflow-y-auto">
-                                  {hoveredDataPoint.posts.slice(0, 3).map((post, index) => (
-                                    <div key={index} className="flex items-center space-x-2 text-xs">
-                                      <img
-                                        src={post.avatar}
-                                        alt={post.influencerName}
-                                        className="w-6 h-6 rounded-full object-cover"
-                                        onError={(e) => {
-                                          (e.target as HTMLImageElement).src = '/user/profile-placeholder.png';
-                                        }}
-                                      />
-                                      <div className="flex-1 min-w-0">
-                                        <div className="font-medium text-gray-900 truncate">{post.influencerName}</div>
-                                        <div className="text-gray-500">
-                                          {formatNumber(post.views)} views • {formatNumber(post.likes)} likes • {formatNumber(post.comments)} comments
-                                        </div>
-                                      </div>
-                                    </div>
-                                  ))}
-                                  {hoveredDataPoint.posts.length > 3 && (
-                                    <div className="text-xs text-gray-500 text-center pt-1">
-                                      +{hoveredDataPoint.posts.length - 3} more post{hoveredDataPoint.posts.length - 3 !== 1 ? 's' : ''}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            )}
                           </div>
                         )}
-
-                        {/* FIXED: Date labels - Perfect alignment with data points */}
-                        <div className="absolute bottom-0 left-0 right-0 py-2">
-                          {analyticsData.postsByDate.map((item, index) => {
-                            // Use exact same positioning calculation as data points
-                            const chartWidth = 70; // 85% - 15% = 70% of chart width
-                            const chartStart = 15; // Start at 15%
-                            
-                            let leftPercent;
-                            if (analyticsData.postsByDate.length === 1) {
-                              leftPercent = 50; // Center single point
-                            } else {
-                              leftPercent = chartStart + (index / (analyticsData.postsByDate.length - 1)) * chartWidth;
-                            }
-                            
-                            return (
-                              <div 
-                                key={index} 
-                                className="absolute text-xs text-gray-500 text-center transform -translate-x-1/2"
-                                style={{ left: `${leftPercent}%` }}
-                              >
-                                {new Date(item.date).toLocaleDateString('en-US', { 
-                                  month: 'short', 
-                                  day: 'numeric'
-                                })}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gray-50 rounded-lg border border-gray-200">
-                      <div className="text-center">
-                        <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h2a2 2 0 01-2-2z" />
-                        </svg>
-                        <p className="text-gray-500 text-sm">No view data available</p>
-                        <p className="text-gray-400 text-xs mt-1">Views will appear here once data is collected</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Summary stats */}
-                {analyticsData.postsByDate.length > 0 && (
-                  <div className="mt-6 pt-4 border-t border-gray-100">
-                    <div className="grid grid-cols-3 gap-4 text-center">
-                      <div>
-                        <div className="text-lg font-bold text-gray-900">{formatNumber(analyticsData.totalViews)}</div>
-                        <div className="text-xs text-gray-500">Total Views</div>
-                      </div>
-                      <div>
-                        <div className="text-lg font-bold text-gray-900">
-                          {Math.max(...analyticsData.postsByDate.map(p => p.views)) > 0 ? 
-                            formatNumber(Math.max(...analyticsData.postsByDate.map(p => p.views))) : '0'}
-                        </div>
-                        <div className="text-xs text-gray-500">Peak Day Views</div>
-                      </div>
-                      <div>
-                        <div className="text-lg font-bold text-gray-900">
-                          {analyticsData.postsByDate.length > 0 ? 
-                            formatNumber(Math.round(analyticsData.totalViews / analyticsData.postsByDate.length)) : '0'}
-                        </div>
-                        <div className="text-xs text-gray-500">Avg Views per Day</div>
+                        {post.shares > 0 && (
+                          <div className="text-center bg-gray-50 rounded px-1 py-0.5">
+                            <div className="flex items-center justify-center space-x-0.5">
+                              <svg className="w-2 h-2 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+                              </svg>
+                              <span className="font-medium text-gray-700">{formatNumber(post.shares)}</span>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
-                )}
+                ))
+              ) : (
+                <div className="col-span-full text-center py-8">
+                  <p className="text-gray-500">No posts found with current filters</p>
+                </div>
+              )}
+            </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="mt-6 flex items-center justify-between no-print">
+                <div className="text-sm text-gray-700">
+                  Showing {(currentPage - 1) * postsPerPage + 1} to {Math.min(currentPage * postsPerPage, totalPosts)} of {totalPosts} posts
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+                  
+                  <div className="flex items-center space-x-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum;
+                      if (totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (currentPage <= 3) {
+                        pageNum = i + 1;
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
+                      } else {
+                        pageNum = currentPage - 2 + i;
+                      }
+                      
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setCurrentPage(pageNum)}
+                          className={`px-3 py-2 text-sm rounded-lg ${
+                            currentPage === pageNum
+                              ? 'bg-blue-500 text-white'
+                              : 'border border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  
+                  <button
+                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Top Performing Influencers Section */}
+        <div className="mb-0">
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-gray-800">Top Performing Influencers</h3>
+              <div className="flex items-center space-x-4">
+                {/* Influencers Filters */}
+                <div className="flex items-center space-x-2 no-print">
+                  <select
+                    value={influencersFilterBy}
+                    onChange={(e) => setInfluencersFilterBy(e.target.value as any)}
+                    className="text-xs border border-gray-300 rounded-lg px-3 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="all">All Influencers</option>
+                    <option value="verified">Verified Only</option>
+                    <option value="top-performers">Top Performers</option>
+                  </select>
+                  <select
+                    value={influencersSortBy}
+                    onChange={(e) => setInfluencersSortBy(e.target.value as any)}
+                    className="text-xs border border-gray-300 rounded-lg px-3 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="engagement">Sort by Engagement</option>
+                    <option value="views">Sort by Views</option>
+                    <option value="followers">Sort by Followers</option>
+                    <option value="posts">Sort by Posts</option>
+                  </select>
+                </div>
+                <div className="relative group">
+                  <button className="text-gray-400 hover:text-gray-600 transition-colors duration-200 no-print">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </button>
+                  <div className="absolute bottom-full right-0 mb-2 w-72 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+                    <div className="relative">
+                      All influencers ranked by total engagement (likes + comments + shares). Shows which creators generated the most interaction with their audience and delivered the best performance for your campaign.
+                      <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Top Performing Posts Section with Date Sorting */}
-          <div className="mb-8">
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-gray-800">Top Performing Posts</h3>
-                <div className="flex items-center space-x-4">
-                  {/* Posts Filters */}
-                  <div className="flex items-center space-x-2 no-print">
-                    <select
-                      value={postsFilterBy}
-                      onChange={(e) => setPostsFilterBy(e.target.value as any)}
-                      className="text-xs border border-gray-300 rounded-lg px-3 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="all">All Posts</option>
-                      <option value="high-engagement">High Engagement</option>
-                      <option value="high-views">High Views</option>
-                    </select>
-                    <select
-                      value={postsSortBy}
-                      onChange={(e) => setPostsSortBy(e.target.value as any)}
-                      className="text-xs border border-gray-300 rounded-lg px-3 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="engagement">Sort by Engagement</option>
-                      <option value="views">Sort by Views</option>
-                      <option value="likes">Sort by Likes</option>
-                      <option value="comments">Sort by Comments</option>
-                      <option value="date">Sort by Date</option>
-                    </select>
-                  </div>
-                  <div className="relative group">
-                    <button className="text-gray-400 hover:text-gray-600 transition-colors duration-200 no-print">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </button>
-                    <div className="absolute bottom-full right-0 mb-2 w-72 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
-                      <div className="relative">
-                        Top performing posts ranked by total engagement. These posts generated the highest interaction rates and can provide insights into what content types resonate best with your target audience. Views represent actual video views from post data.
-                        <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+              {(() => {
+                const filteredAndSortedInfluencers = getFilteredAndSortedInfluencers();
+                return filteredAndSortedInfluencers.length > 0 ? (
+                  filteredAndSortedInfluencers.map((influencer, index) => (
+                    <div key={index} className="bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-2xl p-6 hover:shadow-lg transition-all duration-300 group">
+                      {/* Rank Badge */}
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="bg-gradient-to-r from-pink-500 to-purple-600 text-white text-xs font-bold px-3 py-1 rounded-full">
+                          #{index + 1}
+                        </div>
+                        {influencer.isVerified && (
+                          <svg className="w-5 h-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                        )}
                       </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                {(() => {
-                  const filteredAndSortedPosts = getFilteredAndSortedPosts();
-                  return filteredAndSortedPosts.length > 0 ? (
-                    filteredAndSortedPosts.map((post, index) => (
-                      <div 
-                        key={post.id} 
-                        className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-all duration-300 group cursor-pointer"
-                        onClick={() => {
-                          if (post.postId) {
-                            window.open(`https://www.instagram.com/p/${post.postId}/`, '_blank');
-                          }
-                        }}
-                      >
-                        {/* Post Thumbnail */}
-                        <div className="relative aspect-square overflow-hidden">
-                          <img
-                            src={post.thumbnail}
-                            alt={`${post.username} post`}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      {/* Profile Image */}
+                      <div className="relative mb-4">
+                        <div className="w-20 h-20 mx-auto relative">
+                          <img 
+                            src={influencer.avatar}
+                            alt={influencer.name}
+                            className="w-full h-full rounded-full object-cover border-4 border-white shadow-lg group-hover:scale-105 transition-transform duration-300"
                             onError={(e) => {
-                              (e.target as HTMLImageElement).src = '/dummy-image.jpg';
+                              (e.target as HTMLImageElement).src = '/user/profile-placeholder.png';
                             }}
                           />
-                          
-                          {/* Instagram indicator */}
-                          <div className="absolute top-2 left-2 w-6 h-6 bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 rounded-full flex items-center justify-center shadow-md">
-                            <svg className="w-3 h-3 text-white" viewBox="0 0 24 24" fill="currentColor">
-                              <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.40s-.644-1.44-1.439-1.40z"/>
-                            </svg>
+                          {/* Instagram gradient ring */}
+                          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 p-1">
+                            <div className="w-full h-full rounded-full bg-white"></div>
                           </div>
-                          {/* Rank badge */}
-                          <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded-full font-medium">
-                            #{index + 1}
+                          <img 
+                            src={influencer.avatar}
+                            alt={influencer.name}
+                            className="absolute inset-1 w-[calc(100%-8px)] h-[calc(100%-8px)] rounded-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = '/user/profile-placeholder.png';
+                            }}
+                          />
+                        </div>
+                      </div>
+                      
+                      {/* Influencer Info */}
+                      <div className="text-center mb-4">
+                        <h4 className="font-bold text-gray-900 mb-1 text-sm">{influencer.name}</h4>
+                        <p className="text-xs text-gray-500">@{influencer.username}</p>
+                      </div>
+                      
+                      {/* Stats Grid */}
+                      <div className="space-y-3">
+                        {/* Main metric - Followers */}
+                        <div className="bg-white rounded-lg p-3 border border-gray-100">
+                          <div className="text-center">
+                            <div className="text-xl font-bold text-gray-900">{formatNumber(influencer.followers)}</div>
+                            <div className="text-xs text-gray-500">Followers</div>
                           </div>
                         </div>
                         
-                        {/* Post Stats */}
-                        <div className="p-3">
-                          <div className="flex items-center space-x-1 mb-2">
-                            <img
-                              src={post.avatar}
-                              alt={post.username}
-                              className="w-5 h-5 rounded-full object-cover"
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).src = '/user/profile-placeholder.png';
-                              }}
-                            />
-                            <span className="text-xs font-medium text-gray-700">{post.username}</span>
-                            {post.isVerified && (
-                              <svg className="w-3 h-3 text-blue-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                              </svg>
-                            )}
+                        <div className="grid grid-cols-2 gap-2">
+                          {/* Engagement */}
+                          <div className="bg-white rounded-lg p-2 border border-gray-100 text-center">
+                            <div className="text-sm font-semibold text-gray-900">{formatNumber(influencer.totalEngagement)}</div>
+                            <div className="text-xs text-gray-500">Engagement</div>
                           </div>
-                          
-                          {/* Updated stats grid */}
-                          <div className="grid grid-cols-4 gap-1 text-xs">
-                            <div className="text-center">
-                              <div className="flex items-center justify-center space-x-1">
-                                <svg className="w-3 h-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
-                                <span className="font-medium text-gray-700">{formatNumber(Math.max(0, post.views))}</span>
-                              </div>
-                            </div>
-                            <div className="text-center">
-                              <div className="flex items-center justify-center space-x-1">
-                                <svg className="w-3 h-3 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
-                                </svg>
-                                <span className="font-medium text-gray-700">{formatNumber(post.likes)}</span>
-                              </div>
-                            </div>
-                            <div className="text-center">
-                              <div className="flex items-center justify-center space-x-1">
-                                <svg className="w-3 h-3 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                                </svg>
-                                <span className="font-medium text-gray-700">{formatNumber(post.comments)}</span>
-                              </div>
-                            </div>
-                            <div className="text-center">
-                              <div className="flex items-center justify-center space-x-1">
-                                <svg className="w-3 h-3 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
-                                </svg>
-                                <span className="font-medium text-gray-700">{formatNumber(post.shares)}</span>
-                              </div>
-                            </div>
+                          <div className="bg-white rounded-lg p-2 border border-gray-100 text-center">
+                            {/* UPDATED: Display totalVideoPlayCount if available, otherwise fall back to totalViews */}
+                            <div className="text-sm font-semibold text-gray-900">{formatNumber(Math.max(0, influencer.totalVideoPlayCount || influencer.totalViews))}</div>
+                            <div className="text-xs text-gray-500">Views</div>
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="bg-white rounded-lg p-2 border border-gray-100 text-center">
+                            <div className="text-sm font-semibold text-gray-900">{influencer.totalPosts}</div>
+                            <div className="text-xs text-gray-500">Posts</div>
+                          </div>
+                          <div className="bg-white rounded-lg p-2 border border-gray-100 text-center">
+                            <div className="text-sm font-semibold text-gray-900">{influencer.avgEngagementRate.toFixed(1)}%</div>
+                            <div className="text-xs text-gray-500">Eng Rate</div>
                           </div>
                         </div>
                       </div>
-                    ))
-                  ) : (
-                    <div className="col-span-full text-center py-8">
-                      <p className="text-gray-500">No posts found with current filters</p>
                     </div>
-                  );
-                })()}
-              </div>
-            </div>
-          </div>
-
-          {/* Top Performing Influencers Section - Show All with Swapped Metrics */}
-          <div className="mb-0">
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-gray-800">Top Performing Influencers</h3>
-                <div className="flex items-center space-x-4">
-                  {/* Influencers Filters */}
-                  <div className="flex items-center space-x-2 no-print">
-                    <select
-                      value={influencersFilterBy}
-                      onChange={(e) => setInfluencersFilterBy(e.target.value as any)}
-                      className="text-xs border border-gray-300 rounded-lg px-3 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="all">All Influencers</option>
-                      <option value="verified">Verified Only</option>
-                      <option value="top-performers">Top Performers</option>
-                    </select>
-                    <select
-                      value={influencersSortBy}
-                      onChange={(e) => setInfluencersSortBy(e.target.value as any)}
-                      className="text-xs border border-gray-300 rounded-lg px-3 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="engagement">Sort by Engagement</option>
-                      <option value="views">Sort by Views</option>
-                      <option value="followers">Sort by Followers</option>
-                      <option value="posts">Sort by Posts</option>
-                    </select>
+                  ))
+                ) : (
+                  <div className="col-span-full text-center py-8">
+                    <p className="text-gray-500">No influencers found with current filters</p>
                   </div>
-                  <div className="relative group">
-                    <button className="text-gray-400 hover:text-gray-600 transition-colors duration-200 no-print">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </button>
-                    <div className="absolute bottom-full right-0 mb-2 w-72 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
-                      <div className="relative">
-                        All influencers ranked by total engagement (likes + comments + shares). This shows which creators generated the most interaction with their audience and delivered the best performance for your campaign.
-                        <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
-                {(() => {
-                  const filteredAndSortedInfluencers = getFilteredAndSortedInfluencers();
-                  return filteredAndSortedInfluencers.length > 0 ? (
-                    filteredAndSortedInfluencers.map((influencer, index) => (
-                      <div key={index} className="bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-2xl p-6 hover:shadow-lg transition-all duration-300 group">
-                        {/* Rank Badge */}
-                        <div className="flex justify-between items-start mb-4">
-                          <div className="bg-gradient-to-r from-pink-500 to-purple-600 text-white text-xs font-bold px-3 py-1 rounded-full">
-                            #{index + 1}
-                          </div>
-                          {influencer.isVerified && (
-                            <svg className="w-5 h-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                            </svg>
-                          )}
-                        </div>
-
-                        {/* Profile Image */}
-                        <div className="relative mb-4">
-                          <div className="w-20 h-20 mx-auto relative">
-                            <img 
-                              src={influencer.avatar}
-                              alt={influencer.name}
-                              className="w-full h-full rounded-full object-cover border-4 border-white shadow-lg group-hover:scale-105 transition-transform duration-300"
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).src = '/user/profile-placeholder.png';
-                              }}
-                            />
-                            {/* Instagram gradient ring */}
-                            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 p-1">
-                              <div className="w-full h-full rounded-full bg-white"></div>
-                            </div>
-                            <img 
-                              src={influencer.avatar}
-                              alt={influencer.name}
-                              className="absolute inset-1 w-[calc(100%-8px)] h-[calc(100%-8px)] rounded-full object-cover"
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).src = '/user/profile-placeholder.png';
-                              }}
-                            />
-                          </div>
-                        </div>
-                        
-                        {/* Influencer Info */}
-                        <div className="text-center mb-4">
-                          <h4 className="font-bold text-gray-900 mb-1 text-sm">{influencer.name}</h4>
-                          <p className="text-xs text-gray-500">@{influencer.username}</p>
-                        </div>
-                        
-                        {/* Stats Grid - Swapped Metrics */}
-                        <div className="space-y-3">
-                          {/* Main metric changed from Total Engagement to Followers */}
-                          <div className="bg-white rounded-lg p-3 border border-gray-100">
-                            <div className="text-center">
-                              <div className="text-xl font-bold text-gray-900">{formatNumber(influencer.followers)}</div>
-                              <div className="text-xs text-gray-500">Followers</div>
-                            </div>
-                          </div>
-                          
-                          <div className="grid grid-cols-2 gap-2">
-                            {/* Engagement moved here */}
-                            <div className="bg-white rounded-lg p-2 border border-gray-100 text-center">
-                              <div className="text-sm font-semibold text-gray-900">{formatNumber(influencer.totalEngagement)}</div>
-                              <div className="text-xs text-gray-500">Engagement</div>
-                            </div>
-                            <div className="bg-white rounded-lg p-2 border border-gray-100 text-center">
-                              <div className="text-sm font-semibold text-gray-900">{formatNumber(Math.max(0, influencer.totalViews))}</div>
-                              <div className="text-xs text-gray-500">Views</div>
-                            </div>
-                          </div>
-                          
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="bg-white rounded-lg p-2 border border-gray-100 text-center">
-                              <div className="text-sm font-semibold text-gray-900">{influencer.totalPosts}</div>
-                              <div className="text-xs text-gray-500">Posts</div>
-                            </div>
-                            <div className="bg-white rounded-lg p-2 border border-gray-100 text-center">
-                              <div className="text-sm font-semibold text-gray-900">{influencer.avgEngagementRate.toFixed(1)}%</div>
-                              <div className="text-xs text-gray-500">Eng Rate</div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="col-span-full text-center py-8">
-                      <p className="text-gray-500">No influencers found with current filters</p>
-                    </div>
-                  );
-                })()}
-              </div>
+                );
+              })()}
             </div>
           </div>
         </div>

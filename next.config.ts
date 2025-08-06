@@ -14,6 +14,13 @@ const nextConfig: NextConfig = {
   // ADDED: Image configuration for external domains
   images: {
     remotePatterns: [
+      // Google Cloud Storage - ADDED FOR YOUR PROFILE IMAGES
+      {
+        protocol: 'https',
+        hostname: 'storage.googleapis.com',
+        port: '',
+        pathname: '/**',
+      },
       // Google OAuth profile images
       {
         protocol: 'https',

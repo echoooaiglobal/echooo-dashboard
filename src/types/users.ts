@@ -17,6 +17,7 @@ export interface UserDetail extends User {
 export interface UpdateUserRequest {
   first_name?: string;
   last_name?: string;
+  full_name?: string;
   phone_number?: string | null;
   profile_image_url?: string | null;
   bio?: string;

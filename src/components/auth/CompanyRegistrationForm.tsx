@@ -1,4 +1,4 @@
-// src/components/auth/CompanyRegistrationForm.tsx - Updated to include OAuth
+// src/components/auth/CompanyRegistrationForm.tsx - OAuth TEMPORARILY HIDDEN
 'use client';
 
 import { useState } from 'react';
@@ -7,7 +7,7 @@ import { User, Mail, Lock, Phone, Briefcase, Globe, Eye, EyeOff, AlertCircle } f
 import { registerUser, RegistrationData } from '@/services/auth/register.service';
 import SuccessMessage from '@/components/ui/SuccessMessage';
 import { validateEmail, validatePassword, validatePhoneNumber } from '@/utils/validation';
-import OAuthButtons from './OAuthButtons';
+// import OAuthButtons from './OAuthButtons'; // TEMPORARILY COMMENTED OUT - OAUTH HIDDEN
 
 interface CompanyRegistrationFormProps {
   onSuccess?: (redirectPath: string) => void;
@@ -27,7 +27,7 @@ export default function CompanyRegistrationForm({ onSuccess }: CompanyRegistrati
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [oauthError, setOAuthError] = useState<string | null>(null);
+  // const [oauthError, setOAuthError] = useState<string | null>(null); // TEMPORARILY COMMENTED OUT
   const [success, setSuccess] = useState<string | null>(null);
   const router = useRouter();
 
@@ -47,10 +47,11 @@ export default function CompanyRegistrationForm({ onSuccess }: CompanyRegistrati
     setShowConfirmPassword(!showConfirmPassword);
   };
 
-  const handleOAuthError = (errorMessage: string) => {
-    setOAuthError(errorMessage);
-    setError(null); // Clear regular registration errors
-  };
+  // TEMPORARILY COMMENTED OUT - OAuth error handler
+  // const handleOAuthError = (errorMessage: string) => {
+  //   setOAuthError(errorMessage);
+  //   setError(null); // Clear regular registration errors
+  // };
   
   // Simple domain validation
   const validateDomain = (domain: string): { valid: boolean; message: string } => {
@@ -70,7 +71,7 @@ export default function CompanyRegistrationForm({ onSuccess }: CompanyRegistrati
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setOAuthError(null);
+    // setOAuthError(null); // TEMPORARILY COMMENTED OUT
     setIsSubmitting(true);
     
     // Email validation
@@ -168,14 +169,16 @@ export default function CompanyRegistrationForm({ onSuccess }: CompanyRegistrati
         />
       )}
 
-      {(error || oauthError) && (
+      {/* Updated error display - removed oauthError */}
+      {error && (
         <div className="bg-red-50 text-red-700 p-4 rounded-lg mb-6 flex items-start">
           <AlertCircle className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
-          <span className="text-sm">{error || oauthError}</span>
+          <span className="text-sm">{error}</span>
         </div>
       )}
 
-      {/* OAuth Registration Options */}
+      {/* TEMPORARILY COMMENTED OUT - OAuth Registration Options */}
+      {/* 
       <div className="mb-8">
         <OAuthButtons 
           userType="company"
@@ -192,6 +195,7 @@ export default function CompanyRegistrationForm({ onSuccess }: CompanyRegistrati
           </div>
         </div>
       </div>
+      */}
 
       {/* Regular Registration Form */}
       <form onSubmit={handleSubmit} className="space-y-5">

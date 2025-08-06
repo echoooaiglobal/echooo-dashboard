@@ -71,12 +71,12 @@ export async function getCurrentUser(): Promise<UserDetail> {
 }
 
 /**
- * Update current user profile
+ * Update current user profile - SIMPLIFIED TO ALWAYS USE FORMDATA
  */
 export async function updateCurrentUser(updateData: UpdateUserRequest): Promise<User> {
   try {
     console.log('🚀 Client Service: Starting updateCurrentUser call');
-    console.log('📋 Client Service: Update data:', updateData);
+    console.log('📝 Client Service: Update data:', updateData);
     
     if (typeof window === 'undefined') {
       console.error('❌ Client Service: Not in browser environment');
@@ -93,9 +93,54 @@ export async function updateCurrentUser(updateData: UpdateUserRequest): Promise<
     const endpoint = `/api/v0/auth/me`;
     console.log(`📞 Client Service: Making API call to ${endpoint}`);
     
-    const response = await nextjsApiClient.put<UpdateUserResponse>(endpoint, updateData);
+    // Always use FormData for consistency
+    const formData = new FormData();
     
-    console.log('📦 Client Service: Raw API response:', {
+    // Add all text fields
+    if (updateData.first_name !== undefined) {
+      formData.append('first_name', updateData.first_name || '');
+    }
+    if (updateData.last_name !== undefined) {
+      formData.append('last_name', updateData.last_name || '');
+    }
+    if (updateData.full_name !== undefined) {
+      formData.append('full_name', updateData.full_name || '');
+    }
+    if (updateData.phone_number !== undefined) {
+      formData.append('phone_number', updateData.phone_number || '');
+    }
+    if (updateData.language !== undefined) {
+      formData.append('language', updateData.language || '');
+    }
+    
+    // Handle profile image if present
+    if (updateData.profile_image_url && updateData.profile_image_url.startsWith('data:image/')) {
+      console.log('🖼️ Client Service: Profile image detected, converting from base64');
+      try {
+        const base64Data = updateData.profile_image_url;
+        const arr = base64Data.split(',');
+        const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/jpeg';
+        const bstr = atob(arr[1]);
+        let n = bstr.length;
+        const uint8Array = new Uint8Array(n);
+        while (n--) {
+          uint8Array[n] = bstr.charCodeAt(n);
+        }
+        const file = new File([uint8Array], 'profile-image.jpg', { type: mime });
+        formData.append('profile_image', file);
+        
+        console.log('✅ Client Service: Profile image converted and added to FormData');
+      } catch (error) {
+        console.error('❌ Client Service: Error converting base64 to file:', error);
+        // Continue without image rather than failing completely
+        console.log('⚠️ Client Service: Continuing update without profile image');
+      }
+    }
+    
+    // Use nextjsApiClient with FormData - it handles FormData automatically
+    const response = await nextjsApiClient.put<UpdateUserResponse>(endpoint, formData);
+    
+    console.log('📦 Client Service: API response:', {
       hasError: !!response.error,
       hasData: !!response.data,
       status: response.status,

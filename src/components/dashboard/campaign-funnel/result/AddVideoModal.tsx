@@ -15,6 +15,7 @@ interface VideoData {
   title: string;
   description: string;
   influencer: string;
+  collaborationPrice?: number; // Add collaboration price to VideoData
 }
 
 interface ManualVideoData {
@@ -25,9 +26,11 @@ interface ManualVideoData {
   description: string;
   likes: number;
   comments: number;
+  shares: number; // Added shares field
   views: number;
   followers: number;
   engagementRate: string;
+  collaborationPrice: number;
   postDate: string;
   thumbnailUrl: string;
   isVideo: boolean;
@@ -45,7 +48,8 @@ const AddVideoModal: React.FC<AddVideoModalProps> = ({ campaignId, onClose, onSu
     url: '',
     title: '',
     description: '',
-    influencer: ''
+    influencer: '',
+    collaborationPrice: 0
   });
 
   const [manualFormData, setManualFormData] = useState<ManualVideoData>({
@@ -56,9 +60,11 @@ const AddVideoModal: React.FC<AddVideoModalProps> = ({ campaignId, onClose, onSu
     description: '',
     likes: 0,
     comments: 0,
+    shares: 0, // Added shares field
     views: 0,
     followers: 0,
     engagementRate: '0%',
+    collaborationPrice: 0,
     postDate: '',
     thumbnailUrl: '',
     isVideo: false,
@@ -95,6 +101,10 @@ const AddVideoModal: React.FC<AddVideoModalProps> = ({ campaignId, onClose, onSu
       newErrors.url = 'Please enter a valid Instagram URL or post code';
     }
 
+    if (formData.collaborationPrice && formData.collaborationPrice < 0) {
+      newErrors.collaborationPrice = 'Collaboration price cannot be negative';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -120,11 +130,17 @@ const AddVideoModal: React.FC<AddVideoModalProps> = ({ campaignId, onClose, onSu
     if (manualFormData.comments < 0) {
       newErrors.comments = 'Comments cannot be negative';
     }
+    if (manualFormData.shares < 0) {
+      newErrors.shares = 'Shares cannot be negative';
+    }
     if (manualFormData.views < 0) {
       newErrors.views = 'Views cannot be negative';
     }
     if (manualFormData.followers < 0) {
       newErrors.followers = 'Followers cannot be negative';
+    }
+    if (manualFormData.collaborationPrice < 0) {
+      newErrors.collaborationPrice = 'Collaboration price cannot be negative';
     }
 
     setErrors(newErrors);
@@ -144,7 +160,7 @@ const AddVideoModal: React.FC<AddVideoModalProps> = ({ campaignId, onClose, onSu
     return /^[a-zA-Z0-9_-]+$/.test(string) && string.length > 5;
   };
 
-  const handleInputChange = (field: keyof VideoData, value: string) => {
+  const handleInputChange = (field: keyof VideoData, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
@@ -221,7 +237,8 @@ const AddVideoModal: React.FC<AddVideoModalProps> = ({ campaignId, onClose, onSu
           profileUrl: formData.url,
           influencerUsername: extractedUsername,
           title: formData.title || 'Instagram Post',
-          description: formData.description || ''
+          description: formData.description || '',
+          collaborationPrice: formData.collaborationPrice || 0
         }));
       }
       
@@ -261,6 +278,8 @@ const AddVideoModal: React.FC<AddVideoModalProps> = ({ campaignId, onClose, onSu
           plays_count: manualFormData.views,
           likes_count: manualFormData.likes,
           comment_counts: manualFormData.comments,
+          shares_count: manualFormData.shares, // Added shares_count
+          collaboration_price: manualFormData.collaborationPrice,
           media_preview: manualFormData.thumbnailUrl || '/user/profile-placeholder.png',
           duration: manualFormData.duration,
           thumbnail: manualFormData.thumbnailUrl || '/user/profile-placeholder.png',
@@ -271,9 +290,13 @@ const AddVideoModal: React.FC<AddVideoModalProps> = ({ campaignId, onClose, onSu
               shortcode: extractPostIdFromUrl(manualFormData.profileUrl) || `manual_${Date.now()}`,
               edge_media_preview_like: { count: manualFormData.likes },
               edge_media_to_comment: { count: manualFormData.comments },
+              edge_media_to_share: { count: manualFormData.shares }, // Added shares support
               video_play_count: manualFormData.views,
+              video_view_count: manualFormData.views,
               is_video: manualFormData.isVideo,
               video_duration: manualFormData.duration,
+              collaboration_price: manualFormData.collaborationPrice, // Store collaboration price in post_result_obj.data
+              shares_count: manualFormData.shares, // Store shares count in post_result_obj.data
               owner: {
                 username: manualFormData.influencerUsername,
                 full_name: manualFormData.fullName,
@@ -291,6 +314,13 @@ const AddVideoModal: React.FC<AddVideoModalProps> = ({ campaignId, onClose, onSu
             }
           }
         };
+
+        // Add debugging to verify the collaboration_price and shares are included
+        console.log('💾 AddVideoModal: Manual video result data being sent:', manualVideoResultData);
+        console.log('💰 AddVideoModal: Collaboration price value:', manualFormData.collaborationPrice);
+        console.log('📤 AddVideoModal: Shares value:', manualFormData.shares);
+        console.log('💰 AddVideoModal: Collaboration price in payload:', manualVideoResultData.collaboration_price);
+        console.log('📤 AddVideoModal: Shares in payload:', manualVideoResultData.shares_count);
 
         console.log('💾 AddVideoModal: Saving manual video result to backend...');
         const videoResult = await createVideoResult(manualVideoResultData);
@@ -320,6 +350,31 @@ const AddVideoModal: React.FC<AddVideoModalProps> = ({ campaignId, onClose, onSu
     try {
       console.log('💾 AddVideoModal: Saving video result to backend...');
       const backendData = mapToBackendFormat(instagramData, campaignId);
+      
+      // Add collaboration price to backend data if provided
+      if (formData.collaborationPrice && formData.collaborationPrice > 0) {
+        backendData.collaboration_price = formData.collaborationPrice;
+        // Also store in post_result_obj.data
+        if (!backendData.post_result_obj.data) {
+          backendData.post_result_obj.data = {};
+        }
+        backendData.post_result_obj.data.collaboration_price = formData.collaborationPrice;
+        
+        console.log('💰 AddVideoModal: Added collaboration price to Instagram data:', formData.collaborationPrice);
+      }
+
+      // Add shares count if available from Instagram data
+      if (instagramData.post.shares_count !== undefined) {
+        backendData.shares_count = instagramData.post.shares_count;
+        // Also store in post_result_obj.data
+        if (!backendData.post_result_obj.data) {
+          backendData.post_result_obj.data = {};
+        }
+        backendData.post_result_obj.data.shares_count = instagramData.post.shares_count;
+        
+        console.log('📤 AddVideoModal: Added shares count to Instagram data:', instagramData.post.shares_count);
+      }
+      
       const videoResult = await createVideoResult(backendData);
       console.log('✅ AddVideoModal: Video result saved successfully:', videoResult);
       
@@ -481,7 +536,7 @@ const AddVideoModal: React.FC<AddVideoModalProps> = ({ campaignId, onClose, onSu
             )}
           </div>
 
-          {/* Metrics Grid */}
+          {/* Metrics Grid - Updated with Shares field */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label htmlFor="likes" className="block text-sm font-medium text-gray-700 mb-2">
@@ -524,6 +579,29 @@ const AddVideoModal: React.FC<AddVideoModalProps> = ({ campaignId, onClose, onSu
               />
               {errors.comments && (
                 <p className="mt-2 text-sm text-red-600">{errors.comments}</p>
+              )}
+            </div>
+
+            {/* New Shares field */}
+            <div>
+              <label htmlFor="shares" className="block text-sm font-medium text-gray-700 mb-2">
+                Shares
+              </label>
+              <input
+                type="number"
+                id="shares"
+                min="0"
+                value={manualFormData.shares}
+                onChange={(e) => handleManualInputChange('shares', parseInt(e.target.value) || 0)}
+                placeholder="0"
+                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-colors duration-200 ${
+                  errors.shares 
+                    ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
+                    : 'border-gray-300 focus:ring-pink-500 focus:border-pink-500'
+                }`}
+              />
+              {errors.shares && (
+                <p className="mt-2 text-sm text-red-600">{errors.shares}</p>
               )}
             </div>
 
@@ -572,7 +650,7 @@ const AddVideoModal: React.FC<AddVideoModalProps> = ({ campaignId, onClose, onSu
             </div>
           </div>
 
-          {/* Engagement Rate and Post Date */}
+          {/* Engagement Rate and Collaboration Price */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label htmlFor="engagementRate" className="block text-sm font-medium text-gray-700 mb-2">
@@ -590,17 +668,42 @@ const AddVideoModal: React.FC<AddVideoModalProps> = ({ campaignId, onClose, onSu
             </div>
 
             <div>
-              <label htmlFor="postDate" className="block text-sm font-medium text-gray-700 mb-2">
-                Post Date
+              <label htmlFor="collaborationPrice" className="block text-sm font-medium text-gray-700 mb-2">
+                Collaboration Price
               </label>
               <input
-                type="date"
-                id="postDate"
-                value={manualFormData.postDate}
-                onChange={(e) => handleManualInputChange('postDate', e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors duration-200"
+                type="number"
+                id="collaborationPrice"
+                min="0"
+                step="0.01"
+                value={manualFormData.collaborationPrice}
+                onChange={(e) => handleManualInputChange('collaborationPrice', parseFloat(e.target.value) || 0)}
+                placeholder="0.00"
+                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-colors duration-200 ${
+                  errors.collaborationPrice 
+                    ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
+                    : 'border-gray-300 focus:ring-pink-500 focus:border-pink-500'
+                }`}
               />
+              {errors.collaborationPrice && (
+                <p className="mt-2 text-sm text-red-600">{errors.collaborationPrice}</p>
+              )}
+              <p className="mt-1 text-xs text-gray-500">Enter collaboration price in USD</p>
             </div>
+          </div>
+
+          {/* Post Date */}
+          <div>
+            <label htmlFor="postDate" className="block text-sm font-medium text-gray-700 mb-2">
+              Post Date
+            </label>
+            <input
+              type="date"
+              id="postDate"
+              value={manualFormData.postDate}
+              onChange={(e) => handleManualInputChange('postDate', e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors duration-200"
+            />
           </div>
 
           {/* Media Details */}
@@ -760,7 +863,7 @@ const AddVideoModal: React.FC<AddVideoModalProps> = ({ campaignId, onClose, onSu
                 </div>
               )}
               
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-4 gap-3">
                 <div className="bg-gradient-to-r from-red-50 to-pink-50 rounded-lg p-3 text-center">
                   <div className="flex items-center justify-center mb-1">
                     <svg className="w-4 h-4 text-red-500 mr-1" fill="currentColor" viewBox="0 0 24 24">
@@ -778,6 +881,16 @@ const AddVideoModal: React.FC<AddVideoModalProps> = ({ campaignId, onClose, onSu
                     <p className="text-xs font-medium text-gray-600">Comments</p>
                   </div>
                   <p className="text-sm font-bold text-gray-900">{formatNumber(instagramData.post.comments_count)}</p>
+                </div>
+                {/* Shares metric - Added */}
+                <div className="bg-gradient-to-r from-yellow-50 to-amber-50 rounded-lg p-3 text-center">
+                  <div className="flex items-center justify-center mb-1">
+                    <svg className="w-4 h-4 text-yellow-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+                    </svg>
+                    <p className="text-xs font-medium text-gray-600">Shares</p>
+                  </div>
+                  <p className="text-sm font-bold text-gray-900">{formatNumber(instagramData.post.shares_count || 0)}</p>
                 </div>
                 {instagramData.post.view_counts ? (
                   <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-3 text-center">
@@ -851,6 +964,31 @@ const AddVideoModal: React.FC<AddVideoModalProps> = ({ campaignId, onClose, onSu
               placeholder="Enter influencer name"
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors duration-200"
             />
+          </div>
+
+          {/* Collaboration Price */}
+          <div>
+            <label htmlFor="collaborationPrice" className="block text-sm font-medium text-gray-700 mb-2">
+              Collaboration Price
+            </label>
+            <input
+              type="number"
+              id="collaborationPrice"
+              min="0"
+              step="0.01"
+              value={formData.collaborationPrice || 0}
+              onChange={(e) => handleInputChange('collaborationPrice', parseFloat(e.target.value) || 0)}
+              placeholder="0.00"
+              className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-colors duration-200 ${
+                errors.collaborationPrice 
+                  ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
+                  : 'border-gray-300 focus:ring-pink-500 focus:border-pink-500'
+              }`}
+            />
+            {errors.collaborationPrice && (
+              <p className="mt-2 text-sm text-red-600">{errors.collaborationPrice}</p>
+            )}
+            <p className="mt-1 text-xs text-gray-500">Enter collaboration price in USD (optional)</p>
           </div>
 
           {/* Description */}
@@ -986,7 +1124,7 @@ const AddVideoModal: React.FC<AddVideoModalProps> = ({ campaignId, onClose, onSu
                   <>
                     <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
                     {step === 'input' ? 'Fetching...' : 
                      step === 'manual_form' ? 'Saving...' :

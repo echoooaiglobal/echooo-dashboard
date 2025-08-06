@@ -51,6 +51,7 @@ export async function getCurrentUserServer(authToken?: string): Promise<UserDeta
 
 /**
  * Update current user profile from FastAPI backend (server-side)
+ * Uses FormData for all requests to maintain consistency
  */
 export async function updateCurrentUserServer(
   updateData: UpdateUserRequest,
@@ -58,14 +59,64 @@ export async function updateCurrentUserServer(
 ): Promise<User> {
   try {
     console.log('🚀 Server: Starting updateCurrentUserServer call');
-    console.log('📋 Server: Update data:', updateData);
+    console.log('📋 Server: Update data:', {
+      hasFirstName: !!updateData.first_name,
+      hasLastName: !!updateData.last_name,
+      hasFullName: !!updateData.full_name,
+      hasPhoneNumber: !!updateData.phone_number,
+      hasProfileImage: !!updateData.profile_image_url,
+      fields: Object.keys(updateData)
+    });
     
     const endpoint = ENDPOINTS.AUTH.ME;
     console.log(`📞 Server: Making API call to ${endpoint}`);
     
+    // Always use FormData for consistency
+    const formData = new FormData();
+    
+    // Add all text fields
+    if (updateData.first_name !== undefined) {
+      formData.append('first_name', updateData.first_name || '');
+    }
+    if (updateData.last_name !== undefined) {
+      formData.append('last_name', updateData.last_name || '');
+    }
+    if (updateData.full_name !== undefined) {
+      formData.append('full_name', updateData.full_name || '');
+    }
+    if (updateData.phone_number !== undefined) {
+      formData.append('phone_number', updateData.phone_number || '');
+    }
+    if (updateData.language !== undefined) {
+      formData.append('language', updateData.language || '');
+    }
+    
+    // Handle profile image if present
+    if (updateData.profile_image_url && updateData.profile_image_url.startsWith('data:image/')) {
+      console.log('🖼️ Server: Profile image detected, converting from base64');
+      try {
+        const base64Data = updateData.profile_image_url;
+        const arr = base64Data.split(',');
+        const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/jpeg';
+        const bstr = Buffer.from(arr[1], 'base64');
+        
+        // Create a Blob and then File
+        const blob = new Blob([bstr], { type: mime });
+        const file = new File([blob], 'profile-image.jpg', { type: mime });
+        
+        formData.append('profile_image', file);
+        console.log('✅ Server: Profile image converted and added to FormData');
+      } catch (error) {
+        console.error('❌ Server: Error converting base64 to file:', error);
+        // Continue without image rather than failing completely
+        console.log('⚠️ Server: Continuing update without profile image');
+      }
+    }
+    
+    // Use serverApiClient with FormData - handles everything consistently
     const response = await serverApiClient.put<User>(
       endpoint,
-      updateData,
+      formData,
       {},
       authToken
     );

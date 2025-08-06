@@ -100,8 +100,14 @@ export function UserAvatar({
       alt={alt}
       width={size}
       height={size}
-      className={`rounded-full object-cover ${className}`}
+      className={`rounded-full object-cover border-0 ${className}`}  // Added border-0
       onError={() => setHasError(true)}
+      style={{ 
+        width: size, 
+        height: size,
+        minWidth: size,    // Prevent shrinking
+        minHeight: size    // Prevent shrinking
+      }}
     />
   );
 }

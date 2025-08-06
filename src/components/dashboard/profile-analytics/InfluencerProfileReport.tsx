@@ -47,6 +47,7 @@ interface InfluencerProfileReportProps {
   isRefreshing?: boolean;
 }
 
+
 const InfluencerProfileReport: React.FC<InfluencerProfileReportProps> = ({
   analyticsData,
   platformAccountId,

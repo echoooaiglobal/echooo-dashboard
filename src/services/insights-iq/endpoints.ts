@@ -27,6 +27,11 @@ export const INSIGHTIQ_ENDPOINTS = {
     getAnalytics: '/social/creators/profiles/analytics', // GET - Get profile analytics
   },
 
+  // Creator Profiles endpoints - UPDATED to use EnsembleData
+  creatorProfiles: {
+    getProfile: '/instagram/user/detailed-info', // GET - Get creator profile by username from EnsembleData
+  },
+
   // Influencer discovery endpoints (for future use)
   discovery: {
     search: '/discovery/search', // POST - Search influencers

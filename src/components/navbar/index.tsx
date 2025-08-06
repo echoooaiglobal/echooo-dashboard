@@ -442,7 +442,7 @@ export default function Navbar(props?: NavbarProps) {
                       alt={user?.full_name || user?.email || 'User avatar'}
                       size={32}
                       fallbackInitials={getUserInitials(user)}
-                      className="ring-2 ring-transparent hover:ring-purple-500"
+                      className="ring-2 ring-transparent hover:ring-purple-500 transition-all duration-200"
                     />
                   </div>
 
@@ -451,15 +451,14 @@ export default function Navbar(props?: NavbarProps) {
                     <div className="origin-top-right absolute right-0 mt-2 w-64 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
                       <div className="px-4 py-3 border-b border-gray-100">
                         <div className="flex items-center">
-                          {/* UPDATED: Use UserAvatar component in dropdown too */}
                           <UserAvatar
                             src={getUserProfileImage(user)}
                             alt={user?.full_name || user?.email || 'User avatar'}
-                            size={40}
+                            size={48}  // Slightly larger for dropdown
                             fallbackInitials={getUserInitials(user)}
-                            className="mr-3"
+                            className="mr-3 flex-shrink-0"  // Added flex-shrink-0 to prevent squishing
                           />
-                          <div className="flex-1">
+                          <div className="flex-1 min-w-0">  {/* Added min-w-0 to prevent overflow */}
                             <p className="text-sm font-medium text-gray-900 truncate">
                               {user?.full_name || user?.email}
                             </p>

@@ -74,12 +74,12 @@ const CampaignFunnelSection: React.FC<CampaignFunnelSectionProps> = ({
   return (
     <div className="w-full overflow-hidden bg-white rounded-xl shadow-md mb-4">
       {/* Tab Navigation */}
-      <div className="flex items-center justify-between bg-gray-50 border-b border-gray-200 py-4">
+      <div className="flex items-center justify-between bg-white border-b border-gray-200 py-4">
         <button
-          className={`flex-1 px-6 py-3 text-sm font-semibold rounded-lg transition-all duration-300 transform hover:scale-105 mx-2 bg-white shadow-md border-2 hover:shadow-lg ${
+          className={`flex-1 px-6 py-3 text-sm font-semibold rounded-full transition-all duration-300 transform hover:scale-105 mx-2 shadow-md border-2 hover:shadow-lg ${
             activeTab === 'discover'
               ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white border-purple-300 hover:from-purple-600 hover:to-purple-700'
-              : 'text-gray-700 border-gray-200 hover:border-gray-300 hover:text-gray-900'
+              : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300 hover:text-gray-900'
           }`}
           onClick={() => handleTabChange('discover')}
         >
@@ -87,10 +87,10 @@ const CampaignFunnelSection: React.FC<CampaignFunnelSectionProps> = ({
         </button>
         
         <button
-          className={`flex-1 px-6 py-3 text-sm font-semibold rounded-lg transition-all duration-300 transform hover:scale-105 mx-2 bg-white shadow-md border-2 hover:shadow-lg ${
+          className={`flex-1 px-6 py-3 text-sm font-semibold rounded-full transition-all duration-300 transform hover:scale-105 mx-2 shadow-md border-2 hover:shadow-lg ${
             activeTab === 'outreach'
               ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white border-purple-300 hover:from-purple-600 hover:to-purple-700'
-              : 'text-gray-700 border-gray-200 hover:border-gray-300 hover:text-gray-900'
+              : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300 hover:text-gray-900'
           }`}
           onClick={() => handleTabChange('outreach')}
           disabled={isNewCampaign}
@@ -99,10 +99,10 @@ const CampaignFunnelSection: React.FC<CampaignFunnelSectionProps> = ({
         </button>
         
         <button
-          className={`flex-1 px-6 py-3 text-sm font-semibold rounded-lg transition-all duration-300 transform hover:scale-105 mx-2 bg-white shadow-md border-2 hover:shadow-lg ${
+          className={`flex-1 px-6 py-3 text-sm font-semibold rounded-full transition-all duration-300 transform hover:scale-105 mx-2 shadow-md border-2 hover:shadow-lg ${
             activeTab === 'management'
               ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white border-purple-300 hover:from-purple-600 hover:to-purple-700'
-              : 'text-gray-700 border-gray-200 hover:border-gray-300 hover:text-gray-900'
+              : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300 hover:text-gray-900'
           }`}
           onClick={() => handleTabChange('management')}
           disabled={isNewCampaign}
@@ -111,10 +111,10 @@ const CampaignFunnelSection: React.FC<CampaignFunnelSectionProps> = ({
         </button>
         
         <button
-          className={`flex-1 px-6 py-3 text-sm font-semibold rounded-lg transition-all duration-300 transform hover:scale-105 mx-2 bg-white shadow-md border-2 hover:shadow-lg ${
+          className={`flex-1 px-6 py-3 text-sm font-semibold rounded-full transition-all duration-300 transform hover:scale-105 mx-2 shadow-md border-2 hover:shadow-lg ${
             activeTab === 'result'
               ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white border-purple-300 hover:from-purple-600 hover:to-purple-700'
-              : 'text-gray-700 border-gray-200 hover:border-gray-300 hover:text-gray-900'
+              : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300 hover:text-gray-900'
           }`}
           onClick={() => handleTabChange('result')}
           disabled={isNewCampaign}
@@ -123,10 +123,10 @@ const CampaignFunnelSection: React.FC<CampaignFunnelSectionProps> = ({
         </button>
         
         <button
-          className={`flex-1 px-6 py-3 text-sm font-semibold rounded-lg transition-all duration-300 transform hover:scale-105 mx-2 bg-white shadow-md border-2 hover:shadow-lg ${
+          className={`flex-1 px-6 py-3 text-sm font-semibold rounded-full transition-all duration-300 transform hover:scale-105 mx-2 shadow-md border-2 hover:shadow-lg ${
             activeTab === 'payments'
               ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white border-purple-300 hover:from-purple-600 hover:to-purple-700'
-              : 'text-gray-700 border-gray-200 hover:border-gray-300 hover:text-gray-900'
+              : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300 hover:text-gray-900'
           }`}
           onClick={() => handleTabChange('payments')}
           disabled={isNewCampaign}

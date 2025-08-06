@@ -1,15 +1,18 @@
 // src/components/dashboard/campaign-funnel/discover/shortlisted-influencers/ShortlistedInfluencers.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Search } from 'react-feather';
 import { Campaign } from '@/types/campaign';
-import { CampaignListMember, CampaignListMembersResponse, removeInfluencerFromList } from '@/services/campaign/campaign-list.service';
+import { CampaignListMember, CampaignListMembersResponse, removeInfluencerFromList, addInfluencerToList } from '@/services/campaign/campaign-list.service';
 import { executeBulkAssignments } from '@/services/bulk-assignments/bulk-assignments.service';
 import { BulkAssignmentRequest } from '@/types/bulk-assignments';
 import OutreachMessageForm from './OutreachMessageForm';
 import ShortlistedTable from './ShortlistedTable';
 import ExportButton from './ExportButton';
+import ImportCsvButton from './ImportCsvButton';
+import { getCreatorProfile } from '@/services/ensembledata/creator-profile';
+import { Platform } from '@/types/platform';
 
 interface MessageTemplate {
   id: string;
@@ -29,6 +32,8 @@ interface ShortlistedInfluencersProps {
   onInfluencerRemoved?: () => void;
   onPageChange?: (page: number) => void;
   onPageSizeChange?: (pageSize: number) => void;
+  selectedPlatform?: Platform | null; // NEW: Add this prop for CSV import
+  onInfluencerAdded?: () => void; // NEW: Add this prop for refreshing the list
 }
 
 const ShortlistedInfluencers: React.FC<ShortlistedInfluencersProps> = ({ 
@@ -37,12 +42,15 @@ const ShortlistedInfluencers: React.FC<ShortlistedInfluencersProps> = ({
   isLoading = false,
   onInfluencerRemoved,
   onPageChange,
-  onPageSizeChange
+  onPageSizeChange,
+  selectedPlatform = null, // NEW: Default value
+  onInfluencerAdded // NEW: Callback for when influencers are added
 }) => {
   const [searchText, setSearchText] = useState('');
   const [selectedInfluencers, setSelectedInfluencers] = useState<string[]>([]);
   const [removingInfluencers, setRemovingInfluencers] = useState<string[]>([]);
   const [isOutreachFormOpen, setIsOutreachFormOpen] = useState(false);
+  const [visibleColumns, setVisibleColumns] = useState<string[]>([]); // NEW: Track visible columns
   
   // API Integration States
   const [messageTemplates, setMessageTemplates] = useState<MessageTemplate[]>([]);
@@ -53,6 +61,67 @@ const ShortlistedInfluencers: React.FC<ShortlistedInfluencersProps> = ({
   // Ensure shortlistedMembers has proper structure
   const members = shortlistedMembers?.influencers || [];
   console.log('Shortlisted Influencers:', members);
+
+  // NEW: Handle visible columns change from table (memoized to prevent infinite loops)
+  const handleVisibleColumnsChange = useCallback((columns: string[]) => {
+    setVisibleColumns(columns);
+    console.log('📊 Visible columns updated for export:', columns);
+  }, []);
+
+  // NEW: Handle CSV import of influencers
+  const handleImportInfluencer = async (username: string): Promise<boolean> => {
+    try {
+      if (!campaignData || !campaignData.campaign_lists || !campaignData.campaign_lists.length) {
+        console.error('❌ No campaign list found for username:', username);
+        return false;
+      }
+
+      if (!selectedPlatform || !selectedPlatform.id) {
+        console.error('❌ No platform selected for username:', username);
+        return false;
+      }
+
+      console.log('🔍 Searching for influencer:', username);
+
+      // First, search for the influencer using the creator profile service
+      const profileResponse = await getCreatorProfile({
+        username: username,
+        platform: 'instagram', // Default to Instagram for CSV imports
+        include_detailed_info: true
+      });
+
+      if (!profileResponse.success || !profileResponse.data) {
+        console.error('❌ Influencer not found:', username);
+        return false;
+      }
+
+      const influencerData = profileResponse.data;
+      const listId = campaignData.campaign_lists[0].id;
+      const platformId = selectedPlatform.id;
+
+      console.log('✅ Influencer found, adding to list:', influencerData.username);
+
+      // Add the influencer to the list
+      const addResponse = await addInfluencerToList(listId, influencerData, platformId);
+
+      if (addResponse) {
+        console.log('✅ Successfully added to list:', username);
+        
+        // Trigger refresh callback after successful addition
+        if (onInfluencerAdded) {
+          onInfluencerAdded();
+        }
+        
+        return true;
+      } else {
+        console.error('❌ Failed to add to list:', username);
+        return false;
+      }
+    } catch (error) {
+      console.error('❌ Error importing influencer:', username, error);
+      return false;
+    }
+  };
 
   /**
    * Check if a message template exists for the current campaign
@@ -492,11 +561,18 @@ const ShortlistedInfluencers: React.FC<ShortlistedInfluencersProps> = ({
             </button>
           )}
           
-          {/* Export Button */}
+          {/* NEW: Import CSV Button */}
+          <ImportCsvButton 
+            onImportInfluencer={handleImportInfluencer}
+            disabled={!selectedPlatform}
+          />
+          
+          {/* UPDATED: Export Button with visible columns support */}
           <ExportButton 
             members={members}
             campaignName={campaignData?.name}
             selectedMembers={selectedInfluencers.length > 0 ? members.filter(member => selectedInfluencers.includes(member.id ?? '')) : undefined}
+            visibleColumns={visibleColumns} // NEW: Pass visible columns to export
           />
           
           {/* Start Outreach Button */}
@@ -523,7 +599,7 @@ const ShortlistedInfluencers: React.FC<ShortlistedInfluencersProps> = ({
       
       {/* Main Content Area */}
       <div className="flex space-x-6" style={{ minHeight: '750px' }}>
-        {/* Influencers Table Component */}
+        {/* UPDATED: Influencers Table Component with visible columns callback */}
         <ShortlistedTable
           shortlistedMembers={shortlistedMembers}
           isLoading={isLoading}
@@ -535,6 +611,7 @@ const ShortlistedInfluencers: React.FC<ShortlistedInfluencersProps> = ({
           onPageSizeChange={onPageSizeChange}
           onSelectionChange={setSelectedInfluencers}
           onRemovingChange={setRemovingInfluencers}
+          onVisibleColumnsChange={handleVisibleColumnsChange} // NEW: Handle visible columns change
         />
       </div>
 
