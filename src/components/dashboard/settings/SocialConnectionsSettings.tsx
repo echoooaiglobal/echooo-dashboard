@@ -42,7 +42,7 @@ interface Platform {
   id: string;
   name: string;
   slug: string;
-  icon: React.ReactNode;
+  icon: React.ComponentType<{ className?: string }>;
   max_accounts: number;
   color: string;
   gradient: string;
@@ -61,7 +61,7 @@ export default function SocialConnectionsSettings() {
       id: 'instagram',
       name: 'Instagram',
       slug: 'instagram',
-      icon: <Instagram className="w-5 h-5" />,
+      icon: Instagram,
       max_accounts: 5,
       color: 'text-pink-600',
       gradient: 'from-purple-500 via-pink-500 to-orange-400',
@@ -71,7 +71,7 @@ export default function SocialConnectionsSettings() {
       id: 'facebook',
       name: 'Facebook',
       slug: 'facebook',
-      icon: <Facebook className="w-5 h-5" />,
+      icon: Facebook,
       max_accounts: 5,
       color: 'text-blue-600',
       gradient: 'from-blue-600 to-blue-700',
@@ -81,7 +81,7 @@ export default function SocialConnectionsSettings() {
       id: 'twitter',
       name: 'Twitter/X',
       slug: 'twitter',
-      icon: <Twitter className="w-5 h-5" />,
+      icon: Twitter,
       max_accounts: 5,
       color: 'text-blue-400',
       gradient: 'from-blue-400 to-blue-500',
@@ -91,7 +91,7 @@ export default function SocialConnectionsSettings() {
       id: 'linkedin',
       name: 'LinkedIn',
       slug: 'linkedin',
-      icon: <Linkedin className="w-5 h-5" />,
+      icon: Linkedin,
       max_accounts: 5,
       color: 'text-blue-700',
       gradient: 'from-blue-700 to-blue-800',
@@ -101,7 +101,7 @@ export default function SocialConnectionsSettings() {
       id: 'youtube',
       name: 'YouTube',
       slug: 'youtube',
-      icon: <Youtube className="w-5 h-5" />,
+      icon: Youtube,
       max_accounts: 5,
       color: 'text-red-600',
       gradient: 'from-red-500 to-red-600',
@@ -611,7 +611,7 @@ export default function SocialConnectionsSettings() {
               <div className={`bg-gradient-to-r ${platform.gradient} p-6 text-white`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    {platform.icon}
+                    <platform.icon className="w-8 h-8" />
                     <div>
                       <h3 className="font-semibold text-lg">{platform.name}</h3>
                       <p className="text-sm opacity-90">{platform.description}</p>
@@ -747,7 +747,7 @@ export default function SocialConnectionsSettings() {
                   </div>
                 ) : (
                   <div className="text-center py-8 text-gray-500">
-                    <platform.icon.type className="mx-auto h-12 w-12 text-gray-300 mb-3" />
+                    <platform.icon className="mx-auto h-12 w-12 text-gray-300 mb-3" />
                     <p className="text-sm">No {platform.name} accounts connected</p>
                   </div>
                 )}
