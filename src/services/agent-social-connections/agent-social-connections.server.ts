@@ -32,7 +32,8 @@ export async function initiateOAuthConnectionServer(
     
     const endpoint = ENDPOINTS.AGENT_SOCIAL_CONNECTIONS.INITIATE_CONNECTION;
     
-    const response = await serverApiClient.post<{ data: OAuthInitiateResponse }>(
+    // Option 1: If FastAPI returns data directly without wrapper
+    const response = await serverApiClient.post<OAuthInitiateResponse>(
       endpoint,
       initiateRequest,
       {},
@@ -49,8 +50,9 @@ export async function initiateOAuthConnectionServer(
       throw new Error('No OAuth initiation data received');
     }
     
-    console.log('Server: OAuth connection initiated successfully:', response.data.data.platform);
-    return response.data.data;
+    console.log('Server: OAuth connection initiated successfully:', response.data.platform);
+    return response.data; // ← Changed from response.data.data to response.data
+    
   } catch (error) {
     console.error('Server: Error initiating OAuth connection:', error);
     throw error;
