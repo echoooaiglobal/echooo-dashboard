@@ -54,22 +54,26 @@ const OutreachMessageForm: React.FC<OutreachMessageFormProps> = ({
   }));
 
   // Default message template
-  const defaultMessage = `Hi Cecilia,
+  const defaultMessage = `Hi {{influencer_username}},
 
-Thank you very much for applying for the Engineering Manager position at Pixel Office.
+I hope this message finds you well! I'm reaching out from {{brand_name}} because we absolutely love your content, especially your recent post about {{recent_post_topic}}.
 
-Please be informed that we have received your application. Our hiring team is currently reviewing all applications. If you are among qualified candidates, you will receive an email notifying you of the next steps soon.
+We're launching our {{campaign_name}} campaign and think you'd be a perfect fit. We'd love to collaborate with you and offer:
 
-Thanks again for your interest in working at our company.
+• {{collaboration_offer}}
+• {{product_value}} worth of products
+• {{additional_benefits}}
+
+Would you be interested in learning more? I'd love to send you the campaign details!
 
 Best regards,
-
-Pixel Office`;
+{{agent_name}}
+{{brand_name}} Influencer Team`;
 
   // Initialize with default message when form opens
   useEffect(() => {
     if (isOpen && !subject && !message) {
-      setSubject('Message Subject');
+      setSubject('Collaboration Opportunity with {{brand_name}}');
       setMessage(defaultMessage);
     }
   }, [isOpen]);
