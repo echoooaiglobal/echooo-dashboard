@@ -59,7 +59,7 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
     const baseParams: Partial<InfluencerSearchFilter> = {
       work_platform_id: "9bb8913b-ddd9-430b-a66a-d74d846e6c66",
       sort_by: { field: "FOLLOWER_COUNT", order: "DESCENDING" },
-      limit: pageSize, offset: 0, post_type: "ALL",
+      limit: 10, offset: 0, post_type: "ALL",
     };
     
     // Only add default values if defaultFilters is true
@@ -185,13 +185,14 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
     }
   };
 
-  // Function to fetch discovered influencers
+  // FIXED: Function to fetch discovered influencers with correct API endpoint
   const fetchInfluencers = async (params: InfluencerSearchFilter) => {
     setIsLoading(true);
     
     try {
       console.log('🔄 Fetching influencers with params:', params);
       
+      // FIXED: Changed URL from '/api/v0/influencers/discover' to '/api/v0/discover/search'
       const response = await fetch('/api/v0/discover/search', {
         method: 'POST',
         headers: {
@@ -206,15 +207,14 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
       }
 
       const result = await response.json();
-      console.log('resultresult::', result)
-      if (result.success && result.data) { console.log('resultresult::2', result)
+      
+      if (result.success && result.data) {
         setDiscoveredCreatorsResults(result.data);
         setInfluencers(result.data.influencers || []);
         setTotalResults(result.data.total_count || 0);
         console.log('✅ Influencers fetched successfully');
       } else {
-        console.error('❌ Failed to fetch influencers:2', result);
-        // console.error('❌ Failed to fetch influencers:', result.error);
+        console.error('❌ Failed to fetch influencers:', result.error);
         setInfluencers([]);
         setTotalResults(0);
       }
@@ -276,11 +276,12 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
     fetchInfluencersAppend(updatedParams);
   };
 
-  // Fetch and append influencers (for load more)
+  // FIXED: Fetch and append influencers (for load more) with correct API endpoint
   const fetchInfluencersAppend = async (params: InfluencerSearchFilter) => {
     setIsLoading(true);
     
     try {
+      // FIXED: Changed URL from '/api/v0/influencers/discover' to '/api/v0/discover/search'
       const response = await fetch('/api/v0/discover/search', {
         method: 'POST',
         headers: {
@@ -486,11 +487,11 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-4">
         <div className="flex items-center space-x-4">
           <h2 className="text-2xl font-bold text-gray-700">Influencers Result</h2>
-          {/* {selectedPlatform && (
+          {selectedPlatform && (
             <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
               Platform: {selectedPlatform.name}
             </span>
-          )} */}
+          )}
         </div>
         
         {/* Tab Navigation */}
@@ -531,7 +532,7 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
           searchParams={searchParams}
           onSearchTextChange={handleSearchTextChange}
           onFilterChange={handleFilterChange}
-          onApplyFilters={handleApplyFilters}
+          onApplyFilters={handleApplyFilters} 
           onSortChange={handleSortChange}
           onLoadMore={loadMore}
           onClearFilters={handleClearFilters}

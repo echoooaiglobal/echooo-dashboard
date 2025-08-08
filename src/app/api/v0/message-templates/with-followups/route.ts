@@ -1,9 +1,9 @@
-// src/app/api/v0/message-templates/route.ts
+// src/app/api/v0/message-templates/with-followups/route.ts
 
 import { NextRequest, NextResponse } from 'next/server';
 import { extractBearerToken } from '@/lib/auth-utils';
-import { createMessageTemplateServer } from '@/services/message-templates/message-templates.server';
-import { CreateMessageTemplateRequest } from '@/types/message-templates';
+import { createMessageTemplateWithFollowupsServer } from '@/services/message-templates/message-templates.server';
+import { CreateMessageTemplateWithFollowupsRequest } from '@/types/message-templates';
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,20 +25,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const requestData: CreateMessageTemplateRequest = {
+    const requestData: CreateMessageTemplateWithFollowupsRequest = {
       subject: body.subject,
       content: body.content,
       company_id: body.company_id,
       campaign_id: body.campaign_id,
       template_type: body.template_type || 'initial',
-      is_global: body.is_global ?? true
+      is_global: body.is_global ?? true,
+      generate_followups: body.generate_followups ?? true,
+      ai_provider: body.ai_provider || 'openai',
+      custom_instructions: body.custom_instructions
     };
 
-    const template = await createMessageTemplateServer(requestData, authToken);
+    const template = await createMessageTemplateWithFollowupsServer(requestData, authToken);
 
     return NextResponse.json(template, { status: 201 });
   } catch (error) {
-    console.error('Error creating message template:', error);
+    console.error('Error creating template with followups:', error);
     
     if (error instanceof Error) {
       return NextResponse.json(
@@ -48,7 +51,7 @@ export async function POST(request: NextRequest) {
     }
     
     return NextResponse.json(
-      { error: 'Failed to create message template' },
+      { error: 'Failed to create template with followups' },
       { status: 500 }
     );
   }

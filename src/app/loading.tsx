@@ -37,7 +37,7 @@ export default function Loading() {
             Loading...
           </h2>
           <p className="text-sm text-gray-500">
-            Please wait while we prepare your experience
+            Please wait while we prepare your dashboard
           </p>
         </div>
 

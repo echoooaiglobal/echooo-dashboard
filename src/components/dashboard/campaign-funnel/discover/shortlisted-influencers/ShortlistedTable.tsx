@@ -316,9 +316,9 @@ const ShortlistedTable: React.FC<ShortlistedTableProps> = ({
                 if (target.src.includes('pravatar')) {
                   // If pravatar fails, use a solid color background with initials
                   target.style.display = 'none';
-                  const initials = (member.social_account?.full_name || 'U')
+                    const initials: string = (member.social_account?.full_name || 'U')
                     .split(' ')
-                    .map(n => n[0])
+                    .map((n: string): string => n[0])
                     .join('')
                     .toUpperCase()
                     .substring(0, 2);

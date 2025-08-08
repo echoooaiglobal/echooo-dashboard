@@ -118,8 +118,15 @@ export const ENDPOINTS = {
   },
   MESSAGE_TEMPLATES: {
     CREATE: '/message-templates',
+    CREATE_WITH_FOLLOWUPS: '/message-templates/with-followups',
     BY_COMPANY: (companyId: string) => `/message-templates/company/${companyId}`,
+    BY_CAMPAIGN: (campaignId: string) => `/message-templates/campaign/${campaignId}`,
+    BY_CAMPAIGN_WITH_FOLLOWUPS: (campaignId: string) => `/message-templates/campaign/${campaignId}/with-followups`,
     DETAIL: (templateId: string) => `/message-templates/${templateId}`,
+    UPDATE: (templateId: string) => `/message-templates/${templateId}`,
+    DELETE: (templateId: string) => `/message-templates/${templateId}`,
+    REGENERATE_FOLLOWUPS: (templateId: string) => `/message-templates/${templateId}/regenerate-followups`,
+
   },
   LIST_ASSIGNMENTS: {
     CREATE: '/list-assignments',
