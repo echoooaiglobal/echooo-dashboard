@@ -134,6 +134,7 @@ export interface CreatorProfile {
   detailed_info?: InstagramUserDetailedInfo;
   fetched_at: string;
   units_charged?: number; // EnsembleData usage tracking
+  posts?: InstagramPostEdge[]; // Optional, if detailed info is requested
 }
 
 // Error types

@@ -120,10 +120,12 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
     }
   };
 
-  // Format currency utility function - UPDATED: Remove dollar sign
+  // FIXED: Format currency utility function - Handle 0 values properly for CPV/CPE
   const formatCurrency = (amount: number): string => {
-    if (!amount || amount <= 0) return 'N/A';
+    // Return 'N/A' only if amount is undefined, null, or negative
+    if (amount === undefined || amount === null || amount < 0) return 'N/A';
     
+    // Handle 0 values properly - show as 0.00 instead of N/A
     return new Intl.NumberFormat('en-US', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 4
@@ -132,6 +134,10 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
 
   // UPDATED: Enhanced getPostData function with video_play_count focus for views
   const getPostData = (video: VideoResult) => {
+    // FIXED: Check for preserved CPV/CPE values first
+    const preservedCPV = (video as any)._preservedCPV;
+    const preservedCPE = (video as any)._preservedCPE;
+    
     const postData = video.post_result_obj?.data;
     if (!postData) {
       // When no post data, use whichever is greater between views_count and plays_count
@@ -145,9 +151,21 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
       const shares = Math.max(0, video.shares_count || 0);
       const collaborationPrice = video.collaboration_price || 0;
       
-      // Calculate CPE (Cost Per Engagement) - Include shares if > 0
-      const totalEngagements = likes + comments + (shares > 0 ? shares : 0);
-      const cpe = totalEngagements > 0 ? collaborationPrice / totalEngagements : 0;
+      // FIXED: Use preserved values if available, otherwise calculate
+      let cpv, cpe;
+      
+      if (preservedCPV !== undefined && preservedCPV !== null) {
+        cpv = preservedCPV;
+      } else {
+        cpv = collaborationPrice > 0 && finalViews > 0 ? collaborationPrice / finalViews : 0;
+      }
+      
+      if (preservedCPE !== undefined && preservedCPE !== null) {
+        cpe = preservedCPE;
+      } else {
+        const totalEngagements = likes + comments + (shares > 0 ? shares : 0);
+        cpe = collaborationPrice > 0 && totalEngagements > 0 ? collaborationPrice / totalEngagements : 0;
+      }
       
       // UPDATED: Use plays for video_play_count when no post data
       const videoPlayCount = playsFromAPI;
@@ -165,7 +183,7 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
         isVideo: false,
         duration: video.duration || 0,
         collaborationPrice,
-        cpv: finalViews > 0 ? collaborationPrice / finalViews : 0,
+        cpv,
         cpe,
         videoPlayCount // UPDATED: Added specific video_play_count field
       };
@@ -209,12 +227,21 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
     // Get collaboration price from multiple sources
     const collaborationPrice = video.collaboration_price || postData.collaboration_price || 0;
     
-    // Calculate CPV (Cost Per View) - use video_play_count for consistency
-    const cpv = videoPlayCount > 0 ? collaborationPrice / videoPlayCount : 0;
+    // FIXED: Use preserved CPV/CPE values if available, otherwise calculate
+    let cpv, cpe;
     
-    // Calculate CPE (Cost Per Engagement) - include shares if > 0
-    const totalEngagements = likes + comments + (shares > 0 ? shares : 0);
-    const cpe = totalEngagements > 0 ? collaborationPrice / totalEngagements : 0;
+    if (preservedCPV !== undefined && preservedCPV !== null) {
+      cpv = preservedCPV;
+    } else {
+      cpv = collaborationPrice > 0 && videoPlayCount > 0 ? collaborationPrice / videoPlayCount : 0;
+    }
+    
+    if (preservedCPE !== undefined && preservedCPE !== null) {
+      cpe = preservedCPE;
+    } else {
+      const totalEngagements = likes + comments + (shares > 0 ? shares : 0);
+      cpe = collaborationPrice > 0 && totalEngagements > 0 ? collaborationPrice / totalEngagements : 0;
+    }
     
     let thumbnailUrl = '/dummy-image.jpg';
     
@@ -401,6 +428,18 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
     try {
       console.log('🔄 Updating single video:', videoResult.id);
       
+      // FIXED: Calculate and preserve current CPV/CPE BEFORE updating
+      const currentPostData = getPostData(videoResult);
+      const originalCPV = currentPostData.cpv;
+      const originalCPE = currentPostData.cpe;
+      const originalCollaborationPrice = currentPostData.collaborationPrice;
+      
+      console.log('💰 Preserving CPV/CPE values:', {
+        originalCPV,
+        originalCPE,
+        originalCollaborationPrice
+      });
+      
       let postInput: { url?: string; code?: string } = {};
       
       if (videoResult.post_result_obj && videoResult.post_result_obj.data && videoResult.post_result_obj.data.shortcode) {
@@ -427,16 +466,36 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
         }
       }
       
+      // FIXED: Always preserve collaboration price during post updates
+      backendData.collaboration_price = originalCollaborationPrice;
+      if (backendData.post_result_obj && backendData.post_result_obj.data) {
+        backendData.post_result_obj.data.collaboration_price = originalCollaborationPrice;
+      }
+      
       const updatedResult = await updateVideoResult(videoResult.id, backendData);
+
+      // FIXED: After backend update, manually preserve CPV/CPE in local state
+      const preservedResult = {
+        ...updatedResult,
+        // Add custom fields to preserve CPV/CPE (these will be used by getPostData)
+        _preservedCPV: originalCPV,
+        _preservedCPE: originalCPE,
+        // Ensure collaboration price is maintained
+        collaboration_price: originalCollaborationPrice
+      };
 
       setVideoResults(prev => 
         (prev || []).map(video => 
-          video.id === videoResult.id ? updatedResult : video
+          video.id === videoResult.id ? preservedResult : video
         )
       );
 
       setProgressData(prev => ({ ...prev, completed: 1 }));
-      console.log('✅ Video updated successfully:', updatedResult.id);
+      console.log('✅ Video updated successfully with preserved CPV/CPE:', {
+        video_id: updatedResult.id,
+        preservedCPV: originalCPV,
+        preservedCPE: originalCPE
+      });
       
       // Close progress modal after a short delay
       setTimeout(() => {
@@ -500,10 +559,31 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
       console.log('📊 Total videos to update:', videoResults.length);
       
       const updatesData = [];
+      const preservedValues: Array<{
+        result_id: string;
+        cpv: number;
+        cpe: number;
+        collaborationPrice: number;
+      }> = [];
       
       for (let i = 0; i < videoResults.length; i++) {
         const video = videoResults[i];
         console.log(`🔄 Processing ${i + 1}/${videoResults.length}: ${video.influencer_username}`);
+        
+        // FIXED: Calculate and store current CPV/CPE BEFORE updating
+        const currentPostData = getPostData(video);
+        preservedValues.push({
+          result_id: video.id,
+          cpv: currentPostData.cpv,
+          cpe: currentPostData.cpe,
+          collaborationPrice: currentPostData.collaborationPrice
+        });
+        
+        console.log(`💰 Preserving values for ${video.influencer_username}:`, {
+          cpv: currentPostData.cpv,
+          cpe: currentPostData.cpe,
+          collaborationPrice: currentPostData.collaborationPrice
+        });
         
         // Update progress
         setProgressData(prev => ({
@@ -540,6 +620,15 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
             }
           }
           
+          // FIXED: Always preserve collaboration price during bulk post updates
+          const preservedData = preservedValues.find(p => p.result_id === video.id);
+          if (preservedData) {
+            backendData.collaboration_price = preservedData.collaborationPrice;
+            if (backendData.post_result_obj && backendData.post_result_obj.data) {
+              backendData.post_result_obj.data.collaboration_price = preservedData.collaborationPrice;
+            }
+          }
+          
           updatesData.push({
             result_id: video.id,
             update_data: {
@@ -558,6 +647,7 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
               duration: backendData.duration,
               thumbnail: backendData.thumbnail,
               post_created_at: backendData.post_created_at,
+              collaboration_price: backendData.collaboration_price, // FIXED: Include preserved collaboration_price
               post_result_obj: backendData.post_result_obj
             }
           });
@@ -578,14 +668,44 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
       
       const updatedResults = await updateAllVideoResultsWithData(campaignData.id, updatesData);
       
-      // Ensure we have valid updated results before setting state
+      // FIXED: Apply preserved CPV/CPE values to updated results
+      let finalResults;
       if (updatedResults && Array.isArray(updatedResults)) {
-        setVideoResults(updatedResults);
-        console.log('✅ All videos updated successfully:', updatedResults.length);
+        finalResults = updatedResults.map(result => {
+          const preservedData = preservedValues.find(p => p.result_id === result.id);
+          if (preservedData) {
+            return {
+              ...result,
+              _preservedCPV: preservedData.cpv,
+              _preservedCPE: preservedData.cpe,
+              collaboration_price: preservedData.collaborationPrice
+            };
+          }
+          return result;
+        });
+        
+        setVideoResults(finalResults);
+        console.log('✅ All videos updated successfully with preserved CPV/CPE:', finalResults.length);
       } else {
-        // If the API doesn't return updated results, refetch the data
-        console.log('⚠️ API did not return updated results, refetching...');
+        // If the API doesn't return updated results, refetch and apply preserved values
+        console.log('⚠️ API did not return updated results, refetching and preserving values...');
         await fetchVideoResults();
+        
+        // Apply preserved values to refetched data
+        setVideoResults(prev => 
+          (prev || []).map(video => {
+            const preservedData = preservedValues.find(p => p.result_id === video.id);
+            if (preservedData) {
+              return {
+                ...video,
+                _preservedCPV: preservedData.cpv,
+                _preservedCPE: preservedData.cpe,
+                collaboration_price: preservedData.collaborationPrice
+              };
+            }
+            return video;
+          })
+        );
       }
       
       // Final progress update
@@ -885,7 +1005,7 @@ const PublishedResults: React.FC<PublishedResultsProps> = ({
               <>
                 <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
                 Updating...
               </>

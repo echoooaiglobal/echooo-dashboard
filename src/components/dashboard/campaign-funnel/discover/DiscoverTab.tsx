@@ -185,14 +185,15 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
     }
   };
 
-  // Function to fetch discovered influencers
+  // FIXED: Function to fetch discovered influencers with correct API endpoint
   const fetchInfluencers = async (params: InfluencerSearchFilter) => {
     setIsLoading(true);
     
     try {
       console.log('🔄 Fetching influencers with params:', params);
       
-      const response = await fetch('/api/v0/influencers/discover', {
+      // FIXED: Changed URL from '/api/v0/influencers/discover' to '/api/v0/discover/search'
+      const response = await fetch('/api/v0/discover/search', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -275,12 +276,13 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
     fetchInfluencersAppend(updatedParams);
   };
 
-  // Fetch and append influencers (for load more)
+  // FIXED: Fetch and append influencers (for load more) with correct API endpoint
   const fetchInfluencersAppend = async (params: InfluencerSearchFilter) => {
     setIsLoading(true);
     
     try {
-      const response = await fetch('/api/v0/influencers/discover', {
+      // FIXED: Changed URL from '/api/v0/influencers/discover' to '/api/v0/discover/search'
+      const response = await fetch('/api/v0/discover/search', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -530,7 +532,7 @@ const DiscoverTab: React.FC<DiscoverTabProps> = ({
           searchParams={searchParams}
           onSearchTextChange={handleSearchTextChange}
           onFilterChange={handleFilterChange}
-          onApplyFilters={handleApplyFilters}
+          onApplyFilters={handleApplyFilters} 
           onSortChange={handleSortChange}
           onLoadMore={loadMore}
           onClearFilters={handleClearFilters}

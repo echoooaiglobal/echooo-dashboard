@@ -238,11 +238,12 @@ export async function POST(request: Request) {
 
       const result = {
         success: true,
-        influencers,
+        data: {
+          influencers,
+          total_count: influencers.length,
+        },
         metadata: data.metadata,
-        total: influencers.length,
         cached: false,
-        alldata:data.data,
         cacheKey: cacheKey.substring(0, 16) + '...' // For debugging
       };
 

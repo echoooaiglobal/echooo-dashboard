@@ -157,6 +157,7 @@ function mapEnsembleDataToCreatorProfile(
     detailed_info: data,
     fetched_at: new Date().toISOString(),
     units_charged: unitsCharged,
+    posts: data.edge_owner_to_timeline_media?.edges || [],
   };
 }
 
